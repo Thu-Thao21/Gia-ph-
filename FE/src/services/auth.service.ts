@@ -1,19 +1,22 @@
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
-  sendEmailVerification,
+  signOut,
   sendPasswordResetEmail,
-  updateProfile,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   FacebookAuthProvider,
   linkWithCredential,
   RecaptchaVerifier,
-  type UserCredential,
+  type User as FirebaseUser,
 } from 'firebase/auth';
 import { auth, googleProvider, facebookProvider } from '../config/firebase';
 import apiClient from '../api/axios';
-import type { AccountProfile } from '../context/AuthContext';
+import { readApiError, withRequestId } from '../api/apiError';
+import { clearSession, hasSession, setSession } from '../api/session';
+import type { AccountProfile, AccountRoleInfo } from '../context/AuthContext';
+import type { MeResponse, SessionCreateResponse } from '../types/auth';
 
 export interface RegisterPayload {
   username?: string;
@@ -29,8 +32,8 @@ export interface LoginPayload {
 }
 
 function handleAuthError(err: any, providerName: string): string {
-  console.error(`${providerName} Auth Error:`, err);
-  const code = err.code || '';
+  console.error(`${providerName} Auth Error:`, err?.code || err?.message);
+  const code = err?.code || '';
   if (code === 'auth/popup-closed-by-user') {
     return `Bạn đã đóng cửa sổ đăng nhập ${providerName}.`;
   }
@@ -49,163 +52,265 @@ function handleAuthError(err: any, providerName: string): string {
   if (code === 'auth/popup-blocked') {
     return 'Trình duyệt đã chặn cửa sổ Popup đăng nhập. Vui lòng bỏ chặn Popup hoặc cho phép pop-up từ trang web này.';
   }
-  if (err.message && (err.message.includes('Network Error') || err.message.includes('ERR_CONNECTION_REFUSED'))) {
-    return 'Không thể kết nối đến máy chủ Backend (FastAPI). Vui lòng kiểm tra xem server backend đã chạy hay chưa.';
+  if (
+    code === 'auth/invalid-credential' ||
+    code === 'auth/wrong-password' ||
+    code === 'auth/user-not-found' ||
+    code === 'auth/invalid-email'
+  ) {
+    return 'Email hoặc mật khẩu không đúng.';
   }
-  return err.message || `Đăng nhập ${providerName} thất bại.`;
+  if (code === 'auth/user-disabled') {
+    return 'Tài khoản Firebase này đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau ít phút.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Không thể kết nối đến Firebase. Vui lòng kiểm tra kết nối mạng.';
+  }
+  return err?.message || `Đăng nhập ${providerName} thất bại.`;
+}
+
+// ----- Phiên của BE mới: POST /auth/session, GET /auth/me, POST /auth/logout -----
+
+/** Thông báo lỗi khi đổi Firebase ID token lấy phiên BE (rẽ nhánh theo error.code). */
+function sessionErrorMessage(err: unknown): string {
+  const info = readApiError(err);
+  if (info.isNetworkError) {
+    return 'Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra server và cấu hình VITE_API_BASE_URL.';
+  }
+  switch (info.code) {
+    case 'INVALID_ID_TOKEN':
+      return 'Tài khoản chưa được cấp quyền truy cập hệ thống hoặc phiên Firebase không còn hợp lệ. Vui lòng đăng nhập lại hoặc liên hệ quản trị viên.';
+    case 'ACCOUNT_BLOCKED':
+      return 'Tài khoản này hiện không thể sử dụng. Vui lòng liên hệ quản trị viên.';
+    case 'TEMPORARY_PASSWORD_EXPIRED':
+      return 'Mật khẩu tạm thời đã hết hạn. Vui lòng liên hệ quản trị viên để được cấp lại.';
+    case 'PROVIDER_UNAVAILABLE':
+    case 'DATABASE_UNAVAILABLE':
+      return withRequestId('Hệ thống tạm thời không khả dụng. Vui lòng thử lại sau.', info);
+    default:
+      if (info.status === null && err instanceof Error && err.message) return err.message;
+      return withRequestId('Đăng nhập thất bại. Vui lòng thử lại.', info);
+  }
+}
+
+let pendingSession: Promise<void> | null = null;
+
+/**
+ * Đổi Firebase ID token của người dùng lấy access_token của BE (POST /auth/session).
+ * access_token chỉ được BE trả một lần; lưu trong bộ nhớ kèm expires_at.
+ * Các lời gọi đồng thời dùng chung một request.
+ */
+export function establishSession(user: FirebaseUser): Promise<void> {
+  if (pendingSession) return pendingSession;
+  pendingSession = (async () => {
+    clearSession();
+    const idToken = await user.getIdToken();
+    const res = await apiClient.post<SessionCreateResponse>('/auth/session', { id_token: idToken });
+    setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
+  })().finally(() => {
+    pendingSession = null;
+  });
+  return pendingSession;
+}
+
+const ROLE_CODE_TO_UI_ROLE: Record<string, string> = {
+  BUSINESS_OWNER: 'family_head',
+  FAMILY_ADMIN: 'family_admin',
+  FAMILY_MEMBER: 'member',
+};
+
+/** Chuyển GET /auth/me sang AccountProfile mà giao diện đang dùng. */
+export function toAccountProfile(me: MeResponse): AccountProfile {
+  const fbUser = auth.currentUser;
+  const roles: AccountRoleInfo[] = me.memberships.flatMap((membership) =>
+    membership.roles.map((roleCode) => ({
+      id: `${membership.clan_id}:${roleCode}`,
+      role: ROLE_CODE_TO_UI_ROLE[roleCode] || roleCode.toLowerCase(),
+      family_id: membership.clan_id,
+      // Quyền chỉ có hiệu lực khi membership và dòng họ đều ACTIVE (handoff mục 8).
+      status:
+        membership.membership_status === 'ACTIVE' && membership.clan_status === 'ACTIVE'
+          ? 'active'
+          : membership.membership_status.toLowerCase(),
+    }))
+  );
+  return {
+    id: me.user_id,
+    firebase_uid: fbUser?.uid ?? '',
+    username: null,
+    email: fbUser?.email ?? null,
+    phone_e164: fbUser?.phoneNumber ?? null,
+    display_name: me.display_name,
+    email_verified: fbUser?.emailVerified ?? false,
+    phone_verified: false,
+    status: me.status.toLowerCase(),
+    roles,
+    // Chỉ System Admin có quyền cấp hệ thống (permissions[] ngoài dòng họ).
+    primary_role: me.permissions.length > 0 ? 'admin' : 'member',
+    requires_password_change: me.requires_password_change,
+    memberships: me.memberships,
+    permissions: me.permissions,
+  };
+}
+
+/** GET /auth/me (dùng được cả với phiên hạn chế). */
+export async function fetchCurrentAccount(): Promise<AccountProfile> {
+  const res = await apiClient.get<MeResponse>('/auth/me');
+  return toAccountProfile(res.data);
+}
+
+/** Sau khi đăng nhập Firebase: tạo phiên BE rồi đọc tài khoản. Lỗi thì đăng xuất Firebase. */
+async function completeLogin(user: FirebaseUser): Promise<AccountProfile> {
+  try {
+    if (!hasSession()) {
+      await establishSession(user);
+    }
+    return await fetchCurrentAccount();
+  } catch (err) {
+    clearSession();
+    await signOut(auth).catch(() => undefined);
+    throw new Error(sessionErrorMessage(err));
+  }
+}
+
+/** POST /auth/logout (nếu đang có phiên) rồi signOut Firebase. */
+export async function logoutSession(): Promise<void> {
+  try {
+    if (hasSession()) {
+      await apiClient.post('/auth/logout');
+    }
+  } catch (err) {
+    const info = readApiError(err);
+    console.warn('Đăng xuất phía Backend không thành công:', info.status, info.code);
+  } finally {
+    clearSession();
+    await signOut(auth);
+  }
 }
 
 /**
- * Register new user with Email/Password via Firebase Auth.
- * Automatically sends email verification and bootstraps account in PostgreSQL.
+ * Đổi mật khẩu (phiên hạn chế hoặc bình thường): POST /auth/change-password.
+ * recent_id_token phải từ lần đăng nhập trong vòng 5 phút, nên xác thực lại với
+ * Firebase bằng mật khẩu hiện tại trước. Thành công (204) thì mọi phiên bị thu hồi:
+ * xóa phiên, signOut Firebase và bắt đăng nhập lại.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || !user.email) {
+    throw new Error('Không xác định được tài khoản đang đăng nhập. Vui lòng đăng nhập lại.');
+  }
+
+  try {
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, currentPassword));
+  } catch (err: any) {
+    const code = err?.code || '';
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+      throw new Error('Mật khẩu hiện tại không đúng.');
+    }
+    throw new Error(handleAuthError(err, 'Email'));
+  }
+
+  const recentIdToken = await user.getIdToken(true);
+  try {
+    await apiClient.post('/auth/change-password', {
+      new_password: newPassword,
+      recent_id_token: recentIdToken,
+    });
+  } catch (err) {
+    const info = readApiError(err);
+    if (info.isNetworkError) {
+      throw new Error('Không thể kết nối đến máy chủ Backend. Vui lòng thử lại.');
+    }
+    switch (info.code) {
+      case 'RECENT_LOGIN_REQUIRED':
+        throw new Error('Cần xác thực lại. Vui lòng nhập lại mật khẩu hiện tại và thử lại.');
+      case 'TEMPORARY_PASSWORD_EXPIRED':
+        throw new Error('Mật khẩu tạm thời đã hết hạn. Vui lòng liên hệ quản trị viên để được cấp lại.');
+      case 'VALIDATION_ERROR':
+        throw new Error('Mật khẩu mới không đạt yêu cầu (tối thiểu 6 ký tự).');
+      case 'SESSION_INVALID':
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      case 'DATABASE_UNAVAILABLE':
+        throw new Error(
+          withRequestId(
+            'Máy chủ tạm thời lỗi khi lưu mật khẩu mới. Vui lòng thử lại; nếu mật khẩu tạm không còn đúng, hãy nhập mật khẩu mới vào ô mật khẩu hiện tại.',
+            info
+          )
+        );
+      case 'PROVIDER_UNAVAILABLE':
+        throw new Error(withRequestId('Dịch vụ xác thực tạm thời không khả dụng. Vui lòng thử lại sau.', info));
+      default:
+        throw new Error(withRequestId('Đổi mật khẩu thất bại. Vui lòng thử lại.', info));
+    }
+  }
+
+  // 204: mọi phiên của người dùng đã bị thu hồi.
+  clearSession();
+  await signOut(auth);
+}
+
+/**
+ * Tự đăng ký tài khoản: BE mới KHÔNG có endpoint (tài khoản do hệ thống cấp;
+ * tự đăng ký Firebase không tạo tài khoản trong hệ thống). Không gọi API cũ.
  */
 export async function registerWithEmailPassword(payload: RegisterPayload): Promise<AccountProfile> {
-  const input = payload.email.trim();
-  if (payload.confirmPassword && payload.password !== payload.confirmPassword) {
-    throw new Error('Mật khẩu xác nhận không trùng khớp.');
-  }
-
-  if (payload.password.length < 6) {
-    throw new Error('Mật khẩu phải chứa ít nhất 6 ký tự.');
-  }
-
-  const isEmail = input.includes('@');
-
-  if (isEmail) {
-    try {
-      const credential: UserCredential = await createUserWithEmailAndPassword(
-        auth,
-        input,
-        payload.password
-      );
-
-      if (payload.displayName && credential.user) {
-        await updateProfile(credential.user, { displayName: payload.displayName.trim() });
-      }
-
-      if (credential.user) {
-        await sendEmailVerification(credential.user);
-      }
-    } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        // A previous attempt may have created the Firebase user before the
-        // local account request failed. Verify the same password and continue
-        // so the backend registration can finish safely.
-        try {
-          await signInWithEmailAndPassword(auth, input, payload.password);
-        } catch {
-          throw new Error('Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.');
-        }
-      }
-      if (err.code === 'auth/invalid-email') {
-        throw new Error('Định dạng email không hợp lệ.');
-      }
-    }
-  }
-
-  // Always register in Backend PostgreSQL DB (supports both email and phone numbers!)
-  try {
-    const res = await apiClient.post('/auth/register', {
-      username: payload.username || input.split('@')[0],
-      email_or_phone: input,
-      display_name: payload.displayName || payload.username || input,
-      password: payload.password,
-    });
-
-    const user = res.data?.user;
-    return {
-      id: user?.id || 'registered_user',
-      firebase_uid: user?.id || 'registered_user',
-      username: user?.username || input,
-      email: isEmail ? input : null,
-      phone_e164: !isEmail ? input : null,
-      display_name: user?.displayName || payload.displayName || input,
-      email_verified: isEmail,
-      phone_verified: !isEmail,
-      status: 'active',
-      roles: [{ id: 'r1', role: 'member', status: 'active' }],
-      primary_role: 'member',
-    };
-  } catch (err: any) {
-    const msg = err.response?.data?.detail || err.message || 'Đăng ký thất bại. Vui lòng thử lại.';
-    throw new Error(msg);
-  }
+  void payload;
+  throw new Error(
+    'Hệ thống chưa hỗ trợ tự đăng ký tài khoản. Tài khoản do quản trị viên cấp; nếu muốn đăng ký dòng họ, vui lòng dùng mục Đăng ký Business.'
+  );
 }
 
 /**
- * Login existing user with Email/Password via Firebase Auth.
- * Automatically bootstraps and returns PostgreSQL account details.
+ * Đăng nhập Email/Password qua Firebase, rồi đổi ID token lấy phiên BE.
  */
 export async function loginWithEmailPassword(payload: LoginPayload): Promise<AccountProfile> {
-  // 1. Try Backend API first (validates updated password_hash, username, email, or phone)
-  try {
-    const res = await apiClient.post('/auth/login', {
-      email_or_phone: payload.email.trim(),
-      password: payload.password,
-    });
-    if (res.data && res.data.user) {
-      if (res.data.token) {
-        localStorage.setItem('auth_token', res.data.token);
-      }
-      if (res.data.account) return res.data.account as AccountProfile;
-      const u = res.data.user;
-      return {
-        id: u.id,
-        firebase_uid: u.id,
-        username: u.username,
-        email: u.email || payload.email.trim(),
-        phone_e164: u.phone,
-        display_name: u.displayName || u.username || 'Thành viên',
-        email_verified: true,
-        phone_verified: false,
-        status: 'active',
-        roles: [{ id: u.id, role: u.role || 'member', status: 'active' }],
-        primary_role: u.role || 'member',
-      };
-    }
-  } catch (backendErr: any) {
-    if (backendErr?.response?.data?.detail) {
-      throw new Error(backendErr.response.data.detail);
-    }
-    if (backendErr?.message && (backendErr.message.includes('Network Error') || backendErr.message.includes('ERR_CONNECTION_REFUSED'))) {
-      throw new Error('Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra kết nối mạng.');
-    }
-    throw new Error('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin đăng nhập.');
+  const email = payload.email.trim();
+  if (!email.includes('@')) {
+    throw new Error('Vui lòng đăng nhập bằng địa chỉ email.');
   }
-
-  throw new Error('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin đăng nhập.');
+  let user: FirebaseUser;
+  try {
+    const credential = await signInWithEmailAndPassword(auth, email, payload.password);
+    user = credential.user;
+  } catch (err: any) {
+    throw new Error(handleAuthError(err, 'Email'));
+  }
+  return completeLogin(user);
 }
 
 
 /**
- * Login / Register with Google Sign-In.
+ * Đăng nhập Google qua Firebase, rồi đổi ID token lấy phiên BE.
  */
 export async function loginWithGoogle(): Promise<AccountProfile> {
+  let user: FirebaseUser;
   try {
     let credential;
     try {
       credential = await signInWithPopup(auth, googleProvider);
     } catch (popupErr: any) {
       if (popupErr.code === 'auth/popup-blocked') {
+        // Sau redirect, AuthContext tự tạo phiên khi Firebase báo đã đăng nhập.
         await signInWithRedirect(auth, googleProvider);
         return {} as AccountProfile;
       }
       throw popupErr;
     }
-    const token = await credential.user.getIdToken();
-    const res = await apiClient.post<AccountProfile>('/auth/bootstrap', {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    user = credential.user;
   } catch (err: any) {
     throw new Error(handleAuthError(err, 'Google'));
   }
+  return completeLogin(user);
 }
 
 /**
- * Login / Register with Facebook Login.
+ * Đăng nhập Facebook qua Firebase, rồi đổi ID token lấy phiên BE.
  */
 export async function loginWithFacebook(): Promise<AccountProfile> {
+  let user: FirebaseUser;
   try {
     let credential;
     try {
@@ -219,23 +324,17 @@ export async function loginWithFacebook(): Promise<AccountProfile> {
         const pendingCred = FacebookAuthProvider.credentialFromError(popupErr);
         if (auth.currentUser && pendingCred) {
           await linkWithCredential(auth.currentUser, pendingCred);
-          const token = await auth.currentUser.getIdToken();
-          const res = await apiClient.post<AccountProfile>('/auth/bootstrap', {}, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          return res.data;
+          user = auth.currentUser;
+          return completeLogin(user);
         }
       }
       throw popupErr;
     }
-    const token = await credential.user.getIdToken();
-    const res = await apiClient.post<AccountProfile>('/auth/bootstrap', {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    user = credential.user;
   } catch (err: any) {
     throw new Error(handleAuthError(err, 'Facebook'));
   }
+  return completeLogin(user);
 }
 
 
@@ -315,40 +414,33 @@ export async function sendPhoneOtp(phone: string, recaptchaVerifier: any): Promi
 }
 
 /**
- * Verify SMS OTP code and bootstrap user in PostgreSQL.
+ * Xác minh mã SMS OTP của Firebase, rồi đổi ID token lấy phiên BE.
  */
 export async function verifyPhoneOtp(confirmationResult: any, otpCode: string): Promise<AccountProfile> {
+  let user: FirebaseUser;
   try {
     const credential = await confirmationResult.confirm(otpCode.trim());
-    const token = await credential.user.getIdToken();
-    const res = await apiClient.post<AccountProfile>('/auth/bootstrap', {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    return res.data;
+    user = credential.user;
   } catch (err: any) {
-    console.error('Verify OTP Error:', err);
+    console.error('Verify OTP Error:', err?.code || err?.message);
     throw new Error('Mã OTP không đúng hoặc đã hết hạn.');
   }
+  return completeLogin(user);
 }
 
 /**
- * Request Password Reset (Supports Email & Phone OTP workflow)
+ * Yêu cầu mã OTP đặt lại mật khẩu qua BE: BE mới CHƯA có endpoint (KI-05).
+ * Không gọi API cũ. Firebase sendPasswordResetLink vẫn dùng được.
  */
 export async function requestPasswordResetOTP(emailOrPhone: string): Promise<{ message: string }> {
-  const input = emailOrPhone.trim();
-  try {
-    const res = await apiClient.post<{ message: string; otp_code?: string }>('/auth/request-otp', {
-      email_or_phone: input,
-    });
-    return { message: res.data.message };
-  } catch (err: any) {
-    const msg = err.response?.data?.detail || err.message || 'Gửi mã OTP thất bại.';
-    throw new Error(msg);
-  }
+  void emailOrPhone;
+  throw new Error(
+    'Hệ thống chưa hỗ trợ đặt lại mật khẩu bằng mã OTP. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
+  );
 }
 
 /**
- * Reset Password with OTP Code
+ * Đặt lại mật khẩu bằng mã OTP qua BE: BE mới CHƯA có endpoint (KI-05). Không gọi API cũ.
  */
 export async function resetPasswordWithOTP(
   emailOrPhone: string,
@@ -356,21 +448,11 @@ export async function resetPasswordWithOTP(
   newPassword: string,
   confirmPassword?: string
 ): Promise<{ message: string }> {
-  if (confirmPassword && newPassword !== confirmPassword) {
-    throw new Error('Mật khẩu xác nhận không trùng khớp.');
-  }
-  if (newPassword.length < 6) {
-    throw new Error('Mật khẩu mới phải từ 6 ký tự trở lên.');
-  }
-  try {
-    const res = await apiClient.post<{ message: string }>('/auth/reset-password', {
-      email_or_phone: emailOrPhone.trim(),
-      otp_code: otpCode.trim(),
-      new_password: newPassword,
-    });
-    return { message: res.data.message };
-  } catch (err: any) {
-    const msg = err.response?.data?.detail || err.message || 'Đặt lại mật khẩu thất bại.';
-    throw new Error(msg);
-  }
+  void emailOrPhone;
+  void otpCode;
+  void newPassword;
+  void confirmPassword;
+  throw new Error(
+    'Hệ thống chưa hỗ trợ đặt lại mật khẩu bằng mã OTP. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
+  );
 }

@@ -1,0 +1,31 @@
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.empty-state-icon {
+  color: #94a3b8;
+  margin-bottom: 16px;
+}
+
+.empty-state-message {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 8px 0;
+}
+
+.empty-state-submessage {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin: 0;
+  max-width: 400px;
+}

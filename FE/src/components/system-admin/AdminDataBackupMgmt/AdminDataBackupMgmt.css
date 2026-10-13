@@ -1,0 +1,242 @@
+.admin-backup-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.admin-backup-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.btn-create-backup {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-create-backup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+.admin-jobs-panel {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 20px 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+.admin-jobs-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.admin-jobs-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.jobs-count-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.admin-jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-job-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.admin-job-card.running {
+  border-color: #fde047;
+  background: #fefce8;
+}
+
+.job-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.job-id-text {
+  font-family: monospace;
+  font-size: 12px;
+  color: #64748b;
+  margin-right: 8px;
+}
+
+.job-type-text {
+  font-size: 14px;
+  color: #0f172a;
+  margin-right: 8px;
+}
+
+.job-scope-pill {
+  font-size: 11px;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #334155;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.job-time-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.job-progress-wrapper {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.job-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #0284c7);
+  transition: width 0.3s ease;
+}
+
+.job-progress-percent {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0284c7;
+  text-align: right;
+}
+
+.job-logs-box {
+  background: #0f172a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.job-log-line {
+  font-family: monospace;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.scope-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.scope-pill.full_platform {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.scope-pill.single_family {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.integrity-tag.valid {
+  font-size: 12px;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.btn-action-restore {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-restore:hover {
+  background: #fee2e2;
+}
+
+.admin-backup-tip-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 12px;
+  color: #1e40af;
+  margin-top: 12px;
+  line-height: 1.4;
+}
+
+.admin-restore-alert-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 14px;
+  color: #991b1b;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.admin-restore-alert-box strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.admin-restore-alert-box p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.admin-integrity-check-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 14px;
+}

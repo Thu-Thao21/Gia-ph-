@@ -1,0 +1,124 @@
+@reference "../../../index.css";
+/* CSS cho WorshipSpacePage */
+
+
+
+.worship-hero-container {
+  @apply flex-1 bg-white p-8 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center;
+}
+
+.worship-hero-icon-wrapper {
+  @apply w-24 h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-6 shadow-inner;
+}
+
+.worship-hero-title {
+  @apply text-3xl font-bold text-slate-800 mb-4;
+}
+
+.worship-hero-desc {
+  @apply text-lg text-slate-500 max-w-2xl mb-8;
+}
+
+
+
+
+
+.worship-room-header {
+  @apply absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent;
+}
+
+.worship-room-title {
+  @apply font-bold text-lg text-blue-600;
+}
+
+.worship-room-subtitle {
+  @apply text-xs text-slate-300;
+}
+
+.worship-room-exit-btn {
+  @apply px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded backdrop-blur-md text-sm font-medium transition;
+}
+
+.worship-room-scene {
+  @apply flex-1 relative flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black;
+}
+
+.worship-altar-container {
+  @apply relative z-10 flex flex-col items-center;
+}
+
+.worship-altar-banner {
+  @apply w-64 h-16 bg-red-900 border-4 border-blue-600 flex items-center justify-center mb-8 shadow-2xl;
+}
+
+.worship-altar-banner-text {
+  @apply text-blue-600 font-serif text-2xl font-bold tracking-widest;
+}
+
+.worship-altar-table {
+  @apply w-96 h-48 bg-gradient-to-b from-amber-900 to-amber-950 border-t-8 border-amber-800 rounded-t shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative flex items-end justify-center pb-4 gap-6;
+}
+
+.worship-incense-bowl {
+  @apply w-16 h-12 bg-yellow-600 rounded-b-xl rounded-t flex items-start justify-center relative shadow-lg;
+}
+
+.worship-incense-ash {
+  @apply w-12 h-2 bg-yellow-500 rounded-full mt-[-4px];
+}
+
+
+
+.worship-incense-stick-1 {
+  @apply w-1 h-16 bg-red-500 rounded-t shadow-[0_0_10px_red];
+}
+
+.worship-incense-stick-2 {
+  @apply w-1 h-14 bg-red-500 rounded-t shadow-[0_0_10px_red] mt-2;
+}
+
+
+
+.worship-fruit-tray {
+  @apply w-20 h-10 bg-red-800 rounded-full flex items-center justify-center absolute left-8 bottom-6 shadow-lg;
+}
+
+.worship-flower-vase {
+  @apply w-8 h-16 bg-blue-900 rounded-b absolute right-12 bottom-6 shadow-lg flex items-end justify-center;
+}
+
+.worship-candle {
+  @apply w-4 h-12 bg-red-600 rounded shadow-lg flex justify-center;
+}
+
+.worship-candle-left {
+  @apply absolute left-4 bottom-8;
+}
+
+.worship-candle-right {
+  @apply absolute right-4 bottom-8;
+}
+
+
+
+
+
+.worship-toolbar {
+  @apply absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md border border-white/20 p-2 rounded-2xl flex gap-2 z-20 shadow-2xl;
+}
+
+.worship-toolbar-btn {
+  @apply flex flex-col items-center gap-1 p-3 rounded-xl transition w-24;
+}
+
+.worship-toolbar-btn-active {
+  @apply bg-yellow-600/40 text-yellow-300;
+}
+
+.worship-toolbar-btn-inactive {
+  @apply text-slate-300 hover:bg-white/10 hover:text-white;
+}
+
+.worship-toolbar-divider {
+  @apply w-px bg-white/20 my-2;
+}

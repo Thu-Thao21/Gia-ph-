@@ -1,0 +1,290 @@
+/* AdminTheme.css - Global Styles for Admin Components */
+
+/* Containers & Headers */
+.clan-account-container, .admin-account-container, .clan-profile-container, .admin-profile-container, .clan-members-container, .admin-members-container, .clan-approvals-container, .admin-approvals-container, .clan-links-container, .admin-links-container, .clan-settings-container, .admin-settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.clan-account-header, .admin-account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.clan-account-title, .admin-account-title {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.clan-account-subtitle, .admin-account-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.clan-account-controls, .admin-account-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.clan-search-input, .admin-search-input, .clan-select-filter, .admin-select-filter, .form-input-admin {
+  padding: 10px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s;
+  background: #f8fafc;
+}
+
+.clan-search-input:focus, .clan-select-filter:focus, .form-input-admin:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #fff;
+}
+
+/* Cards & Grids */
+.family-cards-grid, .clan-settings-grid, .admin-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.family-card-item, .clan-card, .admin-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.family-card-item:hover, .clan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08) !important;
+  border-color: rgba(37, 99, 235, 0.28) !important;
+}
+
+.family-card-header, .clan-card-header, .admin-card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.family-card-header h3, .clan-card-header, .admin-card-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.clan-card-body, .admin-card-body {
+  padding: 24px;
+}
+
+/* Tables */
+.clan-table-card, .admin-table-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.clan-table, .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.clan-table, .admin-table th {
+  background: #f8fafc;
+  padding: 16px 24px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.clan-table, .admin-table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.clan-table, .admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.clan-table, .admin-table tr:hover {
+  background: #f8fafc;
+}
+
+/* Badges & Pills */
+.badge-role-pill, .status-badge-active, .status-badge-locked, .perm-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-role-admin { background: #fee2e2; color: #b91c1c; }
+.badge-role-viewer { background: #fef3c7; color: #b45309; }
+.acc-role-member { background: #e0e7ff; color: #4338ca; }
+
+.status-badge-active { background: #dcfce7; color: #15803d; }
+.status-badge-locked { background: #f1f5f9; color: #64748b; }
+
+/* Buttons & Actions */
+.action-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon-action, .clan-btn-primary, .admin-btn-primary, .clan-btn-secondary, .admin-btn-secondary {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.clan-btn-primary, .admin-btn-primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.clan-btn-primary:hover {
+  background: #2563eb;
+}
+
+.clan-btn-secondary, .admin-btn-secondary, .btn-icon-action {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.clan-btn-secondary:hover, .btn-icon-action:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-icon-action.lock { background: #fee2e2; color: #b91c1c; }
+.btn-icon-action.lock:hover { background: #fecaca; }
+.btn-icon-action.unlock { background: #dcfce7; color: #15803d; }
+.btn-icon-action.unlock:hover { background: #bbf7d0; }
+
+/* Modals */
+.clan-modal-overlay, .admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.clan-modal-box, .admin-modal-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.clan-modal-box-lg, .admin-modal-box-lg { max-width: 800px; }
+
+.clan-modal-header, .admin-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+}
+
+.clan-modal-header, .admin-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.clan-modal-close, .admin-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.clan-modal-close:hover {
+  color: #0f172a;
+}
+
+.form-group-admin {
+  margin-bottom: 20px;
+}
+
+.form-label-admin {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.form-input-admin {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.clan-modal-footer, .admin-modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.clan-msg-box, .admin-msg-box {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: 1px solid #bbf7d0;
+}

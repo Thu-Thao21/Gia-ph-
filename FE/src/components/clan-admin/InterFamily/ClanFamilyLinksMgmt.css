@@ -1,0 +1,171 @@
+@reference "../../../index.css";
+/* CSS cho ClanFamilyLinksMgmt */
+
+.links-type-badge {
+  @apply px-2 py-1 bg-purple-100 text-blue-600 rounded text-sm font-medium;
+}
+
+.links-actions-connected {
+  @apply flex gap-2;
+}
+
+.links-btn-config {
+  @apply text-blue-600 hover:text-blue-800 text-sm font-medium;
+}
+
+.links-btn-cancel {
+  @apply text-red-600 hover:text-red-800 text-sm font-medium;
+}
+
+.links-type-badge-req {
+  @apply px-2 py-1 bg-slate-100 text-slate-700 rounded text-sm font-medium;
+}
+
+.links-actions-req {
+  @apply flex gap-2;
+}
+
+.links-btn-accept {
+  @apply text-green-600 hover:text-green-800 text-sm font-bold;
+}
+
+.links-btn-reject {
+  @apply text-red-600 hover:text-red-800 text-sm font-bold;
+}
+
+.links-btn-revoke {
+  @apply text-slate-500 hover:text-slate-700 text-sm font-bold;
+}
+
+
+
+.links-tabs {
+  @apply bg-white p-2 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-2 w-fit;
+}
+
+.links-table-container {
+  @apply flex-1 overflow-auto;
+}
+
+.links-search-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+}
+
+.links-search-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+.links-search-modal-content {
+  @apply relative w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden;
+}
+
+.links-search-modal-header {
+  @apply p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.links-search-modal-title {
+  @apply text-xl font-bold text-slate-800;
+}
+
+.links-search-modal-close {
+  @apply w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center hover:bg-slate-300;
+}
+
+
+
+.links-search-result {
+  @apply border border-slate-200 rounded-xl p-4 bg-slate-50 flex justify-between items-center;
+}
+
+.links-search-result-title {
+  @apply font-bold text-slate-800;
+}
+
+.links-search-result-desc {
+  @apply text-sm text-slate-500;
+}
+
+.links-config-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6;
+}
+
+.links-config-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+
+
+.links-config-modal-header {
+  @apply p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.links-config-modal-title {
+  @apply text-xl font-bold text-slate-800;
+}
+
+.links-config-modal-close {
+  @apply w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center hover:bg-slate-300;
+}
+
+.links-config-modal-body {
+  @apply p-6 flex-1 overflow-auto;
+}
+
+.links-config-modal-desc {
+  @apply text-slate-600 mb-6;
+}
+
+.links-config-radio-label {
+  @apply flex gap-3 p-4 border border-blue-500 bg-blue-50 rounded-xl cursor-pointer;
+}
+
+.links-config-radio-title {
+  @apply font-bold text-slate-800;
+}
+
+.links-config-radio-desc {
+  @apply text-sm text-slate-600;
+}
+
+.links-config-radio-label {
+  @apply flex gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50;
+}
+
+.links-config-radio-title {
+  @apply font-bold text-slate-800;
+}
+
+.links-config-radio-desc {
+  @apply text-sm text-slate-600;
+}
+
+.links-config-radio-label {
+  @apply flex gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50;
+}
+
+.links-config-radio-title {
+  @apply font-bold text-slate-800;
+}
+
+.links-config-radio-desc {
+  @apply text-sm text-slate-600;
+}
+
+.links-config-modal-footer {
+  @apply p-6 border-t border-slate-200 flex justify-end gap-3;
+}
+
+
+
+
+
+
+
+
+
+.link-status-badge { @apply px-2 py-1 text-xs rounded-full font-medium; }
+.status-sent { @apply bg-amber-100 text-blue-600; }
+.status-received { @apply bg-blue-100 text-blue-700; }
+.link-tab-btn { @apply px-6 py-2 font-bold rounded-lg; }
+.tab-active { @apply bg-blue-50 text-blue-700; }
+.tab-inactive { @apply text-slate-500 hover:bg-slate-50; }

@@ -1,0 +1,126 @@
+@reference "../../../index.css";
+/* CSS cho AncestorsPage */
+
+.ancestor-name-link {
+  @apply text-blue-600 cursor-pointer hover:underline;
+}
+
+.ancestor-status-badge {
+  @apply px-2 py-1 text-xs rounded-full;
+}
+
+.ancestor-status-badge.active {
+  @apply bg-green-100 text-green-700;
+}
+
+.ancestor-status-badge.inactive {
+  @apply bg-slate-100 text-slate-600;
+}
+
+.ancestor-actions {
+  @apply flex gap-2;
+}
+
+.ancestor-action-btn {
+  @apply text-blue-600 hover:text-blue-800 text-sm font-medium;
+}
+
+.ancestors-search-bar {
+  @apply bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-4;
+}
+
+
+
+
+
+.ancestors-table-container {
+  @apply flex-1 overflow-auto;
+}
+
+.ancestors-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+}
+
+.ancestors-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+
+
+.ancestors-modal-header {
+  @apply p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.ancestors-modal-title {
+  @apply font-bold text-slate-800 text-lg;
+}
+
+.ancestors-modal-close {
+  @apply text-slate-400 hover:text-slate-600;
+}
+
+.ancestors-modal-body {
+  @apply p-6 space-y-4;
+}
+
+.ancestors-form-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+.ancestors-form-grid {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.ancestors-modal-footer {
+  @apply p-5 border-t border-slate-200 bg-slate-50 flex justify-end gap-3;
+}
+
+.ancestors-detail-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6;
+}
+
+
+
+.ancestors-detail-modal-body {
+  @apply p-6 flex-1 overflow-auto;
+}
+
+.ancestors-detail-header {
+  @apply text-center mb-6;
+}
+
+.ancestors-detail-avatar {
+  @apply w-24 h-24 bg-slate-100 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-bold text-blue-600 border-4 border-white shadow-md;
+}
+
+.ancestors-detail-name {
+  @apply text-xl font-bold text-slate-800;
+}
+
+.ancestors-detail-title {
+  @apply text-sm text-slate-500;
+}
+
+.ancestors-detail-badge {
+  @apply inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold mt-3;
+}
+
+.ancestors-detail-info-list {
+  @apply space-y-4;
+}
+
+.ancestors-detail-info-box {
+  @apply bg-slate-50 p-4 rounded-xl border border-slate-200;
+}
+
+.ancestors-info-box-label {
+  @apply text-sm text-slate-500 mb-1;
+}
+
+.ancestors-info-box-value {
+  @apply font-medium text-slate-800;
+}
+
+.ancestors-info-box-text {
+  @apply text-sm text-slate-700 leading-relaxed;
+}

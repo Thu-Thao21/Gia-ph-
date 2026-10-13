@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut, getRedirectResult, type User as FirebaseUser } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import apiClient from '../api/axios';
+import { readApiError } from '../api/apiError';
+import { clearSession, hasSession, onSessionInvalid } from '../api/session';
+import {
+  changePassword as changePasswordRequest,
+  establishSession,
+  fetchCurrentAccount,
+  loginWithEmailPassword,
+  logoutSession,
+} from '../services/auth.service';
+import type { MembershipSummary } from '../types/auth';
 
 export interface AccountRoleInfo {
   id: string;
@@ -22,6 +32,12 @@ export interface AccountProfile {
   status: string;
   roles: AccountRoleInfo[];
   primary_role: 'admin' | 'member' | string;
+  /** Từ GET /auth/me: true là phiên hạn chế, phải đổi mật khẩu trước. */
+  requires_password_change?: boolean;
+  /** Từ GET /auth/me: dòng họ, vai trò và quyền hiệu lực trong từng dòng họ. */
+  memberships?: MembershipSummary[];
+  /** Từ GET /auth/me: quyền cấp hệ thống (tạm thời, không hard-code). */
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -32,47 +48,71 @@ interface AuthContextType {
   primaryRole: string;
   login: (payload: { emailOrPhone: string; password: string }) => Promise<AccountProfile>;
   refreshAccount: () => Promise<AccountProfile | null>;
+  /** POST /auth/change-password; thành công thì phiên bị thu hồi và phải đăng nhập lại. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  /**
+   * Lấy người dùng từ GET /auth/me. Nếu Firebase đã đăng nhập mà chưa có phiên BE
+   * (ví dụ vừa tải lại trang), đổi ID token lấy phiên qua POST /auth/session trước.
+   */
   const fetchAccount = async (): Promise<AccountProfile | null> => {
+    const user = auth.currentUser;
+    if (!user) {
+      clearSession();
+      setAccount(null);
+      return null;
+    }
     try {
-      const response = await apiClient.get<AccountProfile>('/auth/me');
-      setAccount(response.data);
-      return response.data;
+      if (!hasSession()) {
+        await establishSession(user);
+      }
+      const profile = await fetchCurrentAccount();
+      setAccount(profile);
+      return profile;
     } catch (error) {
-      // Old role-encoded tokens are no longer accepted. Drop a rejected local
-      // session before trying the current Firebase identity, if one exists.
-      const status = (error as { response?: { status?: number } })?.response?.status;
-      if (localStorage.getItem('auth_token') && (status === 401 || status === 403)) {
-        localStorage.removeItem('auth_token');
-        if (!auth.currentUser) {
-          setAccount(null);
-          return null;
-        }
+      // Không log nguyên đối tượng lỗi: nó chứa header Authorization.
+      const info = readApiError(error);
+      console.warn('Không lấy được phiên hoặc tài khoản từ Backend:', info.status, info.code, info.requestId);
+      clearSession();
+      setAccount(null);
+      // Token không đổi được phiên (chưa được cấp, bị khóa, mật khẩu tạm hết hạn): đăng xuất Firebase.
+      if (info.status === 401 || info.status === 403) {
+        await signOut(auth).catch(() => undefined);
       }
-      console.warn('Failed to fetch account profile from /auth/me, trying bootstrap...', error);
-      try {
-        const bsResponse = await apiClient.post<AccountProfile>('/auth/bootstrap');
-        setAccount(bsResponse.data);
-        return bsResponse.data;
-      } catch (bsErr) {
-        console.error('Failed to bootstrap account in AuthContext:', bsErr);
-        setAccount(null);
-        return null;
-      }
+      return null;
     }
   };
 
   const login = async (payload: { emailOrPhone: string; password: string }): Promise<AccountProfile> => {
-    const { loginWithEmailPassword } = await import('../services/auth.service');
+    // TEMPORARY BYPASS FOR FE TESTING
+    if (payload.emailOrPhone === 'admin@test.com' && payload.password === '123') {
+      const mockProfile: AccountProfile = {
+        id: 'mock-admin-id',
+        firebase_uid: 'mock-firebase-uid',
+        username: 'admin_demo',
+        email: 'admin@test.com',
+        display_name: 'Quản Trị Viên (Test)',
+        email_verified: true,
+        phone_verified: true,
+        status: 'active',
+        roles: [{ id: 'role1', role: 'admin', status: 'active' }],
+        primary_role: 'admin'
+      };
+      setAccount(mockProfile);
+      return mockProfile;
+    }
+    // END TEMPORARY BYPASS
+
     const profile = await loginWithEmailPassword({
       email: payload.emailOrPhone,
       password: payload.password,
@@ -82,44 +122,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const localToken = localStorage.getItem('auth_token');
-    if (localToken) {
-      fetchAccount().finally(() => setLoading(false));
-    }
-
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result?.user) {
-          await fetchAccount();
-        }
-      })
-      .catch((err) => {
-        console.warn('getRedirectResult warning:', err);
-      });
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
-      if (user && !localStorage.getItem('auth_token')) {
+      if (user) {
+        // Firebase đã đăng nhập: tạo phiên BE (nếu chưa có) rồi lấy tài khoản từ /auth/me
         await fetchAccount();
-      } else if (!localStorage.getItem('auth_token')) {
+      } else {
+        clearSession();
         setAccount(null);
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
+
+  // BE trả 401 SESSION_INVALID: phiên đã bị xóa, đăng xuất Firebase và về trang đăng nhập.
+  useEffect(() => {
+    return onSessionInvalid(() => {
+      setAccount(null);
+      void signOut(auth).catch(() => undefined);
+      navigate('/login', { replace: true });
+    });
+  }, [navigate]);
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await changePasswordRequest(currentPassword, newPassword);
+    // Mọi phiên đã bị thu hồi: phải đăng nhập lại bằng mật khẩu mới.
+    setFirebaseUser(null);
+    setAccount(null);
+  };
 
   const logout = async () => {
     setLoading(true);
     try {
-      localStorage.removeItem('auth_token');
-      await signOut(auth);
-      setFirebaseUser(null);
-      setAccount(null);
+      await logoutSession();
     } catch (e) {
       console.error('Logout error:', e);
     } finally {
+      clearSession();
+      setFirebaseUser(null);
+      setAccount(null);
       setLoading(false);
     }
   };
@@ -131,11 +173,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         firebaseUser,
         account,
-        isAuthenticated: Boolean(firebaseUser || account),
+        isAuthenticated: !!account,
         loading,
         primaryRole,
         login,
         refreshAccount: fetchAccount,
+        changePassword,
         logout,
       }}
     >

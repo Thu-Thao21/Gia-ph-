@@ -1,0 +1,106 @@
+.admin-members-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: profileFadeIn 0.3s ease-out;
+}
+
+.admin-msg-box {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.admin-table-loading,
+.admin-table-empty {
+  text-align: center;
+  padding: 40px;
+}
+
+.admin-table-loading {
+  color: #64748b;
+}
+
+.admin-table-empty {
+  color: #94a3b8;
+}
+
+.admin-mem-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-mem-othername,
+.admin-mem-edu,
+.admin-mem-burial {
+  font-size: 12px;
+}
+
+.admin-mem-othername,
+.admin-mem-burial {
+  color: #94a3b8;
+}
+
+.admin-mem-edu {
+  color: #64748b;
+}
+
+.admin-mem-generation {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.admin-mem-branch {
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-mem-burial {
+  margin-top: 4px;
+}
+
+.admin-modal-tabs-container {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.admin-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.admin-form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.status-badge-alive {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge-deceased {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.admin-modal-box-lg {
+  max-width: 680px;
+}

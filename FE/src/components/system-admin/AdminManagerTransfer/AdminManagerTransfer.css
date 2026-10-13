@@ -1,0 +1,191 @@
+.admin-transfer-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.admin-transfer-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #c2410c;
+  background: #ffedd5;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.btn-start-transfer {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-start-transfer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+.admin-transfer-notice-box {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 16px;
+  padding: 16px 20px;
+}
+
+.notice-icon {
+  font-size: 24px;
+}
+
+.notice-content strong {
+  color: #92400e;
+  font-size: 14px;
+}
+
+.notice-content p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.5;
+}
+
+.old-manager-name {
+  font-size: 13px;
+  color: #64748b;
+  text-decoration: line-through;
+}
+
+.new-manager-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.transfer-reason-text {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.doc-link-pill {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.admin-table-card-header {
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-card-header-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-card-header-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  display: block;
+}
+
+.admin-upload-evidence-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.upload-icon {
+  font-size: 28px;
+}
+
+.upload-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.upload-meta strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.file-size {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.admin-verification-check-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  margin-top: 3px;
+}
+
+.checkbox-label span {
+  font-size: 13px;
+  color: #166534;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.admin-revocation-warning-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 14px;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.admin-revocation-warning-box strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.admin-revocation-warning-box ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}

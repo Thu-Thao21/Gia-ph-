@@ -1,0 +1,145 @@
+.admin-security-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.admin-sec-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.admin-sec-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .admin-sec-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-sec-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-sec-card-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-sec-card-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.admin-sec-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.admin-strength-meter-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.strength-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.strength-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-text {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-sec-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-update-pwd {
+  padding: 11px 24px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.btn-update-pwd:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+}
+
+.admin-sec-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-policy-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-policy-list li {
+  font-size: 13px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-policy-list li.met {
+  color: #166534;
+  font-weight: 700;
+}

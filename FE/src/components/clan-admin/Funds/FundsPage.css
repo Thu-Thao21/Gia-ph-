@@ -1,0 +1,383 @@
+@reference "../../../index.css";
+/* CSS cho FundsPage */
+
+.fund-desc-col {
+  @apply text-slate-800 font-medium;
+}
+
+.fund-header-actions {
+  @apply flex gap-2;
+}
+
+.fund-page-content {
+  @apply flex-1 overflow-auto;
+}
+
+.fund-stats-grid {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-6 mb-6;
+}
+
+.fund-stat-card {
+  @apply bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden;
+}
+
+.fund-stat-info {
+  @apply relative z-10;
+}
+
+.fund-stat-title {
+  @apply text-sm text-slate-500 font-medium mb-1;
+}
+
+.fund-stat-amount {
+  @apply text-3xl font-bold text-blue-700;
+}
+
+.fund-stat-trend {
+  @apply text-xs text-green-600 mt-2 font-medium;
+}
+
+.fund-stat-icon {
+  @apply absolute right-[-20px] bottom-[-20px] opacity-10 text-blue-600;
+}
+
+.fund-stat-card {
+  @apply bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden;
+}
+
+.fund-stat-info {
+  @apply relative z-10;
+}
+
+.fund-stat-title {
+  @apply text-sm text-slate-500 font-medium mb-1;
+}
+
+.fund-stat-amount {
+  @apply text-3xl font-bold text-green-700;
+}
+
+.fund-stat-trend {
+  @apply text-xs text-green-600 mt-2 font-medium;
+}
+
+.fund-stat-icon {
+  @apply absolute right-[-20px] bottom-[-20px] opacity-10 text-green-600;
+}
+
+.fund-stat-card {
+  @apply bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden;
+}
+
+.fund-stat-info {
+  @apply relative z-10;
+}
+
+.fund-stat-title {
+  @apply text-sm text-slate-500 font-medium mb-1;
+}
+
+.fund-stat-amount {
+  @apply text-3xl font-bold text-red-600;
+}
+
+.fund-stat-trend {
+  @apply text-xs text-red-600 mt-2 font-medium;
+}
+
+.fund-stat-icon {
+  @apply absolute right-[-20px] bottom-[-20px] opacity-10 text-red-600;
+}
+
+.fund-dashboard-main {
+  @apply bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-6;
+}
+
+.fund-chart-title {
+  @apply font-bold text-slate-800 mb-4;
+}
+
+.fund-chart-container {
+  @apply h-48 flex items-end gap-4 px-2 border-b border-l border-slate-200 relative;
+}
+
+.fund-chart-y-axis {
+  @apply absolute left-[-30px] bottom-[20%] text-xs text-slate-400;
+}
+
+.fund-chart-y-axis {
+  @apply absolute left-[-30px] bottom-[50%] text-xs text-slate-400;
+}
+
+.fund-chart-y-axis {
+  @apply absolute left-[-30px] bottom-[80%] text-xs text-slate-400;
+}
+
+
+
+.fund-chart-bar-in {
+  @apply w-1/3 bg-green-400 h-[60%] rounded-t-sm;
+}
+
+.fund-chart-bar-out {
+  @apply w-1/3 bg-red-400 h-[20%] rounded-t-sm;
+}
+
+.fund-chart-x-axis {
+  @apply absolute -bottom-6 text-xs text-slate-500;
+}
+
+
+
+.fund-chart-bar-in {
+  @apply w-1/3 bg-green-400 h-[40%] rounded-t-sm;
+}
+
+.fund-chart-bar-out {
+  @apply w-1/3 bg-red-400 h-[30%] rounded-t-sm;
+}
+
+.fund-chart-x-axis {
+  @apply absolute -bottom-6 text-xs text-slate-500;
+}
+
+
+
+.fund-chart-bar-in {
+  @apply w-1/3 bg-green-400 h-[80%] rounded-t-sm;
+}
+
+.fund-chart-bar-out {
+  @apply w-1/3 bg-red-400 h-[40%] rounded-t-sm;
+}
+
+.fund-chart-x-axis {
+  @apply absolute -bottom-6 text-xs text-slate-500;
+}
+
+
+
+.fund-chart-bar-in {
+  @apply w-1/3 bg-green-400 h-[30%] rounded-t-sm;
+}
+
+.fund-chart-bar-out {
+  @apply w-1/3 bg-red-400 h-[10%] rounded-t-sm;
+}
+
+.fund-chart-x-axis {
+  @apply absolute -bottom-6 text-xs text-slate-500;
+}
+
+
+
+.fund-chart-bar-in {
+  @apply w-1/3 bg-green-400 h-[50%] rounded-t-sm;
+}
+
+.fund-chart-bar-out {
+  @apply w-1/3 bg-red-400 h-[20%] rounded-t-sm;
+}
+
+.fund-chart-x-axis {
+  @apply absolute -bottom-6 text-xs text-slate-500;
+}
+
+
+
+.fund-chart-bar-in {
+  @apply w-1/3 bg-green-400 h-[70%] rounded-t-sm;
+}
+
+.fund-chart-bar-out {
+  @apply w-1/3 bg-red-400 h-[50%] rounded-t-sm;
+}
+
+.fund-chart-x-axis {
+  @apply absolute -bottom-6 text-xs text-slate-500 font-bold;
+}
+
+.fund-chart-legend {
+  @apply flex justify-center gap-6 mt-10;
+}
+
+.fund-chart-legend-item {
+  @apply flex items-center gap-2;
+}
+
+.fund-chart-legend-color-in {
+  @apply w-3 h-3 bg-green-400 rounded-sm;
+}
+
+.fund-chart-legend-text {
+  @apply text-xs text-slate-600;
+}
+
+.fund-chart-legend-item {
+  @apply flex items-center gap-2;
+}
+
+.fund-chart-legend-color-out {
+  @apply w-3 h-3 bg-red-400 rounded-sm;
+}
+
+.fund-chart-legend-text {
+  @apply text-xs text-slate-600;
+}
+
+.fund-pending-list {
+  @apply w-72 bg-slate-50 rounded-xl p-5 border border-slate-200;
+}
+
+.fund-pending-title {
+  @apply font-bold text-slate-800 mb-4;
+}
+
+.fund-pending-item {
+  @apply bg-white p-3 rounded shadow-sm border border-slate-200;
+}
+
+.fund-pending-item-title {
+  @apply text-sm font-medium text-slate-800;
+}
+
+.fund-pending-item-author {
+  @apply text-xs text-slate-500 mb-2;
+}
+
+.fund-pending-item-action {
+  @apply flex justify-between items-center;
+}
+
+.fund-pending-item-amount {
+  @apply text-green-600 font-bold text-sm;
+}
+
+.fund-pending-btn-approve {
+  @apply text-xs bg-blue-600 text-white px-2 py-1 rounded;
+}
+
+.fund-pending-item {
+  @apply bg-white p-3 rounded shadow-sm border border-slate-200;
+}
+
+.fund-pending-item-title {
+  @apply text-sm font-medium text-slate-800;
+}
+
+.fund-pending-item-author {
+  @apply text-xs text-slate-500 mb-2;
+}
+
+.fund-pending-item-action {
+  @apply flex justify-between items-center;
+}
+
+.fund-pending-item-amount {
+  @apply text-red-600 font-bold text-sm;
+}
+
+.fund-pending-btn-approve {
+  @apply text-xs bg-blue-600 text-white px-2 py-1 rounded;
+}
+
+.fund-filter-bar {
+  @apply bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-4;
+}
+
+
+
+
+
+
+
+.fund-table-container {
+  @apply bg-white rounded-xl shadow-sm border border-slate-200;
+}
+
+.fund-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+}
+
+.fund-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+
+
+.fund-modal-header {
+  @apply p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.fund-modal-title {
+  @apply font-bold text-slate-800 text-lg;
+}
+
+.fund-modal-close-btn {
+  @apply text-slate-400 hover:text-slate-600;
+}
+
+.fund-modal-body {
+  @apply p-6 space-y-4;
+}
+
+.fund-modal-grid-2 {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.fund-modal-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+
+
+.fund-modal-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+
+
+.fund-modal-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+
+
+.fund-modal-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+
+
+.fund-modal-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+.fund-modal-search-group {
+  @apply flex gap-2;
+}
+
+
+
+.fund-modal-label {
+  @apply block text-sm font-medium text-slate-700 mb-1;
+}
+
+.fund-modal-input-file {
+  @apply block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100;
+}
+
+.fund-modal-footer {
+  @apply p-5 border-t border-slate-200 bg-slate-50 flex justify-end gap-3;
+}
+
+
+
+
+
+
+
+
+.fund-amount-text { @apply font-bold; }
+.amount-in { @apply text-green-600; }
+.amount-out { @apply text-red-600; }

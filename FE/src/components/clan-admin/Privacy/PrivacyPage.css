@@ -1,0 +1,190 @@
+@reference "../../../index.css";
+/* CSS cho PrivacyPage */
+
+.privacy-page-content {
+  @apply bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col;
+}
+
+.privacy-tabs {
+  @apply flex border-b border-slate-200 overflow-x-auto;
+}
+
+.privacy-tab-content {
+  @apply p-8 overflow-y-auto;
+}
+
+.privacy-section-title {
+  @apply text-lg font-bold text-slate-800 mb-2;
+}
+
+.privacy-section-desc {
+  @apply text-slate-500 mb-6;
+}
+
+.privacy-setting-row {
+  @apply flex items-center justify-between p-4 border border-slate-200 rounded-lg;
+}
+
+.privacy-setting-name {
+  @apply font-bold text-slate-800;
+}
+
+.privacy-setting-desc {
+  @apply text-sm text-slate-500;
+}
+
+.privacy-setting-actions {
+  @apply flex gap-2;
+}
+
+.privacy-btn-public {
+  @apply px-3 py-1 bg-blue-600 text-white rounded text-sm font-medium;
+}
+
+.privacy-btn-hide {
+  @apply px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm font-medium;
+}
+
+.privacy-setting-row {
+  @apply flex items-center justify-between p-4 border border-slate-200 rounded-lg;
+}
+
+.privacy-setting-name {
+  @apply font-bold text-slate-800;
+}
+
+.privacy-setting-desc {
+  @apply text-sm text-slate-500;
+}
+
+.privacy-setting-actions {
+  @apply flex gap-2;
+}
+
+.privacy-btn-public {
+  @apply px-3 py-1 bg-blue-600 text-white rounded text-sm font-medium;
+}
+
+.privacy-btn-hide {
+  @apply px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm font-medium;
+}
+
+.privacy-setting-row {
+  @apply flex items-center justify-between p-4 border border-slate-200 rounded-lg;
+}
+
+.privacy-setting-name {
+  @apply font-bold text-slate-800;
+}
+
+.privacy-setting-desc {
+  @apply text-sm text-slate-500;
+}
+
+.privacy-setting-actions {
+  @apply flex gap-2;
+}
+
+.privacy-btn-public {
+  @apply px-3 py-1 bg-slate-100 text-slate-600 rounded text-sm font-medium;
+}
+
+.privacy-btn-hide {
+  @apply px-3 py-1 bg-blue-600 text-white rounded text-sm font-medium;
+}
+
+
+
+.privacy-section-title {
+  @apply text-lg font-bold text-slate-800 mb-2;
+}
+
+.privacy-section-desc {
+  @apply text-slate-500 mb-6;
+}
+
+.privacy-table {
+  @apply w-full text-left border-collapse border border-slate-200;
+}
+
+.privacy-th {
+  @apply p-4 border-b border-slate-200 font-bold text-slate-700;
+}
+
+.privacy-th {
+  @apply p-4 border-b border-slate-200 font-bold text-slate-700 text-center w-32;
+}
+
+.privacy-td {
+  @apply p-4 border-b border-slate-200;
+}
+
+.privacy-td-center {
+  @apply p-4 border-b border-slate-200 text-center;
+}
+
+.privacy-checkbox {
+  @apply w-5 h-5 text-blue-600;
+}
+
+.privacy-td {
+  @apply p-4 border-b border-slate-200;
+}
+
+.privacy-td-center {
+  @apply p-4 border-b border-slate-200 text-center;
+}
+
+.privacy-checkbox {
+  @apply w-5 h-5 text-blue-600;
+}
+
+.privacy-td {
+  @apply p-4 border-b border-slate-200;
+}
+
+.privacy-td-center {
+  @apply p-4 border-b border-slate-200 text-center;
+}
+
+.privacy-checkbox {
+  @apply w-5 h-5 text-blue-600;
+}
+
+.privacy-td {
+  @apply p-4 border-b border-slate-200;
+}
+
+.privacy-td-center {
+  @apply p-4 border-b border-slate-200 text-center;
+}
+
+.privacy-checkbox {
+  @apply w-5 h-5 text-blue-600;
+}
+
+
+
+.privacy-section-title {
+  @apply text-lg font-bold text-slate-800 mb-2;
+}
+
+.privacy-section-desc {
+  @apply text-slate-500 mb-6;
+}
+
+.privacy-info-box {
+  @apply p-6 bg-slate-50 border border-slate-200 rounded-lg text-center text-slate-500;
+}
+
+
+
+
+
+
+
+
+
+.privacy-tab-btn { @apply px-6 py-4 font-semibold text-sm whitespace-nowrap; }
+.tab-active { @apply text-blue-600 border-b-2 border-blue-600; }
+.tab-inactive { @apply text-slate-500 hover:text-slate-700; }

@@ -1,0 +1,132 @@
+@reference "../../../index.css";
+/* CSS cho ClanMembersMgmt */
+
+.members-person-name {
+  @apply text-blue-600 hover:underline cursor-pointer;
+}
+
+.members-btn-manage {
+  @apply text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1 bg-blue-50 rounded;
+}
+
+.members-filter-bar {
+  @apply bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-4;
+}
+
+
+
+
+
+
+
+.members-table-container {
+  @apply flex-1 overflow-auto;
+}
+
+.members-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6;
+}
+
+.members-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+
+
+.members-modal-header {
+  @apply p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.members-modal-header-left {
+  @apply flex items-center gap-4;
+}
+
+.members-modal-icon-wrap {
+  @apply w-12 h-12 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center text-blue-600;
+}
+
+.members-modal-username {
+  @apply text-xl font-bold text-slate-800;
+}
+
+.members-modal-close {
+  @apply w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition;
+}
+
+.members-modal-body {
+  @apply flex-1 overflow-auto p-6 bg-slate-50;
+}
+
+.members-info-section {
+  @apply bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6;
+}
+
+.members-info-title {
+  @apply font-bold text-slate-800 mb-4;
+}
+
+.members-info-grid {
+  @apply space-y-3 text-sm;
+}
+
+.members-info-row {
+  @apply flex justify-between;
+}
+
+.members-info-row {
+  @apply flex justify-between;
+}
+
+.members-info-value {
+  @apply font-bold text-slate-800;
+}
+
+.members-info-row {
+  @apply flex justify-between;
+}
+
+.members-info-value {
+  @apply font-bold text-slate-800;
+}
+
+.members-action-title {
+  @apply font-bold text-slate-800 mb-2;
+}
+
+.members-btn-lock {
+  @apply w-full py-3 bg-white border border-blue-200 text-red-600 font-bold rounded-lg hover:bg-red-50 transition;
+}
+
+.members-btn-unlock {
+  @apply w-full py-3 bg-white border border-blue-200 text-green-600 font-bold rounded-lg hover:bg-green-50 transition;
+}
+
+.members-btn-reset-pw {
+  @apply w-full py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-100 transition;
+}
+
+.members-btn-upgrade {
+  @apply w-full py-3 bg-white border border-blue-200 text-blue-600 font-bold rounded-lg hover:bg-purple-50 transition;
+}
+
+.members-btn-revoke {
+  @apply w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition mt-6;
+}
+
+
+
+
+
+
+
+
+.member-role-badge { @apply px-2 py-1 text-xs rounded font-bold; }
+.role-admin { @apply bg-purple-100 text-blue-600; }
+.role-member { @apply bg-slate-100 text-slate-600; }
+.member-status-badge { @apply px-2 py-1 text-xs rounded-full; }
+.status-active { @apply bg-green-100 text-green-700; }
+.status-locked { @apply bg-red-100 text-red-700; }
+.status-pending { @apply bg-amber-100 text-blue-600; }
+.member-detail-status { @apply font-bold; }
+.member-detail-status.status-active { @apply text-green-600; }
+.member-detail-status.status-locked { @apply text-red-600; }

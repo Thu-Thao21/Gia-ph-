@@ -1,0 +1,105 @@
+.admin-reports-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.admin-reports-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e11d48;
+  background: #ffe4e6;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+.target-type-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.admin-report-dossier-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.admin-report-dossier-box label {
+  font-size: 12px;
+  color: #64748b;
+  display: block;
+}
+
+.admin-evidence-desc {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.5;
+  background: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+}
+
+.admin-decision-actions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.decision-radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.decision-radio-label:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.decision-radio-label input {
+  margin-top: 3px;
+}
+
+.decision-radio-label div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.decision-radio-label strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.decision-radio-label small {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.admin-resolved-record-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 16px;
+}

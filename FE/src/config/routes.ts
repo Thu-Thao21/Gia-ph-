@@ -3,7 +3,7 @@
  */
 
 export const API_HOST_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8001',
   AUTH: '/auth',
   USERS: '/users',
   FAMILIES: '/families',
@@ -84,6 +84,14 @@ export const ROUTES = {
     PAYMENTS: '/admin/payments',
     MODERATION: '/admin/moderation',
     ROLES: '/admin/roles',
+    BUSINESS_REQUESTS: '/admin/business-requests',
+    BUSINESSES: '/admin/businesses',
+    MANAGER_TRANSFER: '/admin/manager-transfer',
+    PLANS: '/admin/plans',
+    REPORTS: '/admin/reports',
+    AUDIT_LOGS: '/admin/audit-logs',
+    SUPPORT_ACCESS: '/admin/support-access',
+    SECURITY: '/admin/security',
   },
 };
 

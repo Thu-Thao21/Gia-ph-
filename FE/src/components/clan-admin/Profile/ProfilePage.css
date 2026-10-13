@@ -1,0 +1,82 @@
+@reference "../../../index.css";
+/* CSS cho ProfilePage */
+
+.profile-page-content {
+  @apply flex-1 overflow-auto flex justify-center py-6;
+}
+
+.profile-grid {
+  @apply w-full max-w-4xl bg-white rounded-xl shadow-sm border border-slate-200 flex overflow-hidden;
+}
+
+.profile-sidebar {
+  @apply w-64 bg-slate-50 border-r border-slate-200 p-4;
+}
+
+.profile-user-info {
+  @apply flex flex-col items-center mb-8 mt-4;
+}
+
+.profile-avatar {
+  @apply w-24 h-24 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl font-bold mb-3 border-4 border-white shadow;
+}
+
+.profile-name {
+  @apply font-bold text-slate-800;
+}
+
+.profile-role {
+  @apply text-xs text-slate-500;
+}
+
+.profile-nav {
+  @apply flex flex-col gap-1;
+}
+
+.profile-main {
+  @apply flex-1 p-8;
+}
+
+.profile-section-title {
+  @apply text-lg font-bold text-slate-800 mb-6;
+}
+
+.profile-form-grid {
+  @apply grid grid-cols-2 gap-6;
+}
+
+
+
+.profile-form-actions {
+  @apply mt-8 flex justify-end;
+}
+
+
+
+.profile-section-title {
+  @apply text-lg font-bold text-slate-800 mb-6;
+}
+
+.profile-form-col {
+  @apply space-y-4 max-w-md;
+}
+
+.profile-security-section {
+  @apply mt-12 border-t border-slate-200 pt-6;
+}
+
+.profile-section-title {
+  @apply text-lg font-bold text-slate-800 mb-2;
+}
+
+.profile-section-desc {
+  @apply text-sm text-slate-500 mb-4;
+}
+
+
+
+
+
+.profile-nav-btn { @apply flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition; }
+.nav-active { @apply bg-blue-50 text-blue-700; }
+.nav-inactive { @apply text-slate-600 hover:bg-slate-100; }

@@ -1,0 +1,252 @@
+.dashboard-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg-main, #f8fafc);
+  font-family: var(--font-body);
+  color: #0f172a;
+}
+
+/* --- TopBar --- */
+.dashboard-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 70px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.topbar-left, .topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-toggle-sidebar {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.btn-toggle-sidebar:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-icon {
+  font-size: 1.5rem;
+}
+
+.brand-text {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  letter-spacing: -0.02em;
+}
+
+.badge-role-pill {
+  background-color: #e0e7ff;
+  color: #4338ca;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: 8px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.user-role {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.logout-btn {
+  background: none;
+  border: 1px solid #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* --- Body & Sidebar --- */
+.dashboard-body-row {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.dashboard-sidebar {
+  width: 260px;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.dashboard-sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar-nav {
+  padding: 24px 0;
+}
+
+.nav-group {
+  margin-bottom: 24px;
+}
+
+.nav-group-title {
+  padding: 0 24px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.dashboard-sidebar.collapsed .nav-group-title {
+  text-align: center;
+  padding: 0;
+  font-size: 0.65rem;
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  color: #475569;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.dashboard-sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.nav-item:hover {
+  background-color: #f8fafc;
+  color: var(--color-primary);
+}
+
+.nav-item.active {
+  background-color: #eff6ff;
+  color: var(--color-primary-dark);
+  border-left-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.nav-icon {
+  font-size: 1.25rem;
+  margin-right: 12px;
+  width: 24px;
+  text-align: center;
+}
+
+.dashboard-sidebar.collapsed .nav-icon {
+  margin-right: 0;
+}
+
+.dashboard-sidebar.collapsed .nav-label {
+  display: none;
+}
+
+/* --- Main Content --- */
+.dashboard-main-content {
+  flex: 1;
+  padding: 24px 32px 60px;
+  min-height: calc(100vh - 70px);
+  overflow-y: auto;
+}
+
+.main-content-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* --- Footer --- */
+.dashboard-footer {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 32px;
+  font-size: 0.85rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.dashboard-footer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-footer-brand {
+  color: #1e3a8a;
+}
+

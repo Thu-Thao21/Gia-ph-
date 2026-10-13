@@ -1,0 +1,110 @@
+@reference "../../../index.css";
+/* CSS cho FamilyAdminsPage */
+
+.fadmin-actions {
+  @apply flex gap-2;
+}
+
+.fadmin-btn-permission {
+  @apply text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1 bg-blue-50 rounded;
+}
+
+.fadmin-filter-bar {
+  @apply bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-4;
+}
+
+
+
+
+
+.fadmin-table-container {
+  @apply flex-1 overflow-auto;
+}
+
+.fadmin-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6;
+}
+
+.fadmin-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+
+
+.fadmin-modal-header {
+  @apply p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.fadmin-modal-header-left {
+  @apply flex items-center gap-4;
+}
+
+.fadmin-modal-avatar {
+  @apply w-12 h-12 rounded bg-purple-100 flex items-center justify-center text-blue-600 font-bold text-xl;
+}
+
+.fadmin-modal-title {
+  @apply text-xl font-bold text-slate-800;
+}
+
+.fadmin-modal-subtitle {
+  @apply text-sm text-slate-500;
+}
+
+.fadmin-modal-close-btn {
+  @apply w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition;
+}
+
+.fadmin-modal-body {
+  @apply flex-1 overflow-auto p-6;
+}
+
+.fadmin-perm-title {
+  @apply font-bold text-slate-800 mb-4 text-lg;
+}
+
+.fadmin-perm-grid {
+  @apply space-y-4 mb-8;
+}
+
+.fadmin-perm-label {
+  @apply flex items-start gap-4 p-4 border border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition;
+}
+
+.fadmin-perm-checkbox {
+  @apply w-5 h-5 text-blue-600 mt-0.5;
+}
+
+.fadmin-perm-item-title {
+  @apply font-bold text-slate-800;
+}
+
+.fadmin-perm-item-desc {
+  @apply text-sm text-slate-500;
+}
+
+.fadmin-danger-zone {
+  @apply border-t border-slate-200 pt-6;
+}
+
+.fadmin-danger-title {
+  @apply font-bold text-red-600 mb-2;
+}
+
+.fadmin-danger-desc {
+  @apply text-sm text-slate-500 mb-4;
+}
+
+.fadmin-btn-revoke {
+  @apply w-full py-3 bg-white border border-blue-200 text-red-600 font-bold rounded-lg hover:bg-red-50 transition;
+}
+
+.fadmin-modal-footer {
+  @apply p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3;
+}
+
+
+
+.admin-status-badge { @apply px-2 py-1 text-xs rounded-full; }
+.status-active { @apply bg-green-100 text-green-700; }
+.status-inactive { @apply bg-slate-100 text-slate-600; }

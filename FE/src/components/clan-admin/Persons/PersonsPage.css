@@ -1,0 +1,210 @@
+@reference "../../../index.css";
+/* CSS cho PersonsPage */
+
+.persons-actions {
+  @apply flex gap-2;
+}
+
+.persons-btn-detail {
+  @apply text-blue-600 hover:text-blue-800 text-sm font-medium;
+}
+
+.persons-header-actions {
+  @apply flex gap-2;
+}
+
+
+
+.persons-filter-bar {
+  @apply bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex gap-4;
+}
+
+
+
+
+
+
+
+.persons-table-container {
+  @apply flex-1 overflow-auto;
+}
+
+.persons-modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6;
+}
+
+.persons-modal-backdrop {
+  @apply absolute inset-0 bg-slate-900/40 backdrop-blur-sm;
+}
+
+
+
+.persons-modal-header {
+  @apply p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50;
+}
+
+.persons-modal-header-left {
+  @apply flex items-center gap-4;
+}
+
+.persons-modal-avatar {
+  @apply w-16 h-16 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-slate-400 text-2xl font-bold;
+}
+
+.persons-modal-name {
+  @apply text-2xl font-bold text-slate-800;
+}
+
+.persons-modal-close {
+  @apply w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition;
+}
+
+.persons-modal-tabs {
+  @apply flex border-b border-slate-200 px-6;
+}
+
+.persons-modal-body {
+  @apply flex-1 overflow-auto p-6 bg-slate-50/50;
+}
+
+.persons-detail-section {
+  @apply bg-white p-6 rounded-xl border border-slate-200 shadow-sm;
+}
+
+.persons-detail-title {
+  @apply font-bold text-slate-800 mb-4 text-lg;
+}
+
+.persons-detail-grid {
+  @apply grid grid-cols-2 gap-4 text-sm;
+}
+
+.persons-detail-label {
+  @apply text-slate-500 block mb-1;
+}
+
+.persons-detail-label {
+  @apply text-slate-500 block mb-1;
+}
+
+.persons-detail-label {
+  @apply text-slate-500 block mb-1;
+}
+
+.persons-detail-label {
+  @apply text-slate-500 block mb-1;
+}
+
+.persons-detail-actions {
+  @apply mt-6 pt-6 border-t border-slate-100 flex gap-3;
+}
+
+
+
+.persons-rel-row {
+  @apply bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between;
+}
+
+.persons-rel-label {
+  @apply text-xs font-bold uppercase tracking-wider text-slate-400;
+}
+
+.persons-rel-value {
+  @apply font-bold text-slate-800 mt-1;
+}
+
+.persons-rel-meta {
+  @apply text-sm font-normal text-slate-500 ml-2;
+}
+
+.persons-btn-edit-rel {
+  @apply text-blue-600 text-sm font-medium hover:underline;
+}
+
+.persons-rel-row {
+  @apply bg-white p-4 rounded-xl border border-slate-200 shadow-sm;
+}
+
+.persons-rel-label-group {
+  @apply flex justify-between items-center mb-4;
+}
+
+.persons-rel-label {
+  @apply text-xs font-bold uppercase tracking-wider text-slate-400;
+}
+
+.persons-btn-add-spouse {
+  @apply text-blue-600 text-sm font-medium hover:underline;
+}
+
+.persons-rel-empty {
+  @apply text-sm text-slate-500 italic;
+}
+
+.persons-btn-add-child {
+  @apply w-full py-3 border-2 border-dashed border-blue-200 text-blue-600 font-medium rounded-xl hover:bg-blue-50 transition;
+}
+
+.persons-btn-view-tree {
+  @apply w-full py-3 bg-slate-800 text-white font-medium rounded-xl mt-4 hover:bg-slate-700 transition transform hover:-translate-y-1 hover:shadow-lg;
+}
+
+.persons-account-section {
+  @apply bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center py-12;
+}
+
+.persons-account-icon-wrap {
+  @apply w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4;
+}
+
+.persons-account-title {
+  @apply text-xl font-bold text-slate-800 mb-2;
+}
+
+.persons-account-desc {
+  @apply text-slate-500 max-w-sm mx-auto mb-6;
+}
+
+.persons-history-section {
+  @apply space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent;
+}
+
+
+
+
+
+.persons-history-content {
+  @apply w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-slate-200 bg-white shadow;
+}
+
+.persons-history-header {
+  @apply flex items-center justify-between mb-1;
+}
+
+.persons-history-title {
+  @apply font-bold text-slate-900;
+}
+
+.persons-history-time {
+  @apply text-xs font-medium text-blue-600;
+}
+
+.persons-history-author {
+  @apply text-sm text-slate-500;
+}
+
+
+
+
+
+
+
+
+
+
+.person-status-badge { @apply px-2 py-1 text-xs rounded-full; }
+.status-alive { @apply bg-green-100 text-green-700; }
+.status-deceased { @apply bg-slate-100 text-slate-600; }
+.person-tab-btn { @apply py-4 px-4 font-semibold text-sm border-b-2; }
+.person-tab-btn.tab-active { @apply border-blue-600 text-blue-600; }
+.person-tab-btn.tab-inactive { @apply border-transparent text-slate-500; }

@@ -1,3 +1,4 @@
+import apiClient from '../api/axios';
 import { fetchMembers } from './member.service';
 import type { Member } from '../types/member';
 import type { ErgoTreeNode, SpouseNode } from '../types/tree';
@@ -142,5 +143,40 @@ export async function buildErgoTreeFromDB(
   } catch (err) {
     console.error('API buildErgoTreeFromDB error:', err);
     return { rootNodes: [], allMembers: [] };
+  }
+}
+
+/**
+ * Dữ liệu vẽ cây gia phả trả về từ Backend:
+ * GET /api/v1/families/{family_id}/tree-data (trả về danh sách nodes và edges).
+ */
+export interface FamilyTreeDataResponse {
+  nodes: Array<{
+    id: string;
+    label?: string;
+    full_name?: string;
+    gender?: string;
+    generation?: number;
+    birth_year?: number;
+    death_year?: number;
+    [key: string]: any;
+  }>;
+  edges: Array<{
+    source: string;
+    target: string;
+    relation_type?: string;
+    [key: string]: any;
+  }>;
+  family_id?: string;
+  clan_name?: string;
+}
+
+export async function fetchFamilyTreeData(familyId: string): Promise<FamilyTreeDataResponse | null> {
+  try {
+    const res = await apiClient.get<FamilyTreeDataResponse>(`/api/v1/families/${familyId}/tree-data`);
+    return res.data;
+  } catch (err) {
+    console.error(`API fetchFamilyTreeData error for familyId ${familyId}:`, err);
+    return null;
   }
 }
