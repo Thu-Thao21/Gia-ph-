@@ -1,4 +1,12 @@
 import { useSyncExternalStore } from 'react';
+import {
+  fetchFamilyPersons,
+  fetchFamilyTreeData,
+  createFamilyPerson,
+  updateFamilyPerson,
+  createFamilyRelationship,
+  deleteFamilyRelationship,
+} from '../../services/genealogy.service';
 
 export type PersonVisibility = 'family' | 'admin' | 'private';
 export type RelationType = 'father' | 'mother' | 'spouse' | 'adoptive_parent' | 'step_parent';
@@ -299,3 +307,44 @@ export function importPersons(rows: Array<Pick<FamilyPerson, 'fullName' | 'gende
   commit(`Nhập ${validated.length} Person từ CSV`, (draft) => { draft.persons.push(...validated); });
   return validated.length;
 }
+
+export async function syncFamilyAdminFromBackend(clanId: string): Promise<void> {
+  try {
+    const [persons, tree] = await Promise.all([
+      fetchFamilyPersons(clanId).catch(() => []),
+      fetchFamilyTreeData(clanId).catch(() => ({ nodes: [], edges: [] })),
+    ]);
+
+    commit('Đồng bộ dữ liệu từ Backend', (draft) => {
+      if (Array.isArray(persons) && persons.length > 0) {
+        draft.persons = persons.map((p) => ({
+          id: p.id,
+          fullName: p.fullName,
+          gender: (p.gender === 'female' ? 'female' : 'male') as any,
+          birthDate: p.birthDate || '',
+          deathDate: p.deathDate || '',
+          branchId: p.branchId || '',
+          generation: p.generation || 1,
+          phone: '',
+          email: '',
+          bio: '',
+          hidden: !p.isLiving,
+          visibility: 'family',
+        }));
+      }
+
+      if (tree && Array.isArray(tree.edges) && tree.edges.length > 0) {
+        draft.relations = tree.edges.map((e) => ({
+          id: e.id,
+          type: (e.relationshipType === 'SPOUSE' ? 'spouse' : 'father') as any,
+          fromId: e.fromMemberId,
+          toId: e.toMemberId,
+          since: '',
+        }));
+      }
+    });
+  } catch (err) {
+    console.warn('Lỗi khi đồng bộ dữ liệu gia phả từ Backend:', err);
+  }
+}
+

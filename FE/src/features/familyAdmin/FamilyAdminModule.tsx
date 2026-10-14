@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   getFamilyAdminState, importPersons, issueAccount, removeRelation, requestAccountReset,
   reviewLinkRequest, reviewProposal, saveBranch, savePerson, saveRelation, sendLinkRequest,
-  toggleAccountLock, togglePersonHidden, useFamilyAdminState,
+  toggleAccountLock, togglePersonHidden, useFamilyAdminState, syncFamilyAdminFromBackend,
   type FamilyBranch, type FamilyPerson, type FamilyRelation, type RelationType,
 } from './familyAdminStore';
 import './FamilyAdminModule.css';
@@ -64,6 +64,12 @@ function parseCsv(text: string): string[][] {
 export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
   const data = useFamilyAdminState();
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+
+  useEffect(() => {
+    // Tự động đồng bộ dữ liệu phả hệ thật từ Neon DB
+    syncFamilyAdminFromBackend('c9a59088-7ad7-4b21-8cba-19e2ea46d15a');
+  }, []);
+
   const [query, setQuery] = useState('');
   const [personForm, setPersonForm] = useState<Omit<FamilyPerson, 'id'> | null>(null);
   const [editPersonId, setEditPersonId] = useState<string | undefined>();

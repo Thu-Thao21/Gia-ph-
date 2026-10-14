@@ -39,12 +39,12 @@ export const AdminFamiliesMgmt: React.FC = () => {
   const fetchFamilies = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<FamilyItem[]>('/families');
+      const res = await apiClient.get<FamilyItem[]>('/admin/clans');
       if (Array.isArray(res.data) && res.data.length > 0) {
         setFamilies(res.data);
       }
-    } catch {
-      // Keep the local demo families when the optional endpoint is unavailable.
+    } catch (err: any) {
+      console.warn('Không thể tải danh sách dòng họ từ BE:', err);
     } finally {
       setLoading(false);
     }
