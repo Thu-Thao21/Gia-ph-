@@ -26,14 +26,6 @@ export interface MemberItem {
 type MemberFormData = Omit<MemberItem, 'id'>;
 type ModalMode = 'add' | 'edit' | 'detail' | null;
 
-const DEMO_MEMBERS: MemberItem[] = [
-  { id: 'mem-001', full_name: 'Võ Văn Minh', other_name: 'Ông Minh', gender: 'male', birth_date: '1952-04-18', is_alive: true, branch: 'Chi Trưởng', generation: 4, relationship: 'Trưởng tộc', status: 'active', phone: '090 315 2876', email: 'minh.vo@giaphaviet.vn', has_account: true },
-  { id: 'mem-002', full_name: 'Võ Thị Thanh', gender: 'female', birth_date: '1958-09-02', is_alive: true, branch: 'Chi Trưởng', generation: 4, relationship: 'Em gái', status: 'active', phone: '091 228 6451', has_account: true },
-  { id: 'mem-003', full_name: 'Võ Văn Thành', other_name: 'Võ Thành', gender: 'male', birth_date: '1978-01-24', is_alive: true, branch: 'Chi Hai', generation: 5, relationship: 'Con trai', status: 'active', phone: '098 410 6682', email: 'thanh.vo@giaphaviet.vn', has_account: true },
-  { id: 'mem-004', full_name: 'Nguyễn Thị Lan', gender: 'female', birth_date: '1981-07-12', is_alive: true, branch: 'Chi Hai', generation: 5, relationship: 'Con dâu', status: 'hidden', phone: '093 747 1209', has_account: false },
-  { id: 'mem-005', full_name: 'Võ Minh Khang', gender: 'male', birth_date: '2004-11-08', is_alive: true, branch: 'Chi Hai', generation: 6, relationship: 'Cháu nội', status: 'active', email: 'khang.vo@giaphaviet.vn', has_account: true },
-];
-
 const EMPTY_FORM: MemberFormData = {
   full_name: '', other_name: '', gender: 'male', birth_date: '', is_alive: true,
   branch: 'Chi Trưởng', generation: 1, relationship: '', status: 'active',

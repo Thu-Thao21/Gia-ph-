@@ -64,9 +64,49 @@ export interface TreeDataResponse {
     generation: number;
     branchId?: string | null;
     avatarUrl?: string | null;
+    isLiving?: boolean;
     status: string;
   }>;
   edges: RelationshipItem[];
+}
+
+export interface FocusViewNode {
+  id: string;
+  fullName: string;
+  gender: string;
+  generation: number;
+  branchId?: string | null;
+  avatarUrl?: string | null;
+  depth: number;
+  isEgo: boolean;
+  status: string;
+}
+
+export interface FocusViewResponse {
+  ego: PersonItem;
+  nodes: FocusViewNode[];
+  edges: RelationshipItem[];
+  maxDepth: number;
+}
+
+export interface RelationshipCalculationResponse {
+  found: boolean;
+  fromPerson?: PersonItem;
+  toPerson?: PersonItem;
+  path: PersonItem[];
+  edges: RelationshipItem[];
+  kinshipName: string;
+  addressTitle: string;
+  generationDiff: number;
+  description: string;
+}
+
+export interface PublicClanItem {
+  id: string;
+  name: string;
+  clan_code?: string;
+  status: string;
+  activated_at?: string;
 }
 
 /** GET /api/v1/families/{family_id}/persons */
@@ -163,8 +203,64 @@ export async function fetchPersonDescendants(
 
 /** GET /api/v1/families/{family_id}/tree-data */
 export async function fetchFamilyTreeData(
-  familyId: string
+  familyId: string,
+  params?: {
+    branchId?: string;
+    generation?: number;
+    maxGeneration?: number;
+  }
 ): Promise<TreeDataResponse> {
-  const res = await apiClient.get<TreeDataResponse>(`/api/v1/families/${familyId}/tree-data`);
+  const res = await apiClient.get<TreeDataResponse>(`/api/v1/families/${familyId}/tree-data`, {
+    params: {
+      branchId: params?.branchId || undefined,
+      generation: params?.generation,
+      maxGeneration: params?.maxGeneration,
+    },
+  });
+  return res.data;
+}
+
+/** GET /api/v1/families/{family_id}/persons/{person_id}/focus-view */
+export async function fetchFocusView(
+  familyId: string,
+  personId: string,
+  depth: number = 2
+): Promise<FocusViewResponse> {
+  const res = await apiClient.get<FocusViewResponse>(
+    `/api/v1/families/${familyId}/persons/${personId}/focus-view`,
+    { params: { depth } }
+  );
+  return res.data;
+}
+
+/** GET /api/v1/families/{family_id}/relationship-path */
+export async function fetchRelationshipCalculation(
+  familyId: string,
+  fromPersonId: string,
+  toPersonId: string
+): Promise<RelationshipCalculationResponse> {
+  const res = await apiClient.get<RelationshipCalculationResponse>(
+    `/api/v1/families/${familyId}/relationship-path`,
+    {
+      params: {
+        fromPersonId,
+        toPersonId,
+      },
+    }
+  );
+  return res.data;
+}
+
+/** GET /public/families (Khách tìm kiếm dòng họ công khai) */
+export async function fetchPublicClans(search?: string): Promise<PublicClanItem[]> {
+  const res = await apiClient.get<PublicClanItem[]>('/public/families', {
+    params: { search: search || undefined },
+  });
+  return res.data;
+}
+
+/** GET /api/v1/families/{family_id}/public-tree (Cây công khai có che giấu dữ liệu riêng tư) */
+export async function fetchPublicClanTree(familyId: string): Promise<TreeDataResponse> {
+  const res = await apiClient.get<TreeDataResponse>(`/api/v1/families/${familyId}/public-tree`);
   return res.data;
 }
