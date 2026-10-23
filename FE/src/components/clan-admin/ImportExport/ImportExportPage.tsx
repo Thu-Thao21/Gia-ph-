@@ -1,9 +1,31 @@
 import './ImportExportPage.css';
 import React, { useState } from 'react';
 import PageHeader from '../../../shared/Layout/PageHeader';
+import { apiClient } from '../../../api/axios';
 
 export const ImportExportPage: React.FC = () => {
   const [importStep, setImportStep] = useState<0 | 1 | 2 | 3 | 4>(0); // 0 = default
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportMembers = async () => {
+    setIsExporting(true);
+    try {
+      const response = await apiClient.get('/persons/export', { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `danh_sach_thanh_vien_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('Không thể xuất dữ liệu thành viên. Vui lòng thử lại sau.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="admin-account-container">
@@ -47,12 +69,11 @@ export const ImportExportPage: React.FC = () => {
             <div className="ie-btn-group">
               <button
                 className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5"
-                disabled
-                title="Tính năng đang cập nhật"
                 data-testid="btn-export-excel-members"
-                style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                onClick={handleExportMembers}
+                disabled={isExporting}
               >
-                Xuất Danh sách Thành viên (Excel) - Đang cập nhật
+                {isExporting ? 'Đang xuất dữ liệu...' : 'Xuất Danh sách Thành viên (CSV/Excel)'}
               </button>
               <button
                 className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5"
