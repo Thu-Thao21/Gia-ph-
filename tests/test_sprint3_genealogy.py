@@ -257,3 +257,266 @@ def test_kinship_cousin_naming():
     assert "Chị họ" in res["address_title"]
     assert res["reciprocal_kinship"] == "Em họ"
 
+
+# =========================================================================
+# COMPREHENSIVE 12 TEST CASES (FV-01 -> FV-12) AS SPECIFIED IN USER REVIEW
+# =========================================================================
+
+def test_fv_01_two_parents_two_children():
+    """FV-01: Ego có cha, mẹ và hai con -> Hiển thị đúng ba tầng (-1, 0, +1)."""
+    ego_id = "ego_1"
+    relationships = [
+        {"id": "r_dad", "from_member_id": "dad", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_mom", "from_member_id": "mom", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_parents_sp", "from_member_id": "dad", "to_member_id": "mom", "relationship_type": "SPOUSE"},
+        {"id": "r_sp", "from_member_id": ego_id, "to_member_id": "wife", "relationship_type": "SPOUSE"},
+        {"id": "r_c1", "from_member_id": ego_id, "to_member_id": "child_1", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_c2", "from_member_id": ego_id, "to_member_id": "child_2", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_w_c1", "from_member_id": "wife", "to_member_id": "child_1", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_w_c2", "from_member_id": "wife", "to_member_id": "child_2", "relationship_type": "PARENT_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+    roles = res["node_roles"]
+
+    assert depths[ego_id] == 0 and roles[ego_id] == "ego"
+    assert depths["dad"] == -1 and roles["dad"] == "parent"
+    assert depths["mom"] == -1 and roles["mom"] == "parent"
+    assert depths["wife"] == 0 and roles["wife"] == "spouse"
+    assert depths["child_1"] == 1 and roles["child_1"] == "child"
+    assert depths["child_2"] == 1 and roles["child_2"] == "child"
+    assert len(depths) == 6
+
+
+def test_fv_02_only_mother_known():
+    """FV-02: Ego chỉ biết mẹ -> Hiển thị mẹ, Ego và con; không tạo cha giả."""
+    ego_id = "ego_2"
+    relationships = [
+        {"id": "r_mom", "from_member_id": "mom_single", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_c1", "from_member_id": ego_id, "to_member_id": "child_1", "relationship_type": "PARENT_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+
+    assert depths["mom_single"] == -1
+    assert depths[ego_id] == 0
+    assert depths["child_1"] == 1
+    # Ensure no phantom father node or spouse edges
+    assert len(depths) == 3
+    assert not any(getattr(e, "relationship_type", "") == "SPOUSE" for e in res["edges"])
+
+
+def test_fv_03_no_children():
+    """FV-03: Ego không có con -> Không xuất hiện tầng con giả, chỉ có tầng -1 và 0."""
+    ego_id = "ego_3"
+    relationships = [
+        {"id": "r_dad", "from_member_id": "dad", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_sp", "from_member_id": ego_id, "to_member_id": "wife", "relationship_type": "SPOUSE"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+
+    assert depths[ego_id] == 0
+    assert depths["dad"] == -1
+    assert depths["wife"] == 0
+    # No node at level +1
+    assert not any(d == 1 for d in depths.values())
+
+
+def test_fv_04_multiple_spouses():
+    """FV-04: Ego có nhiều vợ/chồng ở các thời kỳ -> Cả hai hiển thị ở tầng 0 với role spouse."""
+    ego_id = "ego_4"
+    relationships = [
+        {"id": "r_sp1", "from_member_id": ego_id, "to_member_id": "wife_1", "relationship_type": "SPOUSE"},
+        {"id": "r_sp2", "from_member_id": ego_id, "to_member_id": "wife_2", "relationship_type": "SPOUSE"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+    roles = res["node_roles"]
+
+    assert depths["wife_1"] == 0 and roles["wife_1"] == "spouse"
+    assert depths["wife_2"] == 0 and roles["wife_2"] == "spouse"
+    # Ensure no spurious edge between the two wives
+    edge_pairs = {
+        (e.get("from_member_id") if isinstance(e, dict) else e.from_member_id,
+         e.get("to_member_id") if isinstance(e, dict) else e.to_member_id)
+        for e in res["edges"]
+    }
+    assert ("wife_1", "wife_2") not in edge_pairs
+    assert ("wife_2", "wife_1") not in edge_pairs
+
+
+def test_fv_05_stepchildren_and_separate_mothers():
+    """FV-05: Ego có con riêng với vợ cũ -> Không nối nhầm con riêng với vợ mới."""
+    ego_id = "ego_5"
+    relationships = [
+        # Wife 1 and child 1
+        {"id": "r_w1", "from_member_id": ego_id, "to_member_id": "wife_1", "relationship_type": "SPOUSE"},
+        {"id": "r_c1_dad", "from_member_id": ego_id, "to_member_id": "child_w1", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_c1_mom", "from_member_id": "wife_1", "to_member_id": "child_w1", "relationship_type": "PARENT_CHILD"},
+
+        # Wife 2 and child 2
+        {"id": "r_w2", "from_member_id": ego_id, "to_member_id": "wife_2", "relationship_type": "SPOUSE"},
+        {"id": "r_c2_dad", "from_member_id": ego_id, "to_member_id": "child_w2", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_c2_mom", "from_member_id": "wife_2", "to_member_id": "child_w2", "relationship_type": "PARENT_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    edges = res["edges"]
+
+    edge_ids = {e["id"] for e in edges}
+    # All 6 verified edges exist
+    assert edge_ids == {"r_w1", "r_c1_dad", "r_c1_mom", "r_w2", "r_c2_dad", "r_c2_mom"}
+
+    # CRITICAL: Verify wife_2 is NEVER linked to child_w1, and wife_1 is NEVER linked to child_w2
+    for e in edges:
+        from_id = e["from_member_id"]
+        to_id = e["to_member_id"]
+        assert not (from_id == "wife_2" and to_id == "child_w1")
+        assert not (from_id == "wife_1" and to_id == "child_w2")
+
+
+def test_fv_06_adopted_child():
+    """FV-06: Ego có con nuôi (ADOPTED_CHILD) -> Hiển thị đúng tầng +1."""
+    ego_id = "ego_6"
+    relationships = [
+        {"id": "r_adopt", "from_member_id": ego_id, "to_member_id": "adopted_kid", "relationship_type": "ADOPTED_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+    roles = res["node_roles"]
+
+    assert depths["adopted_kid"] == 1
+    assert roles["adopted_kid"] == "child"
+    assert len(res["edges"]) == 1
+    assert res["edges"][0]["id"] == "r_adopt"
+
+
+def test_fv_07_siblings_strictly_excluded():
+    """FV-07: Ego có anh/chị/em ruột -> Tuyệt đối không hiển thị trong Focus View."""
+    ego_id = "ego_7"
+    relationships = [
+        {"id": "r_dad", "from_member_id": "dad", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_dad_sib", "from_member_id": "dad", "to_member_id": "brother", "relationship_type": "PARENT_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    assert "brother" not in res["node_depths"]
+    assert not any(e["id"] == "r_dad_sib" for e in res["edges"])
+
+
+def test_fv_08_grandparents_and_grandchildren_excluded():
+    """FV-08: Ego có ông bà (-2) và cháu (+2) -> Không lấy tầng -2 hoặc +2."""
+    ego_id = "ego_8"
+    relationships = [
+        {"id": "r_gp", "from_member_id": "grandpa", "to_member_id": "dad", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_dad", "from_member_id": "dad", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_child", "from_member_id": ego_id, "to_member_id": "my_child", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_gc", "from_member_id": "my_child", "to_member_id": "my_grandchild", "relationship_type": "PARENT_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+
+    assert "grandpa" not in depths
+    assert "my_grandchild" not in depths
+    assert set(depths.keys()) == {ego_id, "dad", "my_child"}
+
+
+def test_fv_09_spouse_parents_excluded():
+    """FV-09: Ego có cha mẹ vợ -> Không đưa cha mẹ phối ngẫu vào Focus View."""
+    ego_id = "ego_9"
+    relationships = [
+        {"id": "r_sp", "from_member_id": ego_id, "to_member_id": "wife", "relationship_type": "SPOUSE"},
+        {"id": "r_inlaw", "from_member_id": "father_in_law", "to_member_id": "wife", "relationship_type": "PARENT_CHILD"},
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    assert "father_in_law" not in res["node_depths"]
+    assert len(res["edges"]) == 1
+    assert res["edges"][0]["id"] == "r_sp"
+
+
+def test_fv_10_unmarried_parents_no_spouse_edge():
+    """FV-10: Cha mẹ Ego không có quan hệ SPOUSE trong DB -> Không tự tạo cạnh vợ/chồng giả."""
+    ego_id = "ego_10"
+    relationships = [
+        {"id": "r_dad", "from_member_id": "unmarried_dad", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_mom", "from_member_id": "unmarried_mom", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        # No SPOUSE edge between unmarried_dad and unmarried_mom
+    ]
+
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
+    depths = res["node_depths"]
+
+    assert depths["unmarried_dad"] == -1
+    assert depths["unmarried_mom"] == -1
+    assert len(res["edges"]) == 2
+    edge_types = {e["relationship_type"] for e in res["edges"]}
+    assert "SPOUSE" not in edge_types  # CRITICAL: NO SPOUSE EDGE INFERRED
+
+
+def test_fv_11_half_sibling_classification():
+    """FV-11: Phân loại 3 nhóm anh chị em: ruột, cùng cha khác mẹ, cùng mẹ khác cha."""
+    p_ego = SimpleNamespace(id="p_ego", gender="male", generation=2, birth_date="1995-01-01")
+    older_bro = SimpleNamespace(id="p_bro", gender="male", generation=2, birth_date="1990-01-01")
+    parent = SimpleNamespace(id="p_dad", gender="male", generation=1)
+
+    # 1. Full sibling
+    res_full = KinshipService.calculate_kinship(
+        from_person=p_ego,
+        to_person=older_bro,
+        path=[p_ego, parent, older_bro],
+        edges=[SimpleNamespace(relationship_type="PARENT_CHILD")] * 2,
+        sibling_type="FULL",
+    )
+    assert res_full["kinship_name"] == "Anh ruột"
+
+    # 2. Half-paternal sibling (cùng cha khác mẹ)
+    res_half_dad = KinshipService.calculate_kinship(
+        from_person=p_ego,
+        to_person=older_bro,
+        path=[p_ego, parent, older_bro],
+        edges=[SimpleNamespace(relationship_type="PARENT_CHILD", notes="CUNG_CHA_KHAC_ME")] * 2,
+    )
+    assert res_half_dad["kinship_name"] == "Anh cùng cha khác mẹ"
+    assert "cùng cha khác mẹ" in res_half_dad["description"]
+
+    # 3. Half-maternal sibling (cùng mẹ khác cha)
+    res_half_mom = KinshipService.calculate_kinship(
+        from_person=p_ego,
+        to_person=older_bro,
+        path=[p_ego, parent, older_bro],
+        edges=[SimpleNamespace(relationship_type="PARENT_CHILD", notes="CUNG_ME_KHAC_CHA")] * 2,
+    )
+    assert res_half_mom["kinship_name"] == "Anh cùng mẹ khác cha"
+
+
+def test_fv_12_safe_birth_date_and_order_comparison():
+    """FV-12: An toàn tuổi tác: cùng ngày sinh hoặc thiếu ngày sinh không được suy đoán sai lệch."""
+    # Same date (twins)
+    twin1 = SimpleNamespace(id="t1", gender="male", generation=2, birth_date="1995-05-20", birth_order=1)
+    twin2 = SimpleNamespace(id="t2", gender="female", generation=2, birth_date="1995-05-20", birth_order=2)
+    parent = SimpleNamespace(id="p", gender="male", generation=1)
+
+    # twin2 views twin1: twin1 has earlier birth_order -> older
+    res_twin = KinshipService.calculate_kinship(
+        from_person=twin2, to_person=twin1, path=[twin2, parent, twin1], edges=[SimpleNamespace(relationship_type="PARENT_CHILD")] * 2
+    )
+    assert res_twin["kinship_name"] == "Anh ruột"
+
+    # Indeterminate: no birth date and no birth order
+    unknown1 = SimpleNamespace(id="u1", gender="male", generation=2)
+    unknown2 = SimpleNamespace(id="u2", gender="male", generation=2)
+    res_indet = KinshipService.calculate_kinship(
+        from_person=unknown1, to_person=unknown2, path=[unknown1, parent, unknown2], edges=[SimpleNamespace(relationship_type="PARENT_CHILD")] * 2
+    )
+    # Neutral title, never assume seniority
+    assert res_indet["kinship_name"] == "Anh/Em trai (ruột)"
+
+

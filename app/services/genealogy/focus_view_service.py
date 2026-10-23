@@ -61,13 +61,15 @@ class FocusViewService:
         spouses_of_ego: Set[str] = set()
         children_of_ego: Set[str] = set()
 
+        parent_rel_types = {"PARENT_CHILD", "ADOPTED_CHILD", "CON_RUOT", "CON_NUOI"}
+
         for rel in relationships:
             p1, p2, rtype, _ = cls._extract_rel(rel)
             if not p1 or not p2:
                 continue
 
             # Check Parents of Ego: (Parent -> Ego)
-            if rtype == "PARENT_CHILD" and p2 == ego_id:
+            if rtype in parent_rel_types and p2 == ego_id:
                 parents_of_ego.add(p1)
 
             # Check Spouses of Ego: (Ego <-> Spouse)
@@ -78,16 +80,8 @@ class FocusViewService:
                     spouses_of_ego.add(p1)
 
             # Check Children of Ego: (Ego -> Child)
-            elif rtype == "PARENT_CHILD" and p1 == ego_id:
+            elif rtype in parent_rel_types and p1 == ego_id:
                 children_of_ego.add(p2)
-
-        # Also capture children registered under spouse if any
-        if spouses_of_ego:
-            for rel in relationships:
-                p1, p2, rtype, _ = cls._extract_rel(rel)
-                if rtype == "PARENT_CHILD" and p1 in spouses_of_ego and p2 in children_of_ego:
-                    # Confirmed shared child
-                    pass
 
         # 2. Build 3-generation node mappings with roles and depths
         # Level  0: Ego (depth: 0, role: 'ego')
@@ -109,7 +103,12 @@ class FocusViewService:
             node_depths[c_id] = 1
             node_roles[c_id] = "child"
 
-        # 3. Collect only intra-subgraph edges
+        # 3. Collect only verified, strictly-permitted intra-subgraph edges:
+        # Rule 1: Parent -> Ego (PARENT_CHILD / ADOPTED_CHILD)
+        # Rule 2: Parent <-> Parent (SPOUSE only - MUST exist in data, never inferred)
+        # Rule 3: Ego <-> Spouse (SPOUSE only)
+        # Rule 4: Ego -> Child (PARENT_CHILD / ADOPTED_CHILD)
+        # Rule 5: Spouse -> Child (PARENT_CHILD / ADOPTED_CHILD - verified actual parentage)
         subgraph_nodes = set(node_depths.keys())
         included_edges: List[Any] = []
         seen_edge_ids: Set[str] = set()
@@ -119,12 +118,37 @@ class FocusViewService:
             if not p1 or not p2:
                 continue
 
-            if p1 in subgraph_nodes and p2 in subgraph_nodes:
-                # Disallow edges that bridge outside the 3-generation direct rules
-                # e.g., if a relation connects parent to someone else, not allowed
-                if edge_id not in seen_edge_ids:
-                    seen_edge_ids.add(edge_id)
-                    included_edges.append(rel)
+            if p1 not in subgraph_nodes or p2 not in subgraph_nodes:
+                continue
+
+            is_valid_edge = False
+
+            # Rule 1: Parent -> Ego
+            if p1 in parents_of_ego and p2 == ego_id and rtype in parent_rel_types:
+                is_valid_edge = True
+
+            # Rule 2: Parent <-> Parent (only if verified SPOUSE in data)
+            elif p1 in parents_of_ego and p2 in parents_of_ego and p1 != p2 and rtype == "SPOUSE":
+                is_valid_edge = True
+
+            # Rule 3: Ego <-> Spouse
+            elif (
+                ((p1 == ego_id and p2 in spouses_of_ego) or (p2 == ego_id and p1 in spouses_of_ego))
+                and rtype == "SPOUSE"
+            ):
+                is_valid_edge = True
+
+            # Rule 4: Ego -> Child
+            elif p1 == ego_id and p2 in children_of_ego and rtype in parent_rel_types:
+                is_valid_edge = True
+
+            # Rule 5: Spouse -> Child (Only if that spouse has a real parent-child record with that child)
+            elif p1 in spouses_of_ego and p2 in children_of_ego and rtype in parent_rel_types:
+                is_valid_edge = True
+
+            if is_valid_edge and edge_id not in seen_edge_ids:
+                seen_edge_ids.add(edge_id)
+                included_edges.append(rel)
 
         return {
             "node_depths": node_depths,
