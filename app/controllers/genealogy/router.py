@@ -32,6 +32,7 @@ def controller(db: AsyncSession, account: Account) -> GenealogyController:
 async def search_persons(
     family_id: str,
     search: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
     gender: Optional[str] = Query(None),
     branch_id: Optional[str] = Query(None, alias="branchId"),
     is_living: Optional[bool] = Query(None, alias="isLiving"),
@@ -40,8 +41,9 @@ async def search_persons(
     db: AsyncSession = Depends(get_db),
     account: Account = Depends(get_current_account),
 ):
+    keyword = search if search is not None else q
     return await controller(db, account).search_persons(
-        family_id, search, gender, branch_id, is_living, limit, offset
+        family_id, keyword, gender, branch_id, is_living, limit, offset
     )
 
 
@@ -55,6 +57,16 @@ async def create_person(
     account: Account = Depends(get_current_account),
 ):
     return await controller(db, account).create_person(family_id, data)
+
+
+@router.get("/persons/export")
+async def export_family_persons(
+    family_id: str,
+    format: str = Query("csv"),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.controllers.member_api_router import export_persons
+    return await export_persons(family_id=family_id, format=format, db=db)
 
 
 @router.get("/persons/{person_id}", response_model=PersonResponse)
@@ -165,13 +177,22 @@ async def get_focus_view(
 )
 async def calculate_relationship(
     family_id: str,
-    from_person_id: str = Query(..., alias="fromPersonId"),
-    to_person_id: str = Query(..., alias="toPersonId"),
+    from_person_id: Optional[str] = Query(None, alias="fromPersonId"),
+    to_person_id: Optional[str] = Query(None, alias="toPersonId"),
+    from_person_id_snake: Optional[str] = Query(None, alias="from_person_id"),
+    to_person_id_snake: Optional[str] = Query(None, alias="to_person_id"),
     db: AsyncSession = Depends(get_db),
     account: Account = Depends(get_current_account),
 ):
+    from_id = from_person_id or from_person_id_snake
+    to_id = to_person_id or to_person_id_snake
+    if not from_id or not to_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Both fromPersonId and toPersonId parameters are required",
+        )
     return await controller(db, account).calculate_relationship(
-        family_id, from_person_id, to_person_id
+        family_id, from_id, to_id
     )
 
 

@@ -74,9 +74,9 @@ class GenealogyService:
     @staticmethod
     def _to_person_response(person: Person) -> PersonResponse:
         return PersonResponse(
-            id=person.id,
-            familyId=person.family_id,
-            branchId=person.branch_id,
+            id=str(person.id),
+            familyId=str(person.family_id),
+            branchId=str(person.branch_id) if person.branch_id else None,
             fullName=person.full_name,
             gender=person.gender or "unknown",
             birthDate=person.birth_date,
@@ -223,6 +223,32 @@ class GenealogyService:
         )
 
         if api_relationship_type == "SPOUSE":
+            # Consanguinity check 1: Cannot marry lineal ascendant or descendant (direct bloodline)
+            ancestors_from = await self.repo.get_ancestors(from_person.id, family_id)
+            descendants_from = await self.repo.get_descendants(from_person.id, family_id)
+            direct_lineage_ids = {str(item["person"].id) for item in ancestors_from} | {
+                str(item["person"].id) for item in descendants_from
+            }
+            if str(to_person.id) in direct_lineage_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot create marriage relationship between lineal ascendants and descendants (direct bloodline)",
+                )
+
+            # Consanguinity check 2: Cannot marry siblings (shared biological parents)
+            parents_from = {
+                str(item["person"].id) for item in ancestors_from if item["depth"] == 1
+            }
+            ancestors_to = await self.repo.get_ancestors(to_person.id, family_id)
+            parents_to = {
+                str(item["person"].id) for item in ancestors_to if item["depth"] == 1
+            }
+            if parents_from and parents_to and bool(parents_from.intersection(parents_to)):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot create marriage relationship between siblings (shared parents)",
+                )
+
             relationship_from_id, relationship_to_id = sorted(
                 (str(from_person.id), str(to_person.id))
             )
@@ -262,12 +288,45 @@ class GenealogyService:
             )
 
         if api_relationship_type in PARENT_RELATIONSHIP_TYPES:
-            ancestors = await self.repo.get_ancestors(from_person.id, family_id)
-            if any(item["person"].id == to_person.id for item in ancestors):
+            # 1. Cycle detection: Child cannot be an ancestor of Parent
+            ancestors_of_parent = await self.repo.get_ancestors(from_person.id, family_id)
+            if any(str(item["person"].id) == str(to_person.id) for item in ancestors_of_parent):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Ancestry cycle detected",
+                    detail="Ancestry cycle detected: child is already an ancestor of the parent",
                 )
+
+            # 2. Age logic: Parent cannot be born after child
+            if from_person.birth_date and to_person.birth_date:
+                if from_person.birth_date >= to_person.birth_date:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Parent birth date must be earlier than child birth date",
+                    )
+
+            # 3. Biological parents count limit: Max 1 father and 1 mother
+            if api_relationship_type in ("FATHER", "MOTHER", "PARENT"):
+                child_ancestors = await self.repo.get_ancestors(to_person.id, family_id)
+                current_immediate_parents = [
+                    item["person"] for item in child_ancestors if item["depth"] == 1
+                ]
+                if api_relationship_type == "FATHER":
+                    if any((p.gender or "").upper() == "MALE" for p in current_immediate_parents):
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Child already has a biological father",
+                        )
+                elif api_relationship_type == "MOTHER":
+                    if any((p.gender or "").upper() == "FEMALE" for p in current_immediate_parents):
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Child already has a biological mother",
+                        )
+                elif len(current_immediate_parents) >= 2:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Child already has 2 biological parents",
+                    )
 
         relationship = Relationship(
             id=str(uuid4()),

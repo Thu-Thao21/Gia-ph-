@@ -6,16 +6,19 @@ clans, persons, and relationships.
 
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres import get_db
-from app.models.family.entities import Clan
-from app.models.genealogy.entities import Person, Relationship
+from app.models.family.entities import Clan, ClanProfile
+from app.models.genealogy.entities import Person, Relationship, FamilyBranch
 
 router = APIRouter(tags=["members-families"])
 
@@ -194,3 +197,325 @@ async def get_member_detail(
         "galleryPhotos": [],
         "careerHistory": [],
     }
+
+
+class ClanProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    originPlace: Optional[str] = Field(None, alias="origin_place")
+    history: Optional[str] = None
+    ancestralHouseAddress: Optional[str] = Field(None, alias="ancestral_house_address")
+    publicDescription: Optional[str] = Field(None, alias="public_description")
+    founderPersonId: Optional[str] = Field(None, alias="founder_person_id")
+    logoUrl: Optional[str] = Field(None, alias="logo_url")
+
+    class Config:
+        populate_by_name = True
+
+
+class BranchCreate(BaseModel):
+    name: str
+    code: Optional[str] = None
+    description: Optional[str] = None
+    parentBranchId: Optional[str] = Field(None, alias="parent_branch_id")
+    leaderPersonId: Optional[str] = Field(None, alias="leader_person_id")
+
+    class Config:
+        populate_by_name = True
+
+
+@router.get("/families/{family_id}/profile")
+async def get_clan_profile(
+    family_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get clan profile including historical and origin details."""
+    try:
+        f_uuid = uuid.UUID(family_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid family_id")
+
+    clan_res = await db.execute(select(Clan).where(Clan.clan_id == f_uuid))
+    clan = clan_res.scalar_one_or_none()
+    if not clan:
+        raise HTTPException(status_code=404, detail="Family not found")
+
+    prof_res = await db.execute(select(ClanProfile).where(ClanProfile.clan_id == f_uuid))
+    prof = prof_res.scalar_one_or_none()
+
+    return {
+        "clanId": str(clan.clan_id),
+        "name": clan.name,
+        "clanCode": clan.clan_code,
+        "status": clan.status,
+        "originPlace": prof.origin_place if prof else None,
+        "history": prof.history if prof else None,
+        "ancestralHouseAddress": prof.ancestral_house_address if prof else None,
+        "publicDescription": prof.public_description if prof else None,
+        "founderPersonId": str(prof.founder_person_id) if (prof and prof.founder_person_id) else None,
+        "updatedAt": prof.updated_at.isoformat() if (prof and prof.updated_at) else None,
+    }
+
+
+@router.put("/families/{family_id}/profile")
+async def update_clan_profile(
+    family_id: str,
+    data: ClanProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update clan profile (BUG-012)."""
+    try:
+        f_uuid = uuid.UUID(family_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid family_id")
+
+    clan_res = await db.execute(select(Clan).where(Clan.clan_id == f_uuid))
+    clan = clan_res.scalar_one_or_none()
+    if not clan:
+        raise HTTPException(status_code=404, detail="Family not found")
+
+    if data.name:
+        clan.name = data.name.strip()
+
+    prof_res = await db.execute(select(ClanProfile).where(ClanProfile.clan_id == f_uuid))
+    prof = prof_res.scalar_one_or_none()
+
+    f_founder = None
+    if data.founderPersonId:
+        try:
+            f_founder = uuid.UUID(data.founderPersonId)
+        except ValueError:
+            pass
+
+    if prof is None:
+        prof = ClanProfile(
+            clan_id=f_uuid,
+            origin_place=data.originPlace,
+            history=data.history,
+            ancestral_house_address=data.ancestralHouseAddress,
+            public_description=data.publicDescription,
+            founder_person_id=f_founder,
+        )
+        db.add(prof)
+    else:
+        if data.originPlace is not None:
+            prof.origin_place = data.originPlace
+        if data.history is not None:
+            prof.history = data.history
+        if data.ancestralHouseAddress is not None:
+            prof.ancestral_house_address = data.ancestralHouseAddress
+        if data.publicDescription is not None:
+            prof.public_description = data.publicDescription
+        if data.founderPersonId is not None:
+            prof.founder_person_id = f_founder
+
+    await db.commit()
+    await db.refresh(clan)
+
+    return {
+        "clanId": str(clan.clan_id),
+        "name": clan.name,
+        "clanCode": clan.clan_code,
+        "status": clan.status,
+        "originPlace": prof.origin_place if prof else None,
+        "history": prof.history if prof else None,
+        "ancestralHouseAddress": prof.ancestral_house_address if prof else None,
+        "publicDescription": prof.public_description if prof else None,
+        "founderPersonId": str(prof.founder_person_id) if (prof and prof.founder_person_id) else None,
+        "updatedAt": prof.updated_at.isoformat() if (prof and prof.updated_at) else None,
+    }
+
+
+@router.get("/families/{family_id}/branches")
+async def list_family_branches(
+    family_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """List branches belonging to a family."""
+    try:
+        f_uuid = uuid.UUID(family_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid family_id")
+
+    stmt = select(FamilyBranch).where(FamilyBranch.family_id == f_uuid).order_by(FamilyBranch.branch_order)
+    res = await db.execute(stmt)
+    branches = res.scalars().all()
+
+    counts_stmt = (
+        select(Person.branch_id, func.count(Person.id))
+        .where(Person.family_id == f_uuid, Person.branch_id.isnot(None))
+        .group_by(Person.branch_id)
+    )
+    counts_res = await db.execute(counts_stmt)
+    count_map = {row[0]: row[1] for row in counts_res.all()}
+
+    return [
+        {
+            "id": str(b.id),
+            "branchId": str(b.id),
+            "familyId": str(b.family_id),
+            "name": b.name,
+            "code": b.code,
+            "description": b.description,
+            "branchOrder": b.branch_order,
+            "status": b.status,
+            "parentBranchId": str(b.parent_branch_id) if b.parent_branch_id else None,
+            "memberCount": count_map.get(b.id, 0),
+        }
+        for b in branches
+    ]
+
+
+@router.post("/families/{family_id}/branches", status_code=status.HTTP_201_CREATED)
+async def create_family_branch(
+    family_id: str,
+    data: BranchCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new branch with unique name constraint and leader person ID (BUG-020, BUG-024)."""
+    try:
+        f_uuid = uuid.UUID(family_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid family_id")
+
+    clean_name = data.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Tên Chi/Nhánh không được để trống")
+
+    # Check unique name per family (BUG-020)
+    existing = await db.execute(
+        select(FamilyBranch).where(
+            FamilyBranch.family_id == f_uuid,
+            func.lower(FamilyBranch.name) == clean_name.lower(),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tên Chi/Nhánh '{clean_name}' đã tồn tại trong dòng họ.",
+        )
+
+    parent_uuid = None
+    if data.parentBranchId:
+        try:
+            parent_uuid = uuid.UUID(data.parentBranchId)
+        except ValueError:
+            pass
+
+    branch = FamilyBranch(
+        family_id=f_uuid,
+        name=clean_name,
+        code=data.code.strip() if data.code else None,
+        description=data.description,
+        parent_branch_id=parent_uuid,
+    )
+    db.add(branch)
+    await db.commit()
+    await db.refresh(branch)
+
+    return {
+        "id": str(branch.id),
+        "branchId": str(branch.id),
+        "familyId": str(branch.family_id),
+        "name": branch.name,
+        "code": branch.code,
+        "description": branch.description,
+        "status": branch.status,
+        "parentBranchId": str(branch.parent_branch_id) if branch.parent_branch_id else None,
+        "memberCount": 0,
+    }
+
+
+@router.delete("/families/{family_id}/branches/{branch_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_family_branch(
+    family_id: str,
+    branch_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a branch with member check protection (BUG-011)."""
+    try:
+        f_uuid = uuid.UUID(family_id)
+        b_uuid = uuid.UUID(branch_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID")
+
+    branch_res = await db.execute(
+        select(FamilyBranch).where(FamilyBranch.id == b_uuid, FamilyBranch.family_id == f_uuid)
+    )
+    branch = branch_res.scalar_one_or_none()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    # Check if branch has members (BUG-011)
+    cnt_res = await db.execute(
+        select(func.count(Person.id)).where(Person.family_id == f_uuid, Person.branch_id == b_uuid)
+    )
+    member_count = cnt_res.scalar_one() or 0
+    if member_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Không thể xóa Chi nhánh đang có {member_count} thành viên. Vui lòng chuyển thành viên sang Chi khác trước khi xóa.",
+        )
+
+    await db.delete(branch)
+    await db.commit()
+
+
+@router.get("/families/{family_id}/persons/export")
+@router.get("/persons/export")
+async def export_persons(
+    family_id: Optional[str] = None,
+    format: str = Query("csv"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export person list as CSV (BUG-025)."""
+    stmt = select(Person)
+    if family_id:
+        try:
+            f_uuid = uuid.UUID(family_id)
+            stmt = stmt.where(Person.family_id == f_uuid)
+        except ValueError:
+            pass
+
+    stmt = stmt.order_by(Person.generation, Person.full_name)
+    res = await db.execute(stmt)
+    persons = res.scalars().all()
+
+    branch_ids = [p.branch_id for p in persons if p.branch_id]
+    branch_map = {}
+    if branch_ids:
+        b_res = await db.execute(select(FamilyBranch).where(FamilyBranch.id.in_(branch_ids)))
+        branch_map = {b.id: b.name for b in b_res.scalars().all()}
+
+    output = io.StringIO()
+    output.write('\ufeff')
+    writer = csv.writer(output)
+    writer.writerow([
+        "STT", "Mã thành viên", "Họ và tên", "Giới tính",
+        "Ngày sinh", "Ngày mất", "Tình trạng", "Đời thứ", "Chi nhánh", "Ghi chú"
+    ])
+
+    for idx, p in enumerate(persons, 1):
+        g = "Nam" if (p.gender or "").upper() == "MALE" else ("Nữ" if (p.gender or "").upper() == "FEMALE" else "Khác")
+        alive = "Còn sống" if p.is_alive else "Đã mất"
+        b_name = branch_map.get(p.branch_id, "Chi Trưởng")
+        writer.writerow([
+            idx,
+            str(p.id),
+            p.full_name,
+            g,
+            p.birth_date.isoformat() if p.birth_date else "",
+            p.death_date.isoformat() if p.death_date else "",
+            alive,
+            p.generation or 1,
+            b_name,
+            p.bio or ""
+        ])
+
+    csv_content = output.getvalue()
+    filename = f"danh_sach_thanh_vien_{family_id or 'all'}.csv"
+    return Response(
+        content=csv_content.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+

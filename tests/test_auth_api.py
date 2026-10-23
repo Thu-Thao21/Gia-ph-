@@ -278,7 +278,7 @@ def test_logout_without_token_is_401(w):
 # ----- POST /auth/change-password -----
 
 
-def change(w, access, recent, password="new-password-123"):
+def change(w, access, recent, password="New-password-123"):
     return w.client.post(
         "/api/v1/auth/change-password",
         headers=bearer(access),

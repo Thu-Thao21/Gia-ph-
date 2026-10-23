@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PersonResponse(BaseModel):
-    id: str
-    family_id: str = Field(alias="familyId")
-    branch_id: Optional[str] = Field(None, alias="branchId")
+    id: uuid.UUID | str
+    family_id: uuid.UUID | str = Field(alias="familyId")
+    branch_id: Optional[uuid.UUID | str] = Field(None, alias="branchId")
     full_name: str = Field(alias="fullName")
     gender: str
     birth_date: Optional[date] = Field(None, alias="birthDate")
@@ -36,6 +37,15 @@ class PersonCreate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
+    @model_validator(mode="after")
+    def validate_dates(self):
+        today = date.today()
+        if self.birth_date and self.birth_date > today:
+            raise ValueError("Ngày sinh không thể ở trong tương lai (birth date cannot be in the future)")
+        if self.birth_date and self.death_date and self.death_date < self.birth_date:
+            raise ValueError("Ngày mất phải sau hoặc cùng ngày sinh (death date must be on or after birth date)")
+        return self
+
 
 class PersonUpdate(BaseModel):
     full_name: Optional[str] = Field(None, alias="fullName", min_length=1)
@@ -48,6 +58,15 @@ class PersonUpdate(BaseModel):
     status: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_dates(self):
+        today = date.today()
+        if self.birth_date and self.birth_date > today:
+            raise ValueError("Ngày sinh không thể ở trong tương lai (birth date cannot be in the future)")
+        if self.birth_date and self.death_date and self.death_date < self.birth_date:
+            raise ValueError("Ngày mất phải sau hoặc cùng ngày sinh (death date must be on or after birth date)")
+        return self
 
 
 class AncestorDescendantResponse(BaseModel):
