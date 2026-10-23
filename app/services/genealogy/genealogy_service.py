@@ -454,6 +454,7 @@ class GenealogyService:
             max_depth=depth,
         )
         node_depths = subgraph["node_depths"]
+        node_roles = subgraph.get("node_roles", {})
         included_edge_objs = subgraph["edges"]
 
         all_persons = await self.repo.get_persons_by_family(family_id)
@@ -473,6 +474,7 @@ class GenealogyService:
                         avatarUrl=p.avatar_url,
                         depth=d,
                         isEgo=(str(p.id) == str(ego_person.id)),
+                        role=node_roles.get(pid),
                         status=p.status,
                     )
                 )

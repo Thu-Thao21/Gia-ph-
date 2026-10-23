@@ -99,6 +99,7 @@ class FocusViewNode(BaseModel):
     avatar_url: Optional[str] = Field(None, alias="avatarUrl")
     depth: int
     is_ego: bool = Field(False, alias="isEgo")
+    role: Optional[str] = None
     status: str
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

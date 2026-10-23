@@ -21,49 +21,92 @@ from app.services.genealogy.relationship_path_service import RelationshipPathSer
 
 
 def test_focus_view_bfs_depth_1():
-    """Focus view with depth=1 should only include immediate neighbors (parents, spouse, children)."""
+    """Focus view 3-tier ego-centric rules:
+    - Level -1: Parents of Ego
+    - Level  0: Ego & Spouse
+    - Level +1: Children of Ego
+    """
     ego_id = "p_ego"
     relationships = [
         {"id": "r1", "from_member_id": "p_parent", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
         {"id": "r2", "from_member_id": ego_id, "to_member_id": "p_child", "relationship_type": "PARENT_CHILD"},
         {"id": "r3", "from_member_id": ego_id, "to_member_id": "p_spouse", "relationship_type": "SPOUSE"},
-        # Depth 2 from ego (child of child)
+        # Grandchild (child of child) - should NOT be included
         {"id": "r4", "from_member_id": "p_child", "to_member_id": "p_grandchild", "relationship_type": "PARENT_CHILD"},
     ]
 
     res = FocusViewService.extract_focus_subgraph(ego_id, relationships, max_depth=1)
     node_depths = res["node_depths"]
+    node_roles = res.get("node_roles", {})
     edges = res["edges"]
 
     assert ego_id in node_depths
     assert node_depths[ego_id] == 0
-    assert node_depths["p_parent"] == 1
+    assert node_roles[ego_id] == "ego"
+
+    assert node_depths["p_parent"] == -1
+    assert node_roles["p_parent"] == "parent"
+
+    assert node_depths["p_spouse"] == 0
+    assert node_roles["p_spouse"] == "spouse"
+
     assert node_depths["p_child"] == 1
-    assert node_depths["p_spouse"] == 1
-    assert "p_grandchild" not in node_depths  # Excluded at depth 1
+    assert node_roles["p_child"] == "child"
+
+    assert "p_grandchild" not in node_depths  # Grandchild must NOT be included
 
     edge_ids = {e["id"] for e in edges}
     assert edge_ids == {"r1", "r2", "r3"}
 
 
-def test_focus_view_bfs_depth_2():
-    """Focus view with depth=2 expands to grandchildren, siblings, grandparents."""
+def test_focus_view_strict_3_tier_no_spillover():
+    """Strictly prevents expanding to grandparents, siblings, or parents of spouse."""
     ego_id = "p_ego"
     relationships = [
-        {"id": "r1", "from_member_id": "p_parent", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
-        {"id": "r2", "from_member_id": "p_parent", "to_member_id": "p_sibling", "relationship_type": "PARENT_CHILD"},
-        {"id": "r3", "from_member_id": ego_id, "to_member_id": "p_child", "relationship_type": "PARENT_CHILD"},
-        {"id": "r4", "from_member_id": "p_child", "to_member_id": "p_grandchild", "relationship_type": "PARENT_CHILD"},
+        # Parents
+        {"id": "r_father", "from_member_id": "p_father", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_mother", "from_member_id": "p_mother", "to_member_id": ego_id, "relationship_type": "PARENT_CHILD"},
+        {"id": "r_parents_spouse", "from_member_id": "p_father", "to_member_id": "p_mother", "relationship_type": "SPOUSE"},
+
+        # Grandparent (Father's father) - MUST BE EXCLUDED
+        {"id": "r_gp", "from_member_id": "p_grandparent", "to_member_id": "p_father", "relationship_type": "PARENT_CHILD"},
+
+        # Sibling (Child of father) - MUST BE EXCLUDED
+        {"id": "r_sib", "from_member_id": "p_father", "to_member_id": "p_sibling", "relationship_type": "PARENT_CHILD"},
+
+        # Spouse
+        {"id": "r_sp", "from_member_id": ego_id, "to_member_id": "p_spouse", "relationship_type": "SPOUSE"},
+
+        # Spouse's parent - MUST BE EXCLUDED
+        {"id": "r_sp_parent", "from_member_id": "p_spouse_father", "to_member_id": "p_spouse", "relationship_type": "PARENT_CHILD"},
+
+        # Children
+        {"id": "r_ch", "from_member_id": ego_id, "to_member_id": "p_child", "relationship_type": "PARENT_CHILD"},
+        {"id": "r_ch_sp", "from_member_id": "p_spouse", "to_member_id": "p_child", "relationship_type": "PARENT_CHILD"},
+
+        # Grandchild - MUST BE EXCLUDED
+        {"id": "r_gc", "from_member_id": "p_child", "to_member_id": "p_grandchild", "relationship_type": "PARENT_CHILD"},
     ]
 
-    res = FocusViewService.extract_focus_subgraph(ego_id, relationships, max_depth=2)
+    res = FocusViewService.extract_focus_subgraph(ego_id, relationships)
     node_depths = res["node_depths"]
+    edges = res["edges"]
 
+    # Allowed 3-tier members
     assert node_depths[ego_id] == 0
-    assert node_depths["p_parent"] == 1
+    assert node_depths["p_father"] == -1
+    assert node_depths["p_mother"] == -1
+    assert node_depths["p_spouse"] == 0
     assert node_depths["p_child"] == 1
-    assert node_depths["p_sibling"] == 2
-    assert node_depths["p_grandchild"] == 2
+
+    # FORBIDDEN members: MUST NOT BE IN SUBGRAPH
+    assert "p_grandparent" not in node_depths
+    assert "p_sibling" not in node_depths
+    assert "p_spouse_father" not in node_depths
+    assert "p_grandchild" not in node_depths
+
+    edge_ids = {e["id"] for e in edges}
+    assert edge_ids == {"r_father", "r_mother", "r_parents_spouse", "r_sp", "r_ch", "r_ch_sp"}
 
 
 def test_relationship_path_direct_parent_child():
