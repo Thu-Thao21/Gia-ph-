@@ -9,6 +9,8 @@ export interface ApiErrorInfo {
   status: number | null;
   /** error.code của BE, ví dụ SESSION_INVALID, DUPLICATE_RESOURCE, RATE_LIMITED. */
   code: string | null;
+  /** Thông báo lỗi từ BE (detail hoặc error.message) */
+  message?: string | null;
   /** error.request_id của BE (hoặc header X-Request-ID), để báo lỗi cho BE. */
   requestId: string | null;
   /** Số giây đọc từ header Retry-After (thường đi kèm 429), null nếu không có. */
@@ -29,14 +31,20 @@ function parseRetryAfter(value: unknown): number | null {
 
 export function readApiError(err: unknown): ApiErrorInfo {
   if (!axios.isAxiosError(err)) {
-    return { status: null, code: null, requestId: null, retryAfterSeconds: null, isNetworkError: false };
+    return { status: null, code: null, message: null, requestId: null, retryAfterSeconds: null, isNetworkError: false };
   }
   const response = err.response;
   if (!response) {
-    return { status: null, code: null, requestId: null, retryAfterSeconds: null, isNetworkError: true };
+    return { status: null, code: null, message: null, requestId: null, retryAfterSeconds: null, isNetworkError: true };
   }
-  const body = response.data as { error?: { code?: unknown; request_id?: unknown } } | undefined;
+  const body = response.data as { error?: { code?: unknown; request_id?: unknown; message?: unknown }; detail?: unknown } | undefined;
   const code = typeof body?.error?.code === 'string' ? body.error.code : null;
+  const message =
+    typeof body?.detail === 'string'
+      ? body.detail
+      : typeof body?.error?.message === 'string'
+        ? body.error.message
+        : null;
   const headerRequestId = response.headers?.['x-request-id'];
   const requestId =
     typeof body?.error?.request_id === 'string'
@@ -47,6 +55,7 @@ export function readApiError(err: unknown): ApiErrorInfo {
   return {
     status: response.status,
     code,
+    message,
     requestId,
     retryAfterSeconds: parseRetryAfter(response.headers?.['retry-after']),
     isNetworkError: false,
