@@ -647,6 +647,8 @@ class GenealogyService:
             edges=edge_responses,
             kinshipName=kinship_info["kinship_name"],
             addressTitle=kinship_info["address_title"],
+            reciprocalKinship=kinship_info.get("reciprocal_kinship"),
+            reciprocalAddress=kinship_info.get("reciprocal_address"),
             generationDiff=gen_diff,
             description=kinship_info["description"],
         )

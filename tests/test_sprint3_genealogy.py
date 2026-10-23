@@ -215,3 +215,45 @@ def test_kinship_naming_siblings():
         from_person=older_bro, to_person=younger_sis, path=[older_bro, parent, younger_sis], edges=edges
     )
     assert res2["kinship_name"] == "Em gái ruột"
+    assert res2["reciprocal_kinship"] == "Anh ruột"
+
+
+def test_kinship_naming_paternal_uncle_and_reciprocal():
+    """Tests paternal uncle naming and 2-way reciprocal address."""
+    father = SimpleNamespace(id="p_father", gender="male", generation=1, birth_date="1960-01-01")
+    uncle = SimpleNamespace(id="p_uncle", gender="male", generation=1, birth_date="1965-01-01")
+    nephew = SimpleNamespace(id="p_nephew", gender="male", generation=2, birth_date="1992-01-01")
+
+    edges = [
+        SimpleNamespace(relationship_type="PARENT_CHILD", from_member_id="p_father", to_member_id="p_nephew"),
+        SimpleNamespace(relationship_type="PARENT_CHILD", from_member_id="p_gp", to_member_id="p_father"),
+        SimpleNamespace(relationship_type="PARENT_CHILD", from_member_id="p_gp", to_member_id="p_uncle"),
+    ]
+
+    res = KinshipService.calculate_kinship(
+        from_person=nephew,
+        to_person=uncle,
+        path=[nephew, father, uncle],
+        edges=edges,
+    )
+    assert res["kinship_name"] == "Chú"
+    assert "Chú" in res["address_title"]
+    assert res["reciprocal_kinship"] == "Cháu trai"
+
+
+def test_kinship_cousin_naming():
+    """Tests cousin naming based on age difference."""
+    older_cousin = SimpleNamespace(id="c1", gender="female", generation=2, birth_date="1988-01-01")
+    younger_cousin = SimpleNamespace(id="c2", gender="male", generation=2, birth_date="1995-01-01")
+
+    # Younger cousin calls Older female cousin
+    res = KinshipService.calculate_kinship(
+        from_person=younger_cousin,
+        to_person=older_cousin,
+        path=[younger_cousin, SimpleNamespace(id="p1"), SimpleNamespace(id="gp"), SimpleNamespace(id="p2"), older_cousin],
+        edges=[SimpleNamespace(relationship_type="PARENT_CHILD")] * 4,
+    )
+    assert res["kinship_name"] == "Chị họ"
+    assert "Chị họ" in res["address_title"]
+    assert res["reciprocal_kinship"] == "Em họ"
+

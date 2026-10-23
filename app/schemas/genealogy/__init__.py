@@ -147,6 +147,8 @@ class RelationshipCalculationResponse(BaseModel):
     edges: List[RelationshipResponse] = []
     kinship_name: str = Field(alias="kinshipName")
     address_title: str = Field(alias="addressTitle")
+    reciprocal_kinship: Optional[str] = Field(None, alias="reciprocalKinship")
+    reciprocal_address: Optional[str] = Field(None, alias="reciprocalAddress")
     generation_diff: int = Field(0, alias="generationDiff")
     description: str = ""
 

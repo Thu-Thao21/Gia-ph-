@@ -49,6 +49,35 @@ class LinkRequestResponse(BaseModel):
     created_at: datetime = Field(alias="createdAt")
 
 
+class LinkResponse(BaseModel):
+    id: str
+    request_id: str = Field(alias="requestId")
+    clan_a_id: str = Field(alias="clanAId")
+    clan_a_name: str = Field(alias="clanAName")
+    clan_b_id: str = Field(alias="clanBId")
+    clan_b_name: str = Field(alias="clanBName")
+    status: str
+    linked_at: datetime = Field(alias="linkedAt")
+    ended_at: Optional[datetime] = Field(None, alias="endedAt")
+
+
+class PolicyUpdate(BaseModel):
+    data_scope: Optional[str] = Field(None, alias="dataScope")
+    allowed_fields: Optional[dict] = Field(None, alias="allowedFields")
+    can_export: Optional[bool] = Field(None, alias="canExport")
+
+
+class PolicyResponse(BaseModel):
+    id: str
+    link_id: str = Field(alias="linkId")
+    owner_clan_id: str = Field(alias="ownerClanId")
+    data_scope: str = Field(alias="dataScope")
+    allowed_fields: dict = Field(alias="allowedFields")
+    visibility: str
+    can_export: bool = Field(alias="canExport")
+    updated_at: datetime = Field(alias="updatedAt")
+
+
 @router.get("/families")
 async def get_network_families(
     category: str = Query("all"),
@@ -78,6 +107,163 @@ async def get_network_families(
         })
 
     return items
+
+
+@router.get("/links", response_model=List[LinkResponse])
+async def list_inter_clan_links(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """Lists established inter-clan links (FR-BO-53..55)."""
+    stmt = select(InterClanLink).order_by(InterClanLink.linked_at.desc())
+    if status_filter:
+        stmt = stmt.where(InterClanLink.status == status_filter.upper())
+    res = await db.execute(stmt)
+    links = list(res.scalars().all())
+
+    clans_res = await db.execute(select(Clan))
+    clan_map = {str(c.clan_id): c.name for c in clans_res.scalars().all()}
+
+    output = []
+    for link in links:
+        a_id = str(link.clan_a_id)
+        b_id = str(link.clan_b_id)
+        output.append(
+            LinkResponse(
+                id=str(link.id),
+                requestId=str(link.request_id),
+                clanAId=a_id,
+                clanAName=clan_map.get(a_id, "Dòng họ A"),
+                clanBId=b_id,
+                clanBName=clan_map.get(b_id, "Dòng họ B"),
+                status=link.status,
+                linkedAt=link.linked_at,
+                endedAt=link.ended_at,
+            )
+        )
+    return output
+
+
+@router.delete("/links/{link_id}")
+@router.post("/links/{link_id}/terminate")
+async def terminate_link(
+    link_id: str,
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """Terminates an inter-family connection link (FR-BO-55)."""
+    link_uuid = uuid.UUID(link_id)
+    res = await db.execute(select(InterClanLink).where(InterClanLink.id == link_uuid))
+    link = res.scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+
+    if link.status == "TERMINATED":
+        return {"status": "TERMINATED", "message": "Link already terminated"}
+
+    link.status = "TERMINATED"
+    link.ended_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"status": "TERMINATED", "link_id": str(link.id)}
+
+
+@router.get("/diagram")
+async def get_network_diagram(
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """Returns network graph nodes and edges for visualizing inter-clan relationships."""
+    clans_res = await db.execute(select(Clan).where(Clan.status == "ACTIVE"))
+    clans = list(clans_res.scalars().all())
+
+    links_res = await db.execute(select(InterClanLink).where(InterClanLink.status == "ACTIVE"))
+    links = list(links_res.scalars().all())
+
+    nodes = [
+        {
+            "id": str(c.clan_id),
+            "name": c.name,
+            "code": c.clan_code,
+            "status": c.status,
+        }
+        for c in clans
+    ]
+
+    edges = [
+        {
+            "id": str(l.id),
+            "source": str(l.clan_a_id),
+            "target": str(l.clan_b_id),
+            "status": l.status,
+            "linkedAt": l.linked_at.isoformat() if l.linked_at else None,
+        }
+        for l in links
+    ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
+@router.get("/links/{link_id}/policies", response_model=List[PolicyResponse])
+async def get_sharing_policies(
+    link_id: str,
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """Gets shared data policies configured for an inter-clan link (FR-BO-57, FR-BO-77)."""
+    link_uuid = uuid.UUID(link_id)
+    stmt = select(InterClanSharedPolicy).where(InterClanSharedPolicy.link_id == link_uuid)
+    res = await db.execute(stmt)
+    policies = list(res.scalars().all())
+
+    return [
+        PolicyResponse(
+            id=str(p.id),
+            linkId=str(p.link_id),
+            ownerClanId=str(p.owner_clan_id),
+            dataScope=p.data_scope,
+            allowedFields=p.allowed_fields or {},
+            visibility=p.visibility,
+            canExport=p.can_export,
+            updatedAt=p.updated_at,
+        )
+        for p in policies
+    ]
+
+
+@router.put("/links/{link_id}/policies")
+async def update_sharing_policy(
+    link_id: str,
+    data: PolicyUpdate,
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """Updates shared data policy for a link (FR-BO-57, FR-BO-77)."""
+    link_uuid = uuid.UUID(link_id)
+    stmt = select(InterClanSharedPolicy).where(InterClanSharedPolicy.link_id == link_uuid)
+    res = await db.execute(stmt)
+    policy = res.scalars().first()
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found for this link")
+
+    if data.data_scope is not None:
+        policy.data_scope = data.data_scope
+    if data.allowed_fields is not None:
+        policy.allowed_fields = data.allowed_fields
+    if data.can_export is not None:
+        policy.can_export = data.can_export
+
+    policy.updated_by = account.id
+    policy.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {
+        "status": "SUCCESS",
+        "policy_id": str(policy.id),
+        "data_scope": policy.data_scope,
+        "allowed_fields": policy.allowed_fields,
+        "can_export": policy.can_export,
+    }
 
 
 @router.get("/link-requests", response_model=List[LinkRequestResponse])
@@ -201,7 +387,7 @@ async def review_link_request(
             link_id=link.id,
             owner_clan_id=req.source_clan_id,
             data_scope="BASIC",
-            allowed_fields={"full_name": True, "generation": True, "gender": True},
+            allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
             visibility="INTER_FAMILY",
             can_export=False,
             updated_by=account.id,
@@ -211,7 +397,7 @@ async def review_link_request(
             link_id=link.id,
             owner_clan_id=req.target_clan_id,
             data_scope="BASIC",
-            allowed_fields={"full_name": True, "generation": True, "gender": True},
+            allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
             visibility="INTER_FAMILY",
             can_export=False,
             updated_by=account.id,
@@ -233,6 +419,7 @@ async def review_link_request(
 
 
 @router.get("/shared-tree/{target_family_id}", response_model=TreeDataResponse)
+@router.get("/families/{target_family_id}/shared-tree", response_model=TreeDataResponse)
 async def get_shared_tree(
     target_family_id: str,
     db: AsyncSession = Depends(get_db),
@@ -257,6 +444,20 @@ async def get_shared_tree(
             detail="No active inter-clan link with this family",
         )
 
+    # Fetch sharing policy of target family
+    policy_stmt = select(InterClanSharedPolicy).where(
+        InterClanSharedPolicy.link_id == link.id,
+        InterClanSharedPolicy.owner_clan_id == target_uuid,
+    )
+    p_res = await db.execute(policy_stmt)
+    policy = p_res.scalars().first()
+    allowed_fields = policy.allowed_fields if policy and policy.allowed_fields else {
+        "full_name": True,
+        "generation": True,
+        "gender": True,
+        "avatar_url": True,
+    }
+
     # Fetch persons and relationships of target clan
     persons_res = await db.execute(select(Person).where(Person.family_id == target_uuid))
     persons = list(persons_res.scalars().all())
@@ -264,7 +465,7 @@ async def get_shared_tree(
     rels_res = await db.execute(select(Relationship).where(Relationship.family_id == target_uuid))
     relationships = list(rels_res.scalars().all())
 
-    # Build tree nodes with privacy scoping (no private bio, contact, phone, or internal notes)
+    # Build tree nodes with privacy scoping
     nodes = [
         TreeNode(
             id=str(p.id),
@@ -272,7 +473,7 @@ async def get_shared_tree(
             gender=p.gender or "unknown",
             generation=p.generation or 1,
             branchId=str(p.branch_id) if p.branch_id else None,
-            avatarUrl=p.avatar_url,
+            avatarUrl=p.avatar_url if allowed_fields.get("avatar_url", True) else None,
             isLiving=True if p.is_alive is None else p.is_alive,
             status=p.status,
         )
