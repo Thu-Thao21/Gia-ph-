@@ -13,6 +13,8 @@ from app.core.openapi_responses import (
     BASE,
     error_responses,
 )
+from app.core.rate_limit import rate_limited
+from app.core.security_headers import NoStoreRoute
 from app.db.postgres import get_db
 from app.dependencies.auth import Principal, get_principal_allow_restricted, get_user_access_repo
 from app.dependencies.permissions import get_family_repo
@@ -26,18 +28,20 @@ from app.schemas.auth import (
     SessionCreateResponse,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"], route_class=NoStoreRoute)
 
 
 @router.post(
     "/session",
     status_code=201,
     response_model=SessionCreateResponse,
+    dependencies=[Depends(rate_limited("session"))],
     responses=error_responses(
         ErrorCode.INVALID_ID_TOKEN,
         ErrorCode.ACCOUNT_BLOCKED,
         ErrorCode.TEMPORARY_PASSWORD_EXPIRED,
         ErrorCode.VALIDATION_ERROR,
+        ErrorCode.RATE_LIMITED,
         ErrorCode.PROVIDER_UNAVAILABLE,
         *BASE,
     ),

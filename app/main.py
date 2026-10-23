@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.core.errors import UnhandledErrorMiddleware, register_exception_handlers
 from app.core.rate_limit import build_rate_limiters
 from app.core.request_id import RequestIdMiddleware
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.core.startup_checks import ConfigurationError, validate_runtime_config
 from app.db.postgres import check_db, close_db, init_db
 from app.dependencies.auth import API_PREFIX
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
         # Without this the browser hides these headers from frontend JavaScript.
         expose_headers=["X-Request-ID", "Retry-After", "Idempotency-Replayed"],
     )
+    application.add_middleware(SecurityHeadersMiddleware)
     application.add_middleware(RequestIdMiddleware)
     register_exception_handlers(application)
     # In-memory, per process (docs/known_issues.md KI-17). Tests replace it to use a fake clock.

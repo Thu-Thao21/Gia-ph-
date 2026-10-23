@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_REGISTRATION_WINDOW_SECONDS: int = 3600
     RATE_LIMIT_TRACK_MAX: int = 20
     RATE_LIMIT_TRACK_WINDOW_SECONDS: int = 600
+    RATE_LIMIT_SESSION_MAX: int = 20
+    RATE_LIMIT_SESSION_WINDOW_SECONDS: int = 600
     RATE_LIMIT_MAX_KEYS: int = 10_000
     # X-Forwarded-For is ignored unless this is true (the caller can write that header).
     # TRUSTED_PROXY_COUNT is how many proxies sit in front of the app; the address is the
