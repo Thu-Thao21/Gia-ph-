@@ -48,7 +48,7 @@ from typing import Any, Awaitable, Callable, Mapping, Protocol
 from fastapi import Header
 from sqlalchemy.exc import OperationalError
 
-from app.core.db_errors import lock_wait_timed_out
+from app.core.errors.db_errors import lock_wait_timed_out
 from app.core.errors import AppError
 from app.schemas.errors import ErrorCode
 

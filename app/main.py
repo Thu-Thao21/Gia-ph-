@@ -20,11 +20,11 @@ from app.controllers.family_management.registration_admin_router import (
 from app.controllers.genealogy import router as genealogy_router
 from app.controllers.inter_family.router import router as inter_family_router
 from app.core.config import settings
-from app.core.errors import UnhandledErrorMiddleware, register_exception_handlers
-from app.core.rate_limit import build_rate_limiters
-from app.core.request_id import RequestIdMiddleware
-from app.core.security_headers import SecurityHeadersMiddleware
-from app.core.startup_checks import ConfigurationError, validate_runtime_config
+from app.core.errors.errors import UnhandledErrorMiddleware, register_exception_handlers
+from app.core.middleware.rate_limit import build_rate_limiters
+from app.core.middleware.request_id import RequestIdMiddleware
+from app.core.security.security_headers import SecurityHeadersMiddleware
+from app.core.config.startup_checks import ConfigurationError, validate_runtime_config
 from app.db.postgres import check_db, close_db, init_db
 from app.dependencies.auth import API_PREFIX
 from app.controllers import health

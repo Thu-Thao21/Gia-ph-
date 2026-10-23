@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 
 from app.controllers.auth_access.router import router
 from app.core.errors import register_exception_handlers
-from app.core.firebase import PasswordRejected, ProviderUnavailable, get_identity_provider
-from app.core.request_id import RequestIdMiddleware
+from app.core.integrations.firebase import PasswordRejected, ProviderUnavailable, get_identity_provider
+from app.core.middleware.request_id import RequestIdMiddleware
 from app.db.postgres import get_db
 from app.dependencies.auth import get_user_access_repo
 from app.dependencies.permissions import get_family_repo, owner_actions, system_admin_actions

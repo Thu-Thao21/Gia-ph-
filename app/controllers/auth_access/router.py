@@ -7,14 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.auth_access import use_cases
 from app.controllers.auth_access.use_cases import ClientInfo
-from app.core.firebase import IdentityProvider, get_identity_provider
-from app.core.openapi_responses import (
+from app.core.integrations.firebase import IdentityProvider, get_identity_provider
+from app.core.utils.openapi_responses import (
     AUTHENTICATED_RESTRICTED_OK,
     BASE,
     error_responses,
 )
-from app.core.rate_limit import rate_limited
-from app.core.security_headers import NoStoreRoute
+from app.core.middleware.rate_limit import rate_limited
+from app.core.security.security_headers import NoStoreRoute
 from app.db.postgres import get_db
 from app.dependencies.auth import Principal, get_principal_allow_restricted, get_user_access_repo
 from app.dependencies.permissions import get_family_repo
@@ -67,7 +67,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from app.core.config import settings
 from app.core.errors import AppError
-from app.core.tokens import generate_session_token, hash_session_token
+from app.core.security.tokens import generate_session_token, hash_session_token
 from app.models.user_access.entities import User
 from app.schemas.auth import SessionUser
 

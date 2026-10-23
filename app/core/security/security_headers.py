@@ -13,7 +13,7 @@ from fastapi.routing import APIRoute
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.errors import UnhandledErrorMiddleware
+from app.core.errors.errors import UnhandledErrorMiddleware
 
 SECURITY_HEADERS: tuple[tuple[str, str], ...] = (
     ("X-Content-Type-Options", "nosniff"),

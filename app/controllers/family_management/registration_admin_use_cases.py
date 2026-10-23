@@ -29,7 +29,7 @@ import httpx
 from app.controllers.auth_access.use_cases import ClientInfo, UnitOfWork
 from app.core.config import settings
 from app.core.errors import AppError
-from app.core.request_id import get_request_id
+from app.core.middleware.request_id import get_request_id
 from app.dependencies.auth import Principal
 from app.models.family.repository import FamilyRepository
 from app.models.user_access.repository import UserAccessRepository

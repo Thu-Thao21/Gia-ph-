@@ -47,8 +47,8 @@ from typing import Callable
 
 from fastapi import Request
 
-from app.core.client_ip import client_ip
-from app.core.errors import AppError
+from app.core.middleware.client_ip import client_ip
+from app.core.errors.errors import AppError
 from app.schemas.errors import ErrorCode
 
 UNKNOWN_CLIENT = "unknown"

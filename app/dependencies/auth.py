@@ -30,7 +30,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.core.tokens import hash_session_token
+from app.core.security.tokens import hash_session_token
 from app.db.postgres import get_db
 from app.models.user_access.entities import CredentialMetadata, User, UserSession
 from app.models.user_access.repository import UserAccessRepository

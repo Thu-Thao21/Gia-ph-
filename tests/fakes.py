@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from app.core.firebase import (
+from app.core.integrations.firebase import (
     InvalidIdToken,
     ProviderEmailTaken,
     ProviderUnavailable,
@@ -20,8 +20,8 @@ from app.core.firebase import (
     VerifiedIdentity,
     require_own_uid,
 )
-from app.core.rate_limit import RateLimiters, SlidingWindowLimiter
-from app.core.tokens import hash_session_token
+from app.core.middleware.rate_limit import RateLimiters, SlidingWindowLimiter
+from app.core.security.tokens import hash_session_token
 from app.models.family.entities import (
     BusinessRegistration,
     Clan,

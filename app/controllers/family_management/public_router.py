@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, Request, Response
 
 from app.controllers.auth_access.use_cases import ClientInfo
 from app.controllers.family_management import public_use_cases as use_cases
-from app.core.openapi_responses import BASE, error_responses
-from app.core.rate_limit import rate_limited
+from app.core.utils.openapi_responses import BASE, error_responses
+from app.core.middleware.rate_limit import rate_limited
 from app.db.postgres import get_db
 from app.dependencies.auth import get_user_access_repo
 from app.dependencies.permissions import get_family_repo

@@ -21,7 +21,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import settings
-from app.core.request_id import REQUEST_ID_HEADER
 from app.schemas.errors import (
     DEFAULT_ERROR_MESSAGE,
     ERROR_HTTP_STATUS,
@@ -32,6 +31,8 @@ from app.schemas.errors import (
 )
 
 logger = logging.getLogger("mfg.errors")
+
+REQUEST_ID_HEADER = "X-Request-ID"
 
 
 class AppError(Exception):

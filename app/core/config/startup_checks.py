@@ -12,8 +12,8 @@ from __future__ import annotations
 import os
 from typing import Mapping
 
-from app.core.config import Settings
-from app.core.firebase import EMULATOR_ENV
+from app.core.config.config import Settings
+from app.core.integrations.firebase import EMULATOR_ENV
 
 
 class ConfigurationError(RuntimeError):

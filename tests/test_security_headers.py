@@ -19,8 +19,8 @@ from fastapi.testclient import TestClient
 from app.routers import health
 from app.controllers.auth_access.router import router as auth_router
 from app.controllers.family_management.public_router import router as public_router
-from app.core.firebase import get_identity_provider
-from app.core.tokens import hash_tracking_code
+from app.core.integrations.firebase import get_identity_provider
+from app.core.security.tokens import hash_tracking_code
 from app.db.postgres import get_db
 from app.dependencies.auth import get_user_access_repo
 from app.dependencies.permissions import get_family_repo
