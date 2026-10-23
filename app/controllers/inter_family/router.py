@@ -364,58 +364,64 @@ async def review_link_request(
 
     now = datetime.now(timezone.utc)
     action = data.action.upper()
-    if action == "APPROVE":
-        req.status = "APPROVED"
-        req.reviewed_by = account.id
-        req.reviewed_at = now
 
-        # Create active InterClanLink
-        link = InterClanLink(
-            id=uuid.uuid4(),
-            request_id=req.id,
-            clan_a_id=req.source_clan_id,
-            clan_b_id=req.target_clan_id,
-            status="ACTIVE",
-            linked_at=now,
-        )
-        db.add(link)
-        await db.flush()
+    try:
+        if action == "APPROVE":
+            req.status = "APPROVED"
+            req.reviewed_by = account.id
+            req.reviewed_at = now
 
-        # Create default InterClanSharedPolicy
-        policy_a = InterClanSharedPolicy(
-            id=uuid.uuid4(),
-            link_id=link.id,
-            owner_clan_id=req.source_clan_id,
-            data_scope="BASIC",
-            allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
-            visibility="INTER_FAMILY",
-            can_export=False,
-            updated_by=account.id,
-        )
-        policy_b = InterClanSharedPolicy(
-            id=uuid.uuid4(),
-            link_id=link.id,
-            owner_clan_id=req.target_clan_id,
-            data_scope="BASIC",
-            allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
-            visibility="INTER_FAMILY",
-            can_export=False,
-            updated_by=account.id,
-        )
-        db.add(policy_a)
-        db.add(policy_b)
+            # Create active InterClanLink
+            link = InterClanLink(
+                id=uuid.uuid4(),
+                request_id=req.id,
+                clan_a_id=req.source_clan_id,
+                clan_b_id=req.target_clan_id,
+                status="ACTIVE",
+                linked_at=now,
+            )
+            db.add(link)
+            await db.flush()
 
-        await db.commit()
-        return {"status": "APPROVED", "link_id": str(link.id)}
+            # Create default InterClanSharedPolicy for both clans atomically
+            policy_a = InterClanSharedPolicy(
+                id=uuid.uuid4(),
+                link_id=link.id,
+                owner_clan_id=req.source_clan_id,
+                data_scope="BASIC",
+                allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
+                visibility="INTER_FAMILY",
+                can_export=False,
+                updated_by=account.id,
+            )
+            policy_b = InterClanSharedPolicy(
+                id=uuid.uuid4(),
+                link_id=link.id,
+                owner_clan_id=req.target_clan_id,
+                data_scope="BASIC",
+                allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
+                visibility="INTER_FAMILY",
+                can_export=False,
+                updated_by=account.id,
+            )
+            db.add(policy_a)
+            db.add(policy_b)
 
-    elif action == "REJECT":
-        req.status = "REJECTED"
-        req.reviewed_by = account.id
-        req.reviewed_at = now
-        await db.commit()
-        return {"status": "REJECTED"}
+            await db.commit()
+            return {"status": "APPROVED", "link_id": str(link.id)}
 
-    raise HTTPException(status_code=400, detail="Invalid review action. Must be APPROVE or REJECT.")
+        elif action == "REJECT":
+            req.status = "REJECTED"
+            req.reviewed_by = account.id
+            req.reviewed_at = now
+            await db.commit()
+            return {"status": "REJECTED"}
+
+        else:
+            raise HTTPException(status_code=400, detail="Invalid review action. Must be APPROVE or REJECT.")
+    except Exception:
+        await db.rollback()
+        raise
 
 
 @router.get("/shared-tree/{target_family_id}", response_model=TreeDataResponse)
