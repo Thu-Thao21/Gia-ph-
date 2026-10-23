@@ -392,12 +392,12 @@ export const BusinessRegisterWizard: React.FC = () => {
                 </div>
 
                 <div className="form-field">
-<<<<<<< HEAD
                   <label className="field-label">Địa chỉ Email liên hệ (@gmail.com) *</label>
                   <div className="email-input-group">
                     <input
                       type="email"
                       className="field-input"
+                      data-testid="input-rep-email"
                       placeholder="VD: nguyenvana@gmail.com"
                       value={repEmail}
                       onChange={(e) => {
@@ -478,18 +478,6 @@ export const BusinessRegisterWizard: React.FC = () => {
                       {otpMsg.text}
                     </p>
                   )}
-=======
-                  <label className="field-label">Địa chỉ Email liên hệ *</label>
-                  <input
-                    type="email"
-                    className="field-input"
-                    data-testid="input-rep-email"
-                    placeholder="VD: nguyenvana@gmail.com"
-                    value={repEmail}
-                    onChange={(e) => setRepEmail(e.target.value)}
-                    required
-                  />
->>>>>>> origin/FE-fixed
                 </div>
 
                 <div className="form-field">
