@@ -6,6 +6,7 @@ import {
   fetchServicePlans,
   formatPlanFeatures,
   formatPlanMemberLimit,
+  formatPlanPrice,
   formatPlanStorage,
   readApiError,
   withRequestId,
@@ -16,6 +17,7 @@ export interface BusinessTier {
   id: string;
   name: string;
   badge?: string;
+  priceFormatted: string;
   memberLimit: string | null;
   storage: string | null;
   features: string[];
@@ -38,6 +40,7 @@ export const BusinessPlansView: React.FC = () => {
           page.items.map((plan) => ({
             id: plan.plan_id,
             name: plan.name,
+            priceFormatted: formatPlanPrice(plan),
             memberLimit: formatPlanMemberLimit(plan),
             storage: formatPlanStorage(plan),
             features: formatPlanFeatures(plan),
@@ -80,9 +83,12 @@ export const BusinessPlansView: React.FC = () => {
 
         <div className="plans-cards-grid">
           {tiers.map((t) => (
-            <div key={t.id} className="plan-card">
+            <div key={t.id} className="plan-card" data-testid={`plan-card-${t.id}`}>
               {t.badge && <span className="plan-recom-badge">{t.badge}</span>}
               <h3 className="plan-name">{t.name}</h3>
+              <div className="plan-price-box">
+                <span className="plan-price-val">{t.priceFormatted}</span>
+              </div>
               {t.memberLimit && <div className="plan-limit">{t.memberLimit}</div>}
               {t.storage && <div className="plan-storage">{t.storage}</div>}
 
@@ -96,6 +102,7 @@ export const BusinessPlansView: React.FC = () => {
 
               <button
                 className="select-plan-btn"
+                data-testid={`btn-select-plan-${t.id}`}
                 onClick={() => navigate(`${ROUTES.PUBLIC.BUSINESS_REGISTER}?tier=${t.id}`)}
               >
                 Chọn Gói Này ➔

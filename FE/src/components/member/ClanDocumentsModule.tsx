@@ -53,6 +53,7 @@ export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canMan
 
   const chooseFile = (nextFile?: File) => {
     if (!nextFile) return;
+    if (nextFile.type.startsWith('image/') && nextFile.size > 5 * 1024 * 1024) { setFile(null); setError('Tệp hình ảnh vượt quá giới hạn 5 MB. Vui lòng chọn tệp nhỏ hơn.'); setUploadState('error'); return; }
     if (nextFile.size > 250 * 1024 * 1024) { setFile(null); setError('Tệp vượt quá giới hạn 250 MB.'); setUploadState('error'); return; }
     setFile(nextFile); setForm((current) => ({ ...current, name: current.name || nextFile.name, type: inferType(nextFile.name) })); setError(''); setUploadState('idle');
   };

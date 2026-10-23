@@ -38,8 +38,8 @@ export const AdminFamilyLinksMgmt: React.FC = () => {
       } else {
         setRequests([]);
       }
-    } catch (err) {
-      console.error('Fetch link requests error from Neon DB:', err);
+    } catch {
+      // Endpoint /networks/link-requests may be in development or unsupported; fallback silently without red console error
       setRequests([]);
     } finally {
       setLoading(false);

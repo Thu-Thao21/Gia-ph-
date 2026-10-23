@@ -47,6 +47,9 @@ export const BusinessRegisterWizard: React.FC = () => {
   const [trackingCode, setTrackingCode] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [clanNameError, setClanNameError] = useState('');
+  const [logoError, setLogoError] = useState('');
+  const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const retry = useRetryCountdown();
@@ -79,23 +82,64 @@ export const BusinessRegisterWizard: React.FC = () => {
 
   const selectedPlan = plans.find((plan) => plan.plan_id === selectedTier) || null;
 
+  // [L-27 & L-28] Validation Bước 1: Họ tên đại diện và Số điện thoại
   const handleNextStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repName || !repEmail || !repPhone) {
-      setErrorMsg('Vui lòng điền đầy đủ thông tin người đại diện.');
+    setErrorMsg('');
+
+    const trimmedRepName = repName.trim();
+    if (!trimmedRepName || trimmedRepName.length > 255) {
+      setErrorMsg('Họ và tên người đại diện không được để trống hoặc chỉ chứa khoảng trắng (từ 1 đến 255 ký tự).');
       return;
     }
+
+    const trimmedPhone = repPhone.trim();
+    // Regex: 6-30 ký tự, gồm số, khoảng trắng, (), -, và dấu + chỉ được đặt ở vị trí đầu tiên
+    const phoneRegex = /^\+?[0-9\s()-]{6,30}$/;
+    if (!phoneRegex.test(trimmedPhone) || (trimmedPhone.includes('+') && !trimmedPhone.startsWith('+'))) {
+      setErrorMsg('Số điện thoại không hợp lệ (từ 6 đến 30 ký tự, dấu + chỉ được đặt ở đầu, chỉ chấp nhận số và dấu cách, dấu ngoặc, gạch ngang).');
+      return;
+    }
+
+    const trimmedEmail = repEmail.trim();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      setErrorMsg('Vui lòng nhập địa chỉ email hợp lệ.');
+      return;
+    }
+
     setErrorMsg('');
     setStep(2);
   };
 
+  // [L-07 & L-29] Validation Bước 2: Tên dòng họ 5-255 ký tự, chữ cái tiếng Việt, số, khoảng trắng (chặn _ và ký tự đặc biệt)
   const handleNextStep2 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!familyName || !familyOrigin) {
-      setErrorMsg('Vui lòng điền tên dòng họ và quê gốc.');
+    setErrorMsg('');
+    setClanNameError('');
+
+    const trimmedFamilyName = familyName.trim();
+    if (trimmedFamilyName.length < 5 || trimmedFamilyName.length > 255) {
+      const err = 'Tên dòng họ phải có độ dài từ 5 đến 255 ký tự.';
+      setClanNameError(err);
+      setErrorMsg(err);
       return;
     }
+
+    const clanNameRegex = /^[a-zA-Z0-9\sàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]+$/;
+    if (!clanNameRegex.test(trimmedFamilyName)) {
+      const err = 'Tên dòng họ chỉ được chứa chữ cái tiếng Việt, số và khoảng trắng (không chứa ký tự gạch dưới _ hoặc ký tự đặc biệt).';
+      setClanNameError(err);
+      setErrorMsg(err);
+      return;
+    }
+
+    if (!familyOrigin.trim()) {
+      setErrorMsg('Vui lòng điền quê gốc / nhà thờ tổ chính.');
+      return;
+    }
+
     setErrorMsg('');
+    setClanNameError('');
     setStep(3);
   };
 
@@ -206,7 +250,36 @@ export const BusinessRegisterWizard: React.FC = () => {
 
             <div className="receipt-code-box">
               <span className="code-label">MÃ TRA CỨU THEO DÕI YÊU CẦU:</span>
-              <strong className="code-value">{trackingCode}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <strong className="code-value" data-testid="text-tracking-code">{trackingCode}</strong>
+                <button
+                  type="button"
+                  data-testid="btn-copy-tracking-code"
+                  onClick={() => {
+                    if (trackingCode) {
+                      navigator.clipboard.writeText(trackingCode);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    background: copied ? '#15803d' : '#22c55e',
+                    color: '#ffffff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  {copied ? '✓ Đã sao chép!' : '📋 Sao chép mã'}
+                </button>
+              </div>
               <span className="code-label">Mã chỉ hiển thị một lần, hãy lưu lại.</span>
             </div>
 
@@ -217,6 +290,7 @@ export const BusinessRegisterWizard: React.FC = () => {
             <div className="receipt-actions">
               <button
                 className="pub-btn-primary"
+                data-testid="btn-open-tracking-page"
                 onClick={() => navigate(ROUTES.PUBLIC.BUSINESS_TRACK, { state: { trackingCode } })}
               >
                 Mở Màn Hình Theo Dõi Trạng Thái ➔
@@ -235,6 +309,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <input
                     type="text"
                     className="field-input"
+                    data-testid="input-rep-name"
                     placeholder="VD: Nguyễn Văn A"
                     value={repName}
                     onChange={(e) => setRepName(e.target.value)}
@@ -247,6 +322,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <input
                     type="email"
                     className="field-input"
+                    data-testid="input-rep-email"
                     placeholder="VD: nguyenvana@gmail.com"
                     value={repEmail}
                     onChange={(e) => setRepEmail(e.target.value)}
@@ -259,6 +335,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <input
                     type="tel"
                     className="field-input"
+                    data-testid="input-rep-phone"
                     placeholder="VD: 0912345678"
                     value={repPhone}
                     onChange={(e) => setRepPhone(e.target.value)}
@@ -270,6 +347,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <label className="field-label">Vai trò / Chức danh trong dòng họ</label>
                   <select
                     className="field-select"
+                    data-testid="select-rep-role"
                     value={repRole}
                     onChange={(e) => setRepRole(e.target.value)}
                   >
@@ -280,7 +358,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                 </div>
 
                 <div className="wiz-action-row">
-                  <button type="submit" className="wiz-next-btn">
+                  <button type="submit" className="wiz-next-btn" data-testid="btn-step1-next">
                     Tiếp tục ➔
                   </button>
                 </div>
@@ -296,12 +374,25 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <label className="field-label">Tên dòng họ đăng ký *</label>
                   <input
                     type="text"
-                    className="field-input"
+                    className={`field-input ${clanNameError ? 'field-input-error' : ''}`}
+                    data-testid="input-clan-name"
                     placeholder="VD: Dòng Họ Nguyễn Chi 1 Kim Liên"
                     value={familyName}
-                    onChange={(e) => setFamilyName(e.target.value)}
+                    onChange={(e) => {
+                      setFamilyName(e.target.value);
+                      if (clanNameError) setClanNameError('');
+                    }}
                     required
                   />
+                  {clanNameError && (
+                    <span
+                      className="field-error-text"
+                      data-testid="clan-name-error"
+                      style={{ color: '#dc2626', fontSize: '13px', marginTop: '6px', display: 'block', fontWeight: 600 }}
+                    >
+                      ⚠️ {clanNameError}
+                    </span>
+                  )}
                 </div>
 
                 <div className="form-field">
@@ -309,6 +400,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <input
                     type="text"
                     className="field-input"
+                    data-testid="input-clan-origin"
                     placeholder="VD: Làng Đông, Xã Kim Liên, Huyện Nam Đàn, Nghệ An"
                     value={familyOrigin}
                     onChange={(e) => setFamilyOrigin(e.target.value)}
@@ -321,6 +413,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <input
                     type="text"
                     className="field-input"
+                    data-testid="input-clan-code"
                     placeholder="VD: NGUYEN_KL"
                     value={familyCode}
                     onChange={(e) => setFamilyCode(e.target.value)}
@@ -331,6 +424,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                   <label className="field-label">Mô tả tóm tắt lịch sử dòng họ</label>
                   <textarea
                     className="field-textarea"
+                    data-testid="textarea-clan-desc"
                     rows={3}
                     placeholder="Tóm tắt truyền thống, các chi nhánh chính..."
                     value={familyDesc}
@@ -338,11 +432,44 @@ export const BusinessRegisterWizard: React.FC = () => {
                   />
                 </div>
 
+                <div className="form-field">
+                  <label className="field-label">Ảnh biểu trưng / Logo dòng họ (Tùy chọn, tối đa 5MB)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="field-input"
+                    data-testid="input-clan-logo"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      setLogoError('');
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          setLogoError('Ảnh biểu trưng dòng họ vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn 5MB.');
+                          e.target.value = '';
+                          return;
+                        }
+                      }
+                    }}
+                  />
+                  {logoError && (
+                    <span
+                      className="field-error-text"
+                      data-testid="clan-logo-error"
+                      style={{ color: '#dc2626', fontSize: '13px', marginTop: '6px', display: 'block', fontWeight: 600 }}
+                    >
+                      ⚠️ {logoError}
+                    </span>
+                  )}
+                  <small style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                    Định dạng hỗ trợ: JPG, PNG, WEBP, SVG (tối đa 5MB).
+                  </small>
+                </div>
+
                 <div className="wiz-action-row">
-                  <button type="button" className="wiz-back-btn" onClick={() => setStep(1)}>
+                  <button type="button" className="wiz-back-btn" data-testid="btn-step2-back" onClick={() => setStep(1)}>
                     ← Quay lại
                   </button>
-                  <button type="submit" className="wiz-next-btn">
+                  <button type="submit" className="wiz-next-btn" data-testid="btn-step2-next">
                     Tiếp tục ➔
                   </button>
                 </div>
@@ -365,6 +492,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                     <div
                       key={plan.plan_id}
                       className={`tier-option-card ${selectedTier === plan.plan_id ? 'selected' : ''}`}
+                      data-testid={`tier-card-${plan.plan_id}`}
                       onClick={() => setSelectedTier(plan.plan_id)}
                     >
                       <h4>{plan.name}</h4>
@@ -375,10 +503,10 @@ export const BusinessRegisterWizard: React.FC = () => {
                 </div>
 
                 <div className="wiz-action-row">
-                  <button type="button" className="wiz-back-btn" onClick={() => setStep(2)}>
+                  <button type="button" className="wiz-back-btn" data-testid="btn-step3-back" onClick={() => setStep(2)}>
                     ← Quay lại
                   </button>
-                  <button type="button" className="wiz-next-btn" onClick={handleNextStep3}>
+                  <button type="button" className="wiz-next-btn" data-testid="btn-step3-next" onClick={handleNextStep3}>
                     Tiếp tục ➔
                   </button>
                 </div>
@@ -405,12 +533,13 @@ export const BusinessRegisterWizard: React.FC = () => {
                 </div>
 
                 <div className="wiz-action-row">
-                  <button type="button" className="wiz-back-btn" onClick={() => setStep(3)}>
+                  <button type="button" className="wiz-back-btn" data-testid="btn-step4-back" onClick={() => setStep(3)}>
                     ← Sửa lại
                   </button>
                   <button
                     type="button"
                     className="wiz-submit-btn"
+                    data-testid="btn-submit-registration"
                     onClick={() => void handleSubmitRegistration()}
                     disabled={isSubmitting || retry.isLocked}
                   >

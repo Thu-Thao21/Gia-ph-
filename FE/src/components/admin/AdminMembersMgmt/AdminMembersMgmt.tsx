@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import apiClient from '../../../api/axios';
 import { fetchFamilyPersons, createFamilyPerson, updateFamilyPerson } from '../../../services/genealogy.service';
+import { GenderAvatar } from '../../common/GenderAvatar';
 import './AdminMembersMgmt.css';
 
 type MemberGender = 'male' | 'female' | 'other';
@@ -175,6 +176,21 @@ export const AdminMembersMgmt: React.FC = () => {
     const cleanedName = formData.full_name.trim();
     if (!cleanedName) return;
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (formData.birth_date && formData.birth_date > todayStr) {
+      showToast('Ngày sinh không thể lớn hơn ngày hiện tại.');
+      return;
+    }
+
+    if (modalMode === 'edit' && selectedMember) {
+      if (selectedMember.relationship === 'Vợ / Chồng' && selectedMember.gender !== formData.gender) {
+        const confirmed = window.confirm(
+          'Người này đang có quan hệ hôn phối (vợ/chồng). Việc thay đổi giới tính có thể tác động đến hiển thị quan hệ trong gia phả. Bạn có chắc chắn muốn tiếp tục?'
+        );
+        if (!confirmed) return;
+      }
+    }
+
     try {
       if (modalMode === 'edit' && selectedMember) {
         await updateFamilyPerson(clanId, selectedMember.id, {
@@ -268,10 +284,9 @@ export const AdminMembersMgmt: React.FC = () => {
                 <tr><td colSpan={6} className="family-table-message">Không tìm thấy thành viên phù hợp.</td></tr>
               ) : filteredMembers.map((member) => {
                 const age = getAge(member.birth_date);
-                const initials = member.full_name.split(' ').slice(-2).map((word) => word[0]).join('').toUpperCase();
                 return (
                   <tr key={member.id} className={member.status === 'hidden' ? 'is-hidden' : ''}>
-                    <td data-label="Thành viên"><div className="family-member-cell"><div className={`family-member-avatar gender-${member.gender}`}>{member.avatar_url ? <img src={member.avatar_url} alt="" /> : initials}</div><div><strong>{member.full_name}</strong><span>{member.other_name || member.email || 'Chưa liên kết email'}</span></div></div></td>
+                    <td data-label="Thành viên"><div className="family-member-cell"><div className={`family-member-avatar gender-${member.gender}`}><GenderAvatar avatarUrl={member.avatar_url} gender={member.gender} name={member.full_name} size={36} /></div><div><strong>{member.full_name}</strong><span>{member.other_name || member.email || 'Chưa liên kết email'}</span></div></div></td>
                     <td data-label="Ngày sinh"><strong className="family-table-primary">{formatDate(member.birth_date)}</strong><span className="family-table-secondary">{age === null ? 'Chưa rõ tuổi' : `${age} tuổi`}</span></td>
                     <td data-label="Đời / Chi"><strong className="family-table-primary">Đời thứ {member.generation}</strong><span className="family-branch-badge">{member.branch || 'Chưa phân chi'}</span></td>
                     <td data-label="Quan hệ"><span className="family-relation-text">{member.relationship || 'Thành viên'}</span></td>
@@ -298,16 +313,16 @@ export const AdminMembersMgmt: React.FC = () => {
             <div className="family-modal-header"><div><span>{modalMode === 'edit' ? 'Cập nhật hồ sơ' : 'Thành viên mới'}</span><h2 id="member-form-title">{modalMode === 'edit' ? 'Chỉnh sửa thành viên' : 'Thêm mới thành viên'}</h2></div><button type="button" onClick={() => setModalMode(null)} aria-label="Đóng"><Icon name="close" /></button></div>
             <form onSubmit={saveMember} className="family-member-form">
               <div className="family-form-grid">
-                <label className="family-field family-field-wide"><span>Họ và tên <b>*</b></span><input autoFocus required value={formData.full_name} onChange={(event) => setFormData({ ...formData, full_name: event.target.value })} placeholder="Ví dụ: Võ Văn An" /></label>
-                <label className="family-field"><span>Ngày sinh</span><input type="date" value={formData.birth_date} onChange={(event) => setFormData({ ...formData, birth_date: event.target.value })} /></label>
-                <label className="family-field"><span>Giới tính</span><select value={formData.gender} onChange={(event) => setFormData({ ...formData, gender: event.target.value })}><option value="male">Nam</option><option value="female">Nữ</option><option value="other">Khác</option></select></label>
+                <label className="family-field family-field-wide"><span>Họ và tên <b>*</b></span><input autoFocus required data-testid="input-member-fullname" value={formData.full_name} onChange={(event) => setFormData({ ...formData, full_name: event.target.value })} placeholder="Ví dụ: Võ Văn An" /></label>
+                <label className="family-field"><span>Ngày sinh</span><input type="date" data-testid="input-member-birthdate" max={new Date().toISOString().split('T')[0]} value={formData.birth_date} onChange={(event) => setFormData({ ...formData, birth_date: event.target.value })} /></label>
+                <label className="family-field"><span>Giới tính</span><select data-testid="select-member-gender" value={formData.gender} onChange={(event) => setFormData({ ...formData, gender: event.target.value })}><option value="male">Nam</option><option value="female">Nữ</option><option value="other">Khác</option></select></label>
                 <label className="family-field"><span>Quan hệ với chủ hộ <b>*</b></span><select required value={formData.relationship} onChange={(event) => setFormData({ ...formData, relationship: event.target.value })}><option value="">Chọn quan hệ</option><option value="Vợ / Chồng">Vợ / Chồng</option><option value="Con trai">Con trai</option><option value="Con gái">Con gái</option><option value="Con dâu">Con dâu</option><option value="Con rể">Con rể</option><option value="Anh / Chị / Em">Anh / Chị / Em</option><option value="Cháu">Cháu</option><option value="Thành viên khác">Thành viên khác</option></select></label>
                 <label className="family-field"><span>Chi nhánh</span><select value={formData.branch} onChange={(event) => setFormData({ ...formData, branch: event.target.value })}><option>Chi Trưởng</option><option>Chi Hai</option><option>Chi Ba</option><option>Chưa phân chi</option></select></label>
                 <label className="family-field"><span>Đời thứ</span><input type="number" min="1" max="30" value={formData.generation} onChange={(event) => setFormData({ ...formData, generation: Number(event.target.value) || 1 })} /></label>
                 <label className="family-field"><span>Số điện thoại</span><input type="tel" value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} placeholder="090 000 0000" /></label>
                 <label className="family-field family-field-wide"><span>Email tài khoản</span><input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value, has_account: Boolean(event.target.value) })} placeholder="thanhvien@example.com" /><small>Để trống nếu thành viên chưa cần tài khoản đăng nhập.</small></label>
               </div>
-              <div className="family-modal-footer"><button type="button" className="family-secondary-button" onClick={() => setModalMode(null)}>Hủy</button><button type="submit" className="family-primary-button"><Icon name={modalMode === 'edit' ? 'edit' : 'plus'} />{modalMode === 'edit' ? 'Lưu thay đổi' : 'Thêm thành viên'}</button></div>
+              <div className="family-modal-footer"><button type="button" className="family-secondary-button" onClick={() => setModalMode(null)}>Hủy</button><button type="submit" className="family-primary-button" data-testid="btn-save-member"><Icon name={modalMode === 'edit' ? 'edit' : 'plus'} />{modalMode === 'edit' ? 'Lưu thay đổi' : 'Thêm thành viên'}</button></div>
             </form>
           </div>
         </div>
@@ -317,7 +332,7 @@ export const AdminMembersMgmt: React.FC = () => {
         <div className="family-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setModalMode(null); }}>
           <div className="family-modal family-detail-modal" role="dialog" aria-modal="true" aria-labelledby="member-detail-title">
             <div className="family-modal-header"><div><span>Hồ sơ nhân khẩu</span><h2 id="member-detail-title">Chi tiết thành viên</h2></div><button type="button" onClick={() => setModalMode(null)} aria-label="Đóng"><Icon name="close" /></button></div>
-            <div className="family-detail-profile"><div className={`family-member-avatar gender-${selectedMember.gender}`}>{selectedMember.full_name.split(' ').slice(-2).map((word) => word[0]).join('').toUpperCase()}</div><div><h3>{selectedMember.full_name}</h3><p>{selectedMember.other_name || selectedMember.relationship}</p></div></div>
+            <div className="family-detail-profile"><div className={`family-member-avatar gender-${selectedMember.gender}`}><GenderAvatar avatarUrl={selectedMember.avatar_url} gender={selectedMember.gender} name={selectedMember.full_name} size={48} /></div><div><h3>{selectedMember.full_name}</h3><p>{selectedMember.other_name || selectedMember.relationship}</p></div></div>
             <dl className="family-detail-grid">
               <div><dt>Ngày sinh</dt><dd>{formatDate(selectedMember.birth_date)}</dd></div><div><dt>Giới tính</dt><dd>{selectedMember.gender === 'male' ? 'Nam' : selectedMember.gender === 'female' ? 'Nữ' : 'Khác'}</dd></div><div><dt>Thế hệ</dt><dd>Đời thứ {selectedMember.generation}</dd></div><div><dt>Chi nhánh</dt><dd>{selectedMember.branch || 'Chưa phân chi'}</dd></div><div><dt>Quan hệ</dt><dd>{selectedMember.relationship || 'Thành viên'}</dd></div><div><dt>Điện thoại</dt><dd>{selectedMember.phone || 'Chưa cập nhật'}</dd></div><div className="wide"><dt>Email</dt><dd>{selectedMember.email || 'Chưa liên kết tài khoản'}</dd></div>
             </dl>

@@ -41,6 +41,7 @@ export const BusinessTrackStatusPage: React.FC = () => {
   const urlCode = typeof stateCode === 'string' ? stateCode : searchParams.get('code') || '';
 
   const [inputCode, setInputCode] = useState(urlCode);
+  const [searchedCode, setSearchedCode] = useState(urlCode);
   const [currentResult, setCurrentResult] = useState<BusinessRequestStatus | null>(null);
   const [searched, setSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,9 +64,18 @@ export const BusinessTrackStatusPage: React.FC = () => {
   const handleLookup = async (codeToSearch?: string) => {
     // Mã tra cứu là bí mật: gửi nguyên vẹn, không trim, không đổi hoa/thường.
     const code = codeToSearch ?? inputCode;
-    if (!code.trim()) return;
+
+    // [L-31]: Bắt điều kiện rỗng
+    if (!code.trim()) {
+      setLookupError('Vui lòng nhập mã tra cứu.');
+      setSearched(true);
+      return;
+    }
+
     if (lookingUpRef.current || retry.isLocked) return;
 
+    // [L-09]: Gán searchedCode tại thời điểm nhấn nút tra cứu
+    setSearchedCode(code);
     lookingUpRef.current = true;
     setIsLoading(true);
     setLookupError('');
@@ -120,8 +130,9 @@ export const BusinessTrackStatusPage: React.FC = () => {
         <div className="track-header">
           <span className="track-badge">TRA CỨU TRẠNG THÁI YÊU CẦU</span>
           <h1 className="track-title">Theo Dõi Đăng Ký Dòng Họ Business</h1>
+          {/* [L-08] Sửa tiêu đề/mô tả: Xóa chữ 'hoặc email đại diện' và ví dụ BIZ-... */}
           <p className="track-subtitle">
-            Nhập mã theo dõi yêu cầu (VD: BIZ-20260912-1234) hoặc email đại diện để kiểm tra tiến độ xét duyệt.
+            Nhập mã theo dõi yêu cầu để kiểm tra tiến độ xét duyệt.
           </p>
 
           <form
@@ -131,16 +142,27 @@ export const BusinessTrackStatusPage: React.FC = () => {
               void handleLookup();
             }}
           >
+            {/* [L-08 & L-09 & L-31] Input placeholder, reset searched on change, disabled if empty */}
             <input
               type="text"
               className="track-input"
-              placeholder="Nhập mã tra cứu BIZ-... hoặc Email đại diện"
+              data-testid="input-track-code"
+              placeholder="Nhập mã tra cứu hồ sơ"
               value={inputCode}
-              onChange={(e) => setInputCode(e.target.value)}
+              onChange={(e) => {
+                setInputCode(e.target.value);
+                setSearched(false);
+                setLookupError('');
+              }}
               required
             />
-            <button type="submit" className="track-btn" disabled={isLoading || retry.isLocked}>
-              Tra Cứu Ngay
+            <button
+              type="submit"
+              className="track-btn"
+              data-testid="btn-track-submit"
+              disabled={!inputCode.trim() || isLoading || retry.isLocked}
+            >
+              {isLoading ? 'Đang tra cứu...' : 'Tra Cứu Ngay'}
             </button>
           </form>
         </div>
@@ -151,7 +173,8 @@ export const BusinessTrackStatusPage: React.FC = () => {
               <div className="track-empty">{displayError}</div>
             ) : !currentResult ? (
               <div className="track-empty">
-                ❌ Không tìm thấy yêu cầu đăng ký nào khớp với mã <strong>{inputCode}</strong>.
+                {/* [L-09] Sử dụng searchedCode thay cho inputCode */}
+                ❌ Không tìm thấy yêu cầu đăng ký nào khớp với mã <strong>{searchedCode}</strong>.
                 Vui lòng kiểm tra lại chính xác mã tra cứu đã cấp.
               </div>
             ) : (

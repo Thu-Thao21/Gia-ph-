@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './TopBar.css';
 
@@ -22,6 +22,36 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   
   const navigate = useNavigate();
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const notifMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowProfileMenu(false);
+        setShowNotifications(false);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showProfileMenu || showNotifications) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu, showNotifications]);
 
   const notifications: Array<{ id: number; title: string; desc: string; time: string; unread: boolean }> = [];
 
@@ -69,7 +99,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="topbar-right-group">
-        <div className="topbar-notif-wrapper">
+        <div className="topbar-notif-wrapper" ref={notifMenuRef}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="topbar-notif-btn"
@@ -119,7 +149,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
 
-        <div className="topbar-profile-wrapper">
+        <div className="topbar-profile-wrapper" ref={profileMenuRef}>
           <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="topbar-user-btn">
             <div className="topbar-user-avatar">{userName.charAt(0).toUpperCase()}</div>
 

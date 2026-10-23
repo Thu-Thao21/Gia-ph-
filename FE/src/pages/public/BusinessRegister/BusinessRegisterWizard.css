@@ -126,6 +126,11 @@
   background: #f8fafc;
 }
 
+.field-input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
 .wiz-action-row {
   display: flex;
   justify-content: space-between;
@@ -238,13 +243,15 @@
 }
 
 .code-value {
-  font-size: 26px;
+  font-size: 20px;
   color: #15803d;
-  letter-spacing: 2px;
+  letter-spacing: 0.5px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .receipt-warning {
-  background: #fffbeeb;
+  background: #fffbeb;
   border: 1px solid #fef3c7;
   color: #b45309;
   padding: 14px;

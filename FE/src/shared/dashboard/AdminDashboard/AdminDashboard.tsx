@@ -128,6 +128,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Metrics Grid (FR-SA-23) */}
+      <div className="admin-stats-overview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#334155', margin: 0 }}>Chỉ số Vận hành Hệ thống</h3>
+        <span
+          className="admin-demo-badge"
+          data-testid="badge-demo-stats-shared"
+          style={{
+            background: '#fef3c7',
+            color: '#92400e',
+            border: '1px solid #fde68a',
+            padding: '4px 12px',
+            borderRadius: '999px',
+            fontSize: '12px',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#d97706' }} />
+          Dữ liệu mẫu (Demo UI)
+        </span>
+      </div>
       <div className="admin-stats-grid-6">
         {metricCards.map((card, index) => (
           <div

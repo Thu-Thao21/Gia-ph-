@@ -173,12 +173,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const userRole = primaryRole === 'admin' ? 'Admin' : primaryRole === 'family_head' ? 'Chủ dòng họ' : isFamilyManager ? 'Family Admin' : 'Thành viên';
   const basePath = primaryRole === 'admin' ? ROUTES.ADMIN.ROOT : ROUTES.USER.ROOT;
 
-  // Mandatory first password change check
+  // [L-17] Mandatory first password change check
   useEffect(() => {
-    if (account && (account as any).must_change_password) {
+    if (account?.requires_password_change) {
       setShowFirstLoginModal(true);
     }
-  }, [account]);
+  }, [account?.requires_password_change]);
 
   // Sync URL → activeTab
   useEffect(() => {
