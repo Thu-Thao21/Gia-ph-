@@ -45,8 +45,24 @@ export const ImportExportPage: React.FC = () => {
             <p className="ie-card-desc">Trích xuất dữ liệu thành viên, gia phả, quỹ ra định dạng Excel hoặc PDF để lưu trữ.</p>
             
             <div className="ie-btn-group">
-              <button className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5 admin-btn-secondary w-full justify-center py-2.5 admin-btn-primary w-full justify-center bg-slate-800 hover:bg-slate-900 border-none py-2.5">Xuất Danh sách Thành viên (Excel)</button>
-              <button className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5 admin-btn-secondary w-full justify-center py-2.5 admin-btn-primary w-full justify-center bg-slate-800 hover:bg-slate-900 border-none py-2.5">Xuất Báo cáo Quỹ (Excel)</button>
+              <button
+                className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5"
+                disabled
+                title="Tính năng đang cập nhật"
+                data-testid="btn-export-excel-members"
+                style={{ opacity: 0.6, cursor: 'not-allowed' }}
+              >
+                Xuất Danh sách Thành viên (Excel) - Đang cập nhật
+              </button>
+              <button
+                className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5"
+                disabled
+                title="Tính năng đang cập nhật"
+                data-testid="btn-export-excel-funds"
+                style={{ opacity: 0.6, cursor: 'not-allowed' }}
+              >
+                Xuất Báo cáo Quỹ (Excel) - Đang cập nhật
+              </button>
               <button className="ie-btn-export admin-btn-secondary w-full justify-center py-2.5 admin-btn-secondary w-full justify-center py-2.5 admin-btn-primary w-full justify-center bg-slate-800 hover:bg-slate-900 border-none py-2.5">Xuất Phả đồ (PDF/Image)</button>
             </div>
           </div>

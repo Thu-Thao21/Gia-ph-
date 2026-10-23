@@ -39,6 +39,8 @@ export interface AccountProfile {
   memberships?: MembershipSummary[];
   /** Từ GET /auth/me: quyền cấp hệ thống (tạm thời, không hard-code). */
   permissions?: string[];
+  clan_name?: string | null;
+  clan_id?: string | null;
 }
 
 interface AuthContextType {
@@ -83,6 +85,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       // Không log nguyên đối tượng lỗi: nó chứa header Authorization.
       const info = readApiError(error);
+      if (info.code === 'PASSWORD_CHANGE_REQUIRED') {
+        const restrictedProfile: AccountProfile = {
+          id: user.uid,
+          firebase_uid: user.uid,
+          email: user.email,
+          display_name: user.displayName || user.email?.split('@')[0] || 'Người dùng',
+          email_verified: user.emailVerified,
+          phone_verified: false,
+          status: 'pending',
+          roles: [],
+          primary_role: 'member',
+          requires_password_change: true,
+        };
+        setAccount(restrictedProfile);
+        return restrictedProfile;
+      }
       console.warn('Không lấy được phiên hoặc tài khoản từ Backend:', info.status, info.code, info.requestId);
       clearSession();
       setAccount(null);
@@ -109,9 +127,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isDevIdent) {
       const res = await apiClient.post<SessionCreateResponse>('/auth/dev-session', { email: ident });
       setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
-      const profile = await fetchCurrentAccount();
-      setAccount(profile);
-      return profile;
+      try {
+        const profile = await fetchCurrentAccount();
+        setAccount(profile);
+        return profile;
+      } catch (err) {
+        const info = readApiError(err);
+        if (info.code === 'PASSWORD_CHANGE_REQUIRED') {
+          const restrictedProfile: AccountProfile = {
+            id: 'dev-user',
+            firebase_uid: 'dev-user',
+            email: ident,
+            display_name: ident,
+            email_verified: true,
+            phone_verified: false,
+            status: 'pending',
+            roles: [],
+            primary_role: 'member',
+            requires_password_change: true,
+          };
+          setAccount(restrictedProfile);
+          return restrictedProfile;
+        }
+        throw err;
+      }
     }
 
     const profile = await loginWithEmailPassword({

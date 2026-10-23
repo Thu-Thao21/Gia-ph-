@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../config/routes';
 import circularEmblemLogo from '../../../assets/logo/logo_circular_emblem.png';
@@ -25,6 +25,38 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const notifMenuRef = useRef<HTMLDivElement>(null);
+
+  // [L-30]: Lắng nghe sự kiện Escape và Click Outside để tự động đóng dropdown menu
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowProfileMenu(false);
+        setShowNotifications(false);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showProfileMenu || showNotifications) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu, showNotifications]);
 
   const [notifications, setNotifications] = useState<Array<{ id: number; title: string; desc: string; time: string; unread: boolean }>>([
     {
@@ -129,7 +161,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </form>
 
       <div className="topbar-right-group">
-        <div className="topbar-notif-wrapper">
+        <div className="topbar-notif-wrapper" ref={notifMenuRef}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="topbar-notif-btn"
@@ -184,8 +216,12 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
 
-        <div className="topbar-profile-wrapper">
-          <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="topbar-user-btn">
+        <div className="topbar-profile-wrapper" ref={profileMenuRef}>
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="topbar-user-btn"
+            data-testid="btn-topbar-profile"
+          >
             <div className="topbar-user-avatar">{userName.charAt(0).toUpperCase()}</div>
 
             <div className="topbar-user-info">
@@ -199,7 +235,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
 
           {showProfileMenu && (
-            <div className="topbar-profile-dropdown">
+            <div className="topbar-profile-dropdown" data-testid="dropdown-profile-menu">
               <div className="topbar-profile-header">
                 <div className="topbar-profile-name">{userName}</div>
                 <div className="topbar-profile-role">{userRole}</div>
@@ -221,7 +257,11 @@ export const TopBar: React.FC<TopBarProps> = ({
 
               <div className="topbar-profile-divider" />
 
-              <button onClick={onLogout} className="topbar-menu-item-logout">
+              <button
+                onClick={onLogout}
+                className="topbar-menu-item-logout"
+                data-testid="btn-topbar-logout"
+              >
                 Đăng xuất
               </button>
             </div>

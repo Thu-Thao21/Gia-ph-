@@ -110,6 +110,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             autoComplete="username"
             required
             className="login-form-input"
+            data-testid="input-login-account"
           />
         </div>
 
@@ -134,12 +135,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             autoComplete="current-password"
             required
             className="login-form-input"
+            data-testid="input-login-password"
           />
         </div>
 
         {error ? <p className="login-form-error">{error}</p> : null}
 
-        <button type="submit" disabled={isSubmitting} className="login-form-submit">
+        <button type="submit" disabled={isSubmitting} className="login-form-submit" data-testid="btn-login">
           {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
 

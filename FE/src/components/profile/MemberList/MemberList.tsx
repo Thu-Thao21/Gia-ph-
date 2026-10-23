@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchFamilies, fetchMembers } from '../../../services/member.service';
 import type { Family, Member } from '../../../types/member';
+import { GenderAvatar } from '../../common/GenderAvatar';
 import './MemberList.css';
 
 export interface MemberListProps {
@@ -92,11 +93,13 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
                 <tr key={m.id} onClick={() => onSelectMember(m.id)}>
                   <td>
                     <div className="member-cell-info">
-                      {m.avatarUrl ? (
-                        <img src={m.avatarUrl} alt={m.fullName} className="member-avatar-mini" />
-                      ) : (
-                        <div className="member-avatar-placeholder-mini">{m.fullName.charAt(0)}</div>
-                      )}
+                      <GenderAvatar
+                        avatarUrl={m.avatarUrl}
+                        gender={m.gender}
+                        name={m.fullName}
+                        size={32}
+                        imgClassName="member-avatar-mini"
+                      />
                       <div>
                         <div className="member-name-bold">{m.fullName}</div>
                         {m.otherName && <div className="member-other-name">({m.otherName})</div>}

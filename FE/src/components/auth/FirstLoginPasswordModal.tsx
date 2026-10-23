@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuthContext } from '../../context/AuthContext';
 import './FirstLoginPasswordModal.css';
 
 interface FirstLoginPasswordModalProps {
@@ -12,6 +13,7 @@ export const FirstLoginPasswordModal: React.FC<FirstLoginPasswordModalProps> = (
   onSuccess,
   onCancel,
 }) => {
+  const { changePassword } = useAuthContext();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,13 +45,12 @@ export const FirstLoginPasswordModal: React.FC<FirstLoginPasswordModalProps> = (
 
     setLoading(true);
     try {
-      // Simulate API call for password change
-      await new Promise((res) => setTimeout(res, 800));
+      await changePassword(currentPassword, newPassword);
       setLoading(false);
       onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       setLoading(false);
-      setErrorMsg('Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.');
+      setErrorMsg(err?.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.');
     }
   };
 

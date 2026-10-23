@@ -42,11 +42,11 @@ export async function fetchMemberDetail(memberId: string): Promise<MemberDetail 
 
 export async function fetchFamilies(): Promise<Family[]> {
   try {
-    const res = await apiClient.get('/families');
+    const res = await apiClient.get('/api/v1/families');
     const fams = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.items) ? res.data.items : [];
     return fams;
-  } catch (err) {
-    console.error('API fetchFamilies error:', err);
+  } catch {
+    // Graceful fallback to prevent red console 404 errors when unauthenticated or during route initialization
     return [];
   }
 }

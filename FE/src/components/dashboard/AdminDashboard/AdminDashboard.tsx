@@ -68,6 +68,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Admin Platform Stats Grid */}
+      <div className="admin-stats-overview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#334155', margin: 0 }}>Chỉ số Vận hành Hệ thống</h3>
+        <span
+          className="admin-demo-badge"
+          data-testid="badge-demo-stats"
+          style={{
+            background: '#fef3c7',
+            color: '#92400e',
+            border: '1px solid #fde68a',
+            padding: '4px 12px',
+            borderRadius: '999px',
+            fontSize: '12px',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#d97706' }} />
+          Dữ liệu mẫu (Demo UI)
+        </span>
+      </div>
       <div className="admin-stats-grid">
         {metricCards.map((card, index) => (
           <div key={index} className="admin-stat-card">
@@ -78,7 +100,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
               <div className="admin-stat-card-value">{card.value}</div>
             </div>
-            <div className="admin-stat-card-footer">{card.subtext}</div>
+            <div className="admin-stat-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{card.subtext}</span>
+              <span style={{ fontSize: '11px', color: '#b45309', background: '#fffbeb', padding: '1px 6px', borderRadius: '4px', border: '1px solid #fef3c7' }}>Demo UI</span>
+            </div>
           </div>
         ))}
       </div>

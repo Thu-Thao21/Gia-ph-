@@ -44,7 +44,7 @@ export const AdminToast: React.FC<{
 
 export const AdminPageHeader: React.FC<{
   eyebrow: string;
-  title: string;
+  title: React.ReactNode;
   description: string;
   actions?: React.ReactNode;
 }> = ({ eyebrow, title, description, actions }) => (
@@ -155,19 +155,28 @@ export const AdminConfirmDialog: React.FC<{
   message: string;
   confirmLabel: string;
   tone?: 'primary' | 'danger';
+  disabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-}> = ({ open, title, message, confirmLabel, tone = 'primary', onCancel, onConfirm }) => (
+}> = ({ open, title, message, confirmLabel, tone = 'primary', disabled = false, onCancel, onConfirm }) => (
   <AdminModal
     open={open}
     title={title}
     description="Hãy kiểm tra kỹ trước khi tiếp tục."
-    onClose={onCancel}
+    onClose={disabled ? () => {} : onCancel}
     size="sm"
     footer={
       <>
-        <button type="button" className="s6a-button secondary" onClick={onCancel}>Hủy</button>
-        <button type="button" className={`s6a-button ${tone}`} onClick={onConfirm}>{confirmLabel}</button>
+        <button type="button" className="s6a-button secondary" onClick={onCancel} disabled={disabled}>Hủy</button>
+        <button
+          type="button"
+          className={`s6a-button ${tone}`}
+          onClick={onConfirm}
+          disabled={disabled}
+          data-testid="btn-confirm-dialog"
+        >
+          {disabled ? 'Đang xử lý...' : confirmLabel}
+        </button>
       </>
     }
   >

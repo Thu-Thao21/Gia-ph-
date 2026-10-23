@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ErgoTreeNode } from '../../../types/tree';
+import { GenderAvatar } from '../../../components/common/GenderAvatar';
 import './TreeNodeCard.css';
 
 export interface TreeNodeCardProps {
@@ -22,14 +23,14 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
   const primarySpouse = node.spouses && node.spouses.length > 0 ? node.spouses[0] : null;
 
   const renderAvatar = (fullName: string, gender: string, avatarUrl?: string) => {
-    if (avatarUrl) {
-      return <img src={avatarUrl} alt={fullName} className="tree-person-avatar-img" />;
-    }
-    const initial = fullName ? fullName.trim().split(' ').pop()?.charAt(0).toUpperCase() || 'M' : 'M';
     return (
-      <div className={`tree-person-avatar-placeholder ${gender}`}>
-        {initial}
-      </div>
+      <GenderAvatar
+        avatarUrl={avatarUrl}
+        gender={gender}
+        name={fullName}
+        size={46}
+        imgClassName="tree-person-avatar-img"
+      />
     );
   };
 

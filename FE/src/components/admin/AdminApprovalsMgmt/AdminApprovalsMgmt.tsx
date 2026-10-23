@@ -48,6 +48,7 @@ export const AdminApprovalsMgmt: React.FC = () => {
   const [rejectTarget, setRejectTarget] = useState<AdminRegistrationSummary | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast, showToast, dismissToast } = useAdminToast();
 
   const loadData = useCallback(async () => {
@@ -86,6 +87,8 @@ export const AdminApprovalsMgmt: React.FC = () => {
   };
 
   const handleApprove = async (reg: AdminRegistrationSummary) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const res = await approveAndProvisionRegistration(reg.registration_id);
       setProvisionResult(res);
@@ -95,6 +98,8 @@ export const AdminApprovalsMgmt: React.FC = () => {
       loadData();
     } catch (err: any) {
       showToast(`Lỗi khi duyệt hồ sơ: ${err?.response?.data?.message || err.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -229,6 +234,7 @@ export const AdminApprovalsMgmt: React.FC = () => {
                               <button
                                 type="button"
                                 className="s6a-link-button success-text"
+                                data-testid="btn-approve"
                                 onClick={() => setApproveTarget(item)}
                               >
                                 Duyệt
@@ -295,6 +301,7 @@ export const AdminApprovalsMgmt: React.FC = () => {
                   <button
                     type="button"
                     className="s6a-button primary"
+                    data-testid="btn-approve-detail"
                     onClick={() => setApproveTarget(selectedDetail)}
                   >
                     Phê duyệt
@@ -350,8 +357,9 @@ export const AdminApprovalsMgmt: React.FC = () => {
             ? `Hồ sơ "${approveTarget.clan_name}" sẽ được chấp thuận, tự động tạo không gian dòng họ và cấp tài khoản Trưởng tộc gửi về email đại diện.`
             : ''
         }
-        confirmLabel="Xác nhận phê duyệt"
-        onCancel={() => setApproveTarget(null)}
+        confirmLabel={isSubmitting ? "Đang xử lý..." : "Xác nhận phê duyệt"}
+        disabled={isSubmitting}
+        onCancel={() => !isSubmitting && setApproveTarget(null)}
         onConfirm={() => approveTarget && handleApprove(approveTarget)}
       />
 

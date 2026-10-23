@@ -89,6 +89,8 @@ function sessionErrorMessage(err: unknown): string {
       return 'Tài khoản này hiện không thể sử dụng. Vui lòng liên hệ quản trị viên.';
     case 'TEMPORARY_PASSWORD_EXPIRED':
       return 'Mật khẩu tạm thời đã hết hạn. Vui lòng liên hệ quản trị viên để được cấp lại.';
+    case 'PASSWORD_CHANGE_REQUIRED':
+      return 'Tài khoản yêu cầu đổi mật khẩu lần đầu trước khi tiếp tục.';
     case 'PROVIDER_UNAVAILABLE':
     case 'DATABASE_UNAVAILABLE':
       return withRequestId('Hệ thống tạm thời không khả dụng. Vui lòng thử lại sau.', info);
@@ -139,6 +141,26 @@ export function toAccountProfile(me: MeResponse): AccountProfile {
           : membership.membership_status.toLowerCase(),
     }))
   );
+
+  // [L-18]: Phân tích mảng memberships trả về từ API /auth/me.
+  // Nếu chứa quyền BUSINESS_OWNER và dòng họ đang ACTIVE, gán primary_role = 'family_head'
+  // (không để fallback thành 'member'), đồng thời lưu clan_name vào profile để User Dashboard hiển thị đúng.
+  const activeBusinessOwnerMembership = me.memberships?.find(
+    (m) =>
+      m.membership_status === 'ACTIVE' &&
+      m.clan_status === 'ACTIVE' &&
+      m.roles.includes('BUSINESS_OWNER')
+  );
+
+  let primaryRole = 'member';
+  if (me.permissions && me.permissions.length > 0) {
+    primaryRole = 'admin';
+  } else if (activeBusinessOwnerMembership) {
+    primaryRole = 'family_head';
+  }
+
+  const primaryClan = activeBusinessOwnerMembership || me.memberships?.[0];
+
   return {
     id: me.user_id,
     firebase_uid: fbUser?.uid ?? 'dev-uid',
@@ -150,11 +172,12 @@ export function toAccountProfile(me: MeResponse): AccountProfile {
     phone_verified: false,
     status: me.status.toLowerCase(),
     roles,
-    // Chỉ System Admin có quyền cấp hệ thống (permissions[] ngoài dòng họ).
-    primary_role: me.permissions.length > 0 ? 'admin' : 'member',
+    primary_role: primaryRole,
     requires_password_change: me.requires_password_change,
     memberships: me.memberships,
     permissions: me.permissions,
+    clan_name: primaryClan?.clan_name ?? null,
+    clan_id: primaryClan?.clan_id ?? null,
   };
 }
 
@@ -172,6 +195,23 @@ async function completeLogin(user: FirebaseUser): Promise<AccountProfile> {
     }
     return await fetchCurrentAccount();
   } catch (err) {
+    // [L-16]: Nếu API /auth/me trả mã lỗi PASSWORD_CHANGE_REQUIRED, bắt mã lỗi này,
+    // giữ token tạm và lập tức trả về profile yêu cầu đổi mật khẩu lần đầu thay vì báo "Đăng nhập thất bại".
+    const info = readApiError(err);
+    if (info.code === 'PASSWORD_CHANGE_REQUIRED') {
+      return {
+        id: user.uid,
+        firebase_uid: user.uid,
+        email: user.email,
+        display_name: user.displayName || user.email?.split('@')[0] || 'Người dùng',
+        email_verified: user.emailVerified,
+        phone_verified: false,
+        status: 'pending',
+        roles: [],
+        primary_role: 'member',
+        requires_password_change: true,
+      };
+    }
     clearSession();
     await signOut(auth).catch(() => undefined);
     throw new Error(sessionErrorMessage(err));
