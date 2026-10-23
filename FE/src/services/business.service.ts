@@ -108,6 +108,24 @@ export async function trackBusinessRegistration(trackingCode: string): Promise<B
   return res.data;
 }
 
+export interface SendOtpResponse {
+  message: string;
+}
+
+export interface VerifyOtpResponse {
+  message: string;
+}
+
+export async function sendRegistrationOtp(email: string): Promise<SendOtpResponse> {
+  const res = await apiClient.post<SendOtpResponse>('/business-registrations/send-otp', { email });
+  return res.data;
+}
+
+export async function verifyRegistrationOtp(email: string, otp: string): Promise<VerifyOtpResponse> {
+  const res = await apiClient.post<VerifyOtpResponse>('/business-registrations/verify-otp', { email, otp });
+  return res.data;
+}
+
 // ----- Hiển thị -----
 
 /** "3600" giây -> "60 phút"; "75" -> "1 phút 15 giây". */

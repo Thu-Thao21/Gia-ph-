@@ -1,4 +1,5 @@
 import {
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -24,6 +25,7 @@ export interface RegisterPayload {
   password: string;
   confirmPassword?: string;
   displayName?: string;
+  otp?: string;
 }
 
 export interface LoginPayload {
@@ -252,24 +254,76 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await signOut(auth);
 }
 
+export interface RegisterOtpResponse {
+  message: string;
+}
+
+export async function sendRegisterOtp(email: string): Promise<RegisterOtpResponse> {
+  const res = await apiClient.post<RegisterOtpResponse>('/auth/register-send-otp', { email });
+  return res.data;
+}
+
+export async function verifyRegisterOtp(email: string, otp: string): Promise<RegisterOtpResponse> {
+  const res = await apiClient.post<RegisterOtpResponse>('/auth/register-verify-otp', { email, otp });
+  return res.data;
+}
+
 /**
- * Tự đăng ký tài khoản: BE mới KHÔNG có endpoint (tài khoản do hệ thống cấp;
- * tự đăng ký Firebase không tạo tài khoản trong hệ thống). Không gọi API cũ.
+ * Đăng ký tài khoản cá nhân bằng Gmail thật đã xác thực OTP:
+ * Tạo người dùng phía Backend và tự động đăng nhập.
  */
 export async function registerWithEmailPassword(payload: RegisterPayload): Promise<AccountProfile> {
-  void payload;
-  throw new Error(
-    'Hệ thống chưa hỗ trợ tự đăng ký tài khoản. Tài khoản do quản trị viên cấp; nếu muốn đăng ký dòng họ, vui lòng dùng mục Đăng ký Business.'
-  );
+  const email = (payload.email || '').trim();
+  if (!email.toLowerCase().endsWith('@gmail.com')) {
+    throw new Error('Email đăng ký bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com.');
+  }
+  if (!payload.otp) {
+    throw new Error('Vui lòng xác thực mã OTP trước khi tạo tài khoản.');
+  }
+
+  // Thử tạo tài khoản trên Firebase trước nếu có thể
+  try {
+    await createUserWithEmailAndPassword(auth, email, payload.password);
+  } catch (fbErr: any) {
+    console.warn('Firebase registration notice:', fbErr?.code || fbErr?.message);
+  }
+
+  try {
+    const res = await apiClient.post<SessionCreateResponse>('/auth/register-public', {
+      email,
+      password: payload.password,
+      display_name: payload.displayName || payload.username || email.split('@')[0],
+      username: payload.username || email.split('@')[0],
+      otp: payload.otp,
+    });
+    setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
+    return await fetchCurrentAccount();
+  } catch (err: unknown) {
+    const info = readApiError(err);
+    if (info.isNetworkError) {
+      throw new Error('Không thể kết nối đến máy chủ Backend.');
+    }
+    if (info.code === 'EMAIL_ALREADY_EXISTS') {
+      throw new Error('Địa chỉ Gmail này đã được sử dụng để đăng ký tài khoản.');
+    }
+    if (info.code === 'INVALID_OTP' || info.code === 'EMAIL_NOT_VERIFIED') {
+      throw new Error(info.message || 'Mã xác thực OTP không đúng hoặc đã hết hạn.');
+    }
+    throw new Error(info.message || 'Đăng ký tài khoản thất bại. Vui lòng thử lại.');
+  }
 }
 
 /**
  * Đăng nhập Email/Password qua Firebase, rồi đổi ID token lấy phiên BE.
+ * Bắt buộc địa chỉ email phải là Gmail (@gmail.com).
  */
 export async function loginWithEmailPassword(payload: LoginPayload): Promise<AccountProfile> {
   const email = payload.email.trim();
   if (!email.includes('@')) {
-    throw new Error('Vui lòng đăng nhập bằng địa chỉ email.');
+    throw new Error('Vui lòng đăng nhập bằng địa chỉ Gmail (@gmail.com).');
+  }
+  if (!email.toLowerCase().endsWith('@gmail.com')) {
+    throw new Error('Hệ thống chỉ hỗ trợ đăng nhập bằng tài khoản Gmail (kết thúc bằng @gmail.com).');
   }
   let user: FirebaseUser;
   try {

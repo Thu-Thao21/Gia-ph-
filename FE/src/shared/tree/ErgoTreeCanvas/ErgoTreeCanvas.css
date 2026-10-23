@@ -69,6 +69,24 @@
   transition: all 0.3s ease;
 }
 
+/* Vertical stem line going DOWN from parent to the horizontal branch line */
+.ergo-tree-children-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 18px;
+  background: #3b82f6;
+  z-index: 2;
+}
+
+/* For single child: a single continuous 36px line drops straight down from parent to child */
+.ergo-tree-children-row.single-child-row::before {
+  height: 36px;
+}
+
 .ergo-tree-children-row.is-collapsed {
   display: none !important;
 }
@@ -79,31 +97,36 @@
   flex-direction: column;
   align-items: center !important;
   position: relative;
-  padding: 0 24px;
+  padding: 0 16px;
 }
 
-/* Vertical stem line going down into top center of child (50%) */
+/* Vertical stem line going down into top center of child (50%) from the horizontal bar */
 .ergo-tree-node-wrapper:not(.is-root)::before {
   content: '';
   position: absolute;
-  top: -36px;
+  top: -18px;
   left: 50%;
   transform: translateX(-50%);
-  width: 2.5px;
-  height: 36px;
-  background: #2563eb;
-  z-index: 3;
+  width: 2px;
+  height: 18px;
+  background: #3b82f6;
+  z-index: 2;
 }
 
-/* Precision Horizontal Branch Line (Zero Overhang) */
+/* Hide child vertical line if single child (parent's continuous line handles it) */
+.ergo-tree-children-row.single-child-row > .ergo-tree-node-wrapper:not(.is-root)::before {
+  display: none !important;
+}
+
+/* Precision Horizontal Branch Line (Zero Overhang) at top: -18px */
 .ergo-tree-node-wrapper:not(.is-root)::after {
   content: '';
   position: absolute;
-  top: -36px;
+  top: -18px;
   left: 0;
   right: 0;
-  height: 2.5px;
-  background: #2563eb;
+  height: 2px;
+  background: #3b82f6;
   z-index: 1;
 }
 
@@ -133,29 +156,48 @@
 .tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper {
   flex-direction: row;
   align-items: center !important;
-  padding: 14px 0;
+  padding: 12px 0;
 }
 
 .tree-canvas-inner.direction-horizontal .ergo-tree-children-row {
   flex-direction: column;
   align-items: flex-start;
   padding-top: 0;
-  padding-left: 44px;
+  padding-left: 48px;
 }
 
+/* Stem line coming from right edge of parent to children vertical bar */
+.tree-canvas-inner.direction-horizontal .ergo-tree-children-row::before {
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 2px;
+}
+
+.tree-canvas-inner.direction-horizontal .ergo-tree-children-row.single-child-row::before {
+  width: 48px;
+}
+
+/* Horizontal line into left-center of child */
 .tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root)::before {
   top: 50% !important;
-  left: -44px !important;
+  left: -24px !important;
   transform: translateY(-50%) !important;
-  width: 44px !important;
-  height: 2.5px !important;
+  width: 24px !important;
+  height: 2px !important;
 }
 
+.tree-canvas-inner.direction-horizontal .ergo-tree-children-row.single-child-row > .ergo-tree-node-wrapper:not(.is-root)::before {
+  display: none !important;
+}
+
+/* Vertical branch bar connecting children */
 .tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root)::after {
   top: 0 !important;
   bottom: 0 !important;
-  left: -44px !important;
-  width: 2.5px !important;
+  left: -24px !important;
+  width: 2px !important;
   height: auto !important;
   right: auto !important;
 }
@@ -163,13 +205,13 @@
 .tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root):first-child::after {
   top: 50% !important;
   bottom: 0 !important;
-  left: -44px !important;
+  left: -24px !important;
 }
 
 .tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root):last-child::after {
   top: 0 !important;
   bottom: 50% !important;
-  left: -44px !important;
+  left: -24px !important;
 }
 
 /* Staggered sequential pop-in animation for each child */

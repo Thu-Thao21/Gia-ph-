@@ -58,18 +58,25 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
   return (
     <div
       className={`tree-couple-container ${node.isFocusPerson ? 'is-focus-group' : ''}`}
-      onClick={(e) => onCardClick(e, node)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onContextMenu(e, node);
-      }}
     >
       {/* Primary Person Card (Blood Child / Direct Lineage) */}
-      <div className={`tree-person-card ${node.gender} ${node.isFocusPerson ? 'is-focus-card' : ''}`}>
-        <div className="tree-person-gen-badge">
-          ĐỜI {node.generation}
-          <span className="tree-role-tag primary">
-            {getRoleTag(node.generation, node.gender, false)}
+      <div
+        className={`tree-person-card ${node.gender} ${node.isFocusPerson ? 'is-focus-card' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onCardClick(e, node);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu(e, node);
+        }}
+        title={`Click để xem sơ đồ 3 đời của ${node.fullName}`}
+      >
+        <div className={`tree-person-gen-badge ${node.isFocusPerson ? 'is-focus-badge' : ''}`}>
+          {`ĐỜI ${node.generation || 1}`}
+          <span className={`tree-role-tag primary ${node.isFocusPerson ? 'role-focus' : ''}`}>
+            {node.isFocusPerson ? 'Đang chọn' : (node.focusRole || getRoleTag(node.generation, node.gender, false))}
           </span>
         </div>
 
@@ -96,15 +103,41 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
           <div className="tree-spouse-connector">
             <div className="tree-spouse-line" />
             <span className="tree-spouse-badge">
-              {primarySpouse.gender === 'female' ? 'Vợ' : 'Chồng'}
+              {primarySpouse.focusRole || (primarySpouse.gender === 'female' ? 'Vợ' : 'Chồng')}
             </span>
           </div>
 
-          <div className={`tree-person-card ${primarySpouse.gender}`}>
+          <div
+            className={`tree-person-card ${primarySpouse.gender} ${node.isFocusPerson ? 'is-focus-spouse' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCardClick(e, {
+                ...node,
+                id: primarySpouse.id,
+                fullName: primarySpouse.fullName,
+                gender: primarySpouse.gender,
+                avatarUrl: primarySpouse.avatarUrl,
+                birthDate: primarySpouse.birthDate,
+                isAlive: primarySpouse.isAlive,
+                occupation: primarySpouse.occupation,
+              });
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenu(e, {
+                ...node,
+                id: primarySpouse.id,
+                fullName: primarySpouse.fullName,
+                gender: primarySpouse.gender,
+              });
+            }}
+            title={`Click để xem sơ đồ 3 đời của ${primarySpouse.fullName}`}
+          >
             <div className="tree-person-gen-badge spouse">
-              ĐỜI {node.generation}
+              {`ĐỜI ${node.generation || 1}`}
               <span className="tree-role-tag spouse">
-                {getRoleTag(node.generation, primarySpouse.gender, true)}
+                {primarySpouse.focusRole || getRoleTag(node.generation, primarySpouse.gender, true)}
               </span>
             </div>
 
@@ -130,7 +163,7 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
       {/* Toggle Expand/Collapse Button (Draws Stem Line Down to Children!) */}
       {hasChildren && onToggleExpand && (
         <button
-          className={`tree-node-toggle-btn ${!isExpanded ? 'collapsed' : ''} ${primarySpouse ? 'couple-toggle' : 'single-toggle'}`}
+          className={`tree-node-toggle-btn ${!isExpanded ? 'collapsed' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
             onToggleExpand(e, node);

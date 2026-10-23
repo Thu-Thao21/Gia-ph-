@@ -10,6 +10,8 @@ import {
   RATE_LIMIT_DONE_MESSAGE,
   rateLimitMessage,
   readApiError,
+  sendRegistrationOtp,
+  verifyRegistrationOtp,
   withRequestId,
   type ServicePlan,
 } from '../../../services/business.service';
@@ -29,6 +31,77 @@ export const BusinessRegisterWizard: React.FC = () => {
   const [repPhone, setRepPhone] = useState('');
   // repRole, familyCode, familyDesc chỉ hiển thị trên giao diện, KHÔNG gửi lên BE (BE từ chối trường lạ bằng 422).
   const [repRole, setRepRole] = useState('Trưởng tộc');
+
+  // OTP State
+  const [otpCode, setOtpCode] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpMsg, setOtpMsg] = useState<{ text: string; isError: boolean } | null>(null);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCountdown]);
+
+  const isValidGmail = (email: string) => {
+    return /^[^@\s]+@gmail\.com$/i.test(email.trim());
+  };
+
+  const handleSendOtp = async () => {
+    const trimmed = repEmail.trim();
+    if (!isValidGmail(trimmed)) {
+      setOtpMsg({ text: 'Email bắt buộc phải có đuôi @gmail.com hợp lệ.', isError: true });
+      return;
+    }
+    setOtpLoading(true);
+    setOtpMsg(null);
+    try {
+      await sendRegistrationOtp(trimmed);
+      setIsOtpSent(true);
+      setOtpCountdown(60);
+      setOtpMsg({ text: 'Mã xác thực 6 số đã được gửi tới Gmail của bạn. Vui lòng kiểm tra hộp thư.', isError: false });
+    } catch (err: unknown) {
+      const info = readApiError(err);
+      setOtpMsg({
+        text: info.isNetworkError
+          ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.'
+          : info.message || 'Không thể gửi mã xác thực. Vui lòng thử lại sau.',
+        isError: true,
+      });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const trimmedCode = otpCode.trim();
+    if (trimmedCode.length !== 6) {
+      setOtpMsg({ text: 'Vui lòng nhập đủ 6 chữ số mã OTP.', isError: true });
+      return;
+    }
+    setOtpLoading(true);
+    setOtpMsg(null);
+    try {
+      await verifyRegistrationOtp(repEmail.trim(), trimmedCode);
+      setIsEmailVerified(true);
+      setOtpMsg({ text: 'Xác thực Gmail thành công!', isError: false });
+    } catch (err: unknown) {
+      const info = readApiError(err);
+      setOtpMsg({
+        text: info.isNetworkError
+          ? 'Không thể kết nối đến máy chủ.'
+          : info.message || 'Mã xác thực không đúng hoặc đã hết hạn.',
+        isError: true,
+      });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const [familyName, setFamilyName] = useState('');
   const [familyCode, setFamilyCode] = useState('');
@@ -83,6 +156,14 @@ export const BusinessRegisterWizard: React.FC = () => {
     e.preventDefault();
     if (!repName || !repEmail || !repPhone) {
       setErrorMsg('Vui lòng điền đầy đủ thông tin người đại diện.');
+      return;
+    }
+    if (!isValidGmail(repEmail)) {
+      setErrorMsg('Địa chỉ email bắt buộc phải có đuôi @gmail.com hợp lệ.');
+      return;
+    }
+    if (!isEmailVerified) {
+      setErrorMsg('Vui lòng xác thực địa chỉ Gmail bằng mã OTP trước khi tiếp tục.');
       return;
     }
     setErrorMsg('');
@@ -243,15 +324,91 @@ export const BusinessRegisterWizard: React.FC = () => {
                 </div>
 
                 <div className="form-field">
-                  <label className="field-label">Địa chỉ Email liên hệ *</label>
-                  <input
-                    type="email"
-                    className="field-input"
-                    placeholder="VD: nguyenvana@gmail.com"
-                    value={repEmail}
-                    onChange={(e) => setRepEmail(e.target.value)}
-                    required
-                  />
+                  <label className="field-label">Địa chỉ Email liên hệ (@gmail.com) *</label>
+                  <div className="email-input-group">
+                    <input
+                      type="email"
+                      className="field-input"
+                      placeholder="VD: nguyenvana@gmail.com"
+                      value={repEmail}
+                      onChange={(e) => {
+                        setRepEmail(e.target.value);
+                        if (isEmailVerified) setIsEmailVerified(false);
+                        if (isOtpSent) setIsOtpSent(false);
+                        setOtpMsg(null);
+                      }}
+                      disabled={isEmailVerified}
+                      required
+                    />
+                    {!isEmailVerified && (
+                      <button
+                        type="button"
+                        className="otp-send-btn"
+                        onClick={handleSendOtp}
+                        disabled={otpLoading || otpCountdown > 0 || !isValidGmail(repEmail)}
+                      >
+                        {otpLoading ? 'Đang gửi...' : otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : isOtpSent ? 'Gửi lại mã' : 'Gửi mã OTP'}
+                      </button>
+                    )}
+                  </div>
+
+                  {isEmailVerified ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                      <span className="otp-success-badge">✓ Đã xác thực Gmail thành công</span>
+                      <button
+                        type="button"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          fontSize: '13px',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                        onClick={() => {
+                          setIsEmailVerified(false);
+                          setIsOtpSent(false);
+                          setOtpCode('');
+                          setOtpMsg(null);
+                        }}
+                      >
+                        Đổi email khác
+                      </button>
+                    </div>
+                  ) : (
+                    isOtpSent && (
+                      <div className="otp-box-container" style={{ marginTop: '8px' }}>
+                        <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+                          Nhập mã xác thực 6 số gửi đến hộp thư {repEmail}:
+                        </span>
+                        <div className="otp-input-row">
+                          <input
+                            type="text"
+                            maxLength={6}
+                            className="otp-input-code"
+                            placeholder="000000"
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          />
+                          <button
+                            type="button"
+                            className="otp-verify-btn"
+                            onClick={handleVerifyOtp}
+                            disabled={otpLoading || otpCode.trim().length !== 6}
+                          >
+                            {otpLoading ? 'Đang kiểm tra...' : 'Xác nhận OTP'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                  {otpMsg && (
+                    <p className={`otp-msg-text ${otpMsg.isError ? 'error' : 'success'}`} style={{ marginTop: '6px' }}>
+                      {otpMsg.text}
+                    </p>
+                  )}
                 </div>
 
                 <div className="form-field">

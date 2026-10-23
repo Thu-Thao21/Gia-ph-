@@ -59,3 +59,51 @@ export async function reviewLinkRequest(
   return res.data;
 }
 
+export async function fetchInterClanLinks(status?: string): Promise<any[]> {
+  try {
+    const res = await apiClient.get('/networks/links', { params: status ? { status } : {} });
+    return Array.isArray(res.data) ? res.data : [];
+  } catch (err) {
+    console.error('API fetchInterClanLinks error:', err);
+    return [];
+  }
+}
+
+export async function terminateInterClanLink(linkId: string): Promise<{ status: string }> {
+  const res = await apiClient.delete(`/networks/links/${linkId}`);
+  return res.data;
+}
+
+export async function fetchNetworkDiagram(): Promise<{ nodes: any[]; edges: any[] }> {
+  try {
+    const res = await apiClient.get('/networks/diagram');
+    return res.data || { nodes: [], edges: [] };
+  } catch (err) {
+    console.error('API fetchNetworkDiagram error:', err);
+    return { nodes: [], edges: [] };
+  }
+}
+
+export async function fetchSharingPolicies(linkId: string): Promise<any[]> {
+  try {
+    const res = await apiClient.get(`/networks/links/${linkId}/policies`);
+    return Array.isArray(res.data) ? res.data : [];
+  } catch (err) {
+    console.error('API fetchSharingPolicies error:', err);
+    return [];
+  }
+}
+
+export async function updateSharingPolicy(
+  linkId: string,
+  policyData: { dataScope?: string; allowedFields?: Record<string, boolean>; canExport?: boolean }
+): Promise<any> {
+  const res = await apiClient.put(`/networks/links/${linkId}/policies`, policyData);
+  return res.data;
+}
+
+export async function fetchSharedTree(familyId: string): Promise<any> {
+  const res = await apiClient.get(`/networks/shared-tree/${familyId}`);
+  return res.data;
+}
+

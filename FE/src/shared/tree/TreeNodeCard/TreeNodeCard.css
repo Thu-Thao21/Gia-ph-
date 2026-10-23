@@ -238,52 +238,36 @@
 /* Expand / Collapse Toggle Badge */
 .tree-node-toggle-btn {
   position: absolute;
-  bottom: -13px;
+  bottom: -11px;
+  left: 50%;
+  transform: translateX(-50%);
   background: #ffffff;
   border: 1.5px solid #2563eb;
   color: #1d4ed8;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
-  padding: 2.5px 12px;
+  padding: 2px 10px;
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.18);
-  display: flex;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.16);
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   white-space: nowrap;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.2s ease;
   z-index: 10;
-}
-
-/* Couple toggle position: centered on spouse connector line (140 + 22 = 162px) */
-.tree-node-toggle-btn.couple-toggle {
-  left: 162px;
-  transform: translateX(-50%);
-}
-
-.tree-node-toggle-btn.couple-toggle:hover {
-  transform: translateX(-50%) scale(1.1);
-}
-
-/* Single toggle position: centered on single person card (70px) */
-.tree-node-toggle-btn.single-toggle {
-  left: 70px;
-  transform: translateX(-50%);
-}
-
-.tree-node-toggle-btn.single-toggle:hover {
-  transform: translateX(-50%) scale(1.1);
 }
 
 .tree-node-toggle-btn:hover {
   background: #2563eb;
   color: #ffffff;
+  transform: translateX(-50%) scale(1.08);
 }
 
 .tree-node-toggle-btn.collapsed {
   border-color: #64748b;
   color: #475569;
+  background: #f8fafc;
 }
 
 .tree-node-toggle-btn.collapsed:hover {
@@ -291,15 +275,45 @@
   color: #ffffff;
 }
 
-/* Stem line leaving down from toggle button to children branch bar */
-.tree-node-toggle-btn:not(.collapsed)::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2.5px;
-  height: 24px;
-  background: #2563eb;
-  z-index: 12;
+/* ======================================================== */
+/* FOCUS VIEW HIGHLIGHT STYLES                              */
+/* ======================================================== */
+
+.tree-person-gen-badge.is-focus-badge {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
+  border: 1px solid #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4) !important;
 }
+
+.tree-role-tag.role-focus {
+  background: #fbbf24 !important;
+  color: #78350f !important;
+  font-weight: 900;
+}
+
+/* Selected Person Card Accentuation - Centered in middle of screen */
+.tree-person-card.is-focus-card {
+  border: 2.5px solid #2563eb !important;
+  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25), 0 12px 30px rgba(37, 99, 235, 0.25) !important;
+  transform: scale(1.05) translateY(-2px);
+  z-index: 8;
+  animation: focusPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes focusPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25), 0 12px 30px rgba(37, 99, 235, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.4), 0 16px 36px rgba(37, 99, 235, 0.35);
+  }
+}
+
+.tree-person-card.is-focus-spouse {
+  border: 2px dashed #ec4899 !important;
+  box-shadow: 0 6px 18px rgba(236, 72, 153, 0.15) !important;
+}
+
+

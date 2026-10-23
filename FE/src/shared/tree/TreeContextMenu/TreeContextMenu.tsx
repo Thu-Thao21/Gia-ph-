@@ -64,8 +64,8 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
         Thêm Vợ/Chồng
       </button>
 
-      <button className="tree-context-menu-item" onClick={() => onSelectFocus(node)}>
-        Duyệt riêng nhánh này
+      <button className="tree-context-menu-item tree-context-menu-focus-btn" onClick={() => onSelectFocus(node)}>
+        🎯 Làm người trung tâm (Focus View)
       </button>
 
       <div className="tree-context-menu-divider" />

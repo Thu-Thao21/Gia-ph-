@@ -30,10 +30,19 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   const [scrollTop, setScrollTop] = useState(0);
 
   useEffect(() => {
-    // Automatically expand root nodes by default
-    const initialExpanded = new Set<string>();
-    nodes.forEach((r) => initialExpanded.add(r.id));
-    setExpandedIds(initialExpanded);
+    // Tự động mở rộng toàn bộ các tầng ở lần đầu nạp danh sách nút
+    setExpandedIds((prev) => {
+      if (prev.size > 0) return prev;
+      const initialExpanded = new Set<string>();
+      const expandRecursive = (n: ErgoTreeNode) => {
+        initialExpanded.add(n.id);
+        if (n.children && n.children.length > 0) {
+          n.children.forEach(expandRecursive);
+        }
+      };
+      nodes.forEach(expandRecursive);
+      return initialExpanded;
+    });
   }, [nodes]);
 
   const toggleNodeExpansion = (nodeId: string) => {
@@ -48,10 +57,31 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     });
   };
 
+  // Tự động căn giữa màn hình (Auto-center viewport) người làm trung tâm (Ego)
+  useEffect(() => {
+    if (!viewportRef.current) return;
+
+    const timer = setTimeout(() => {
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+
+      const focusCard = viewport.querySelector('.tree-person-card.is-focus-card') as HTMLElement;
+      if (focusCard) {
+        focusCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        const viewportRect = viewport.getBoundingClientRect();
+        const cardRect = focusCard.getBoundingClientRect();
+        const deltaX = (cardRect.left + cardRect.width / 2) - (viewportRect.left + viewportRect.width / 2);
+        const deltaY = (cardRect.top + cardRect.height / 2) - (viewportRect.top + viewportRect.height / 2);
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          viewport.scrollBy({ left: deltaX, top: deltaY, behavior: 'smooth' });
+        }
+      }
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [nodes, zoomScale]);
+
   const handleNodeClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
-    if (node.children && node.children.length > 0) {
-      toggleNodeExpansion(node.id);
-    }
     onCardClick(e, node);
   };
 

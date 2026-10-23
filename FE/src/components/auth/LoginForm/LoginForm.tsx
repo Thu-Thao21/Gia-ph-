@@ -30,11 +30,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const identifier = formData.emailOrPhone.trim();
+    if (identifier.includes('@') && !identifier.toLowerCase().endsWith('@gmail.com')) {
+      setError('Hệ thống chỉ hỗ trợ đăng nhập bằng tài khoản Gmail (kết thúc bằng @gmail.com).');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const profile = await login({
-        emailOrPhone: formData.emailOrPhone,
+        emailOrPhone: identifier,
         password: formData.password,
       });
       onSuccess(profile);
@@ -92,14 +99,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
       <form onSubmit={handleSubmit} className="login-form-body">
         <div className="login-form-group">
-          <label className="login-form-label" htmlFor="login-identifier">Tên đăng nhập, email hoặc số điện thoại</label>
+          <label className="login-form-label" htmlFor="login-identifier">Địa chỉ Gmail (@gmail.com) hoặc Tên đăng nhập *</label>
           <input
             id="login-identifier"
             type="text"
             name="emailOrPhone"
             value={formData.emailOrPhone}
             onChange={handleChange}
-            placeholder="Tên đăng nhập, email hoặc số điện thoại"
+            placeholder="VD: nguyenvana@gmail.com"
             autoComplete="username"
             required
             className="login-form-input"

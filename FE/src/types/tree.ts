@@ -10,6 +10,7 @@ export interface SpouseNode {
   avatarUrl?: string;
   isAlive: boolean;
   occupation?: string;
+  focusRole?: string;
 }
 
 export interface ErgoTreeNode {
@@ -28,6 +29,8 @@ export interface ErgoTreeNode {
   spouses: SpouseNode[];
   children: ErgoTreeNode[];
   isFocusPerson?: boolean;
+  focusTier?: 'parent' | 'ego' | 'child';
+  focusRole?: string;
 }
 
 export interface TreeContextMenuState {
