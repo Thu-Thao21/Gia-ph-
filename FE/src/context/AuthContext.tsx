@@ -123,6 +123,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ident === 'giahuy' ||
       ident === 'maiphuchau144@gmail.com' ||
       ident === 'phuchau' ||
+      ident === 'truongtoc_vo' ||
+      ident === 'truongtoc_mai' ||
       ident.endsWith('@giapha.com');
 
     if (isDevIdent) {
