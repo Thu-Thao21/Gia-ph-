@@ -152,14 +152,23 @@ export function toAccountProfile(me: MeResponse): AccountProfile {
       m.roles.includes('BUSINESS_OWNER')
   );
 
+  const activeFamilyAdminMembership = me.memberships?.find(
+    (m) =>
+      m.membership_status === 'ACTIVE' &&
+      m.clan_status === 'ACTIVE' &&
+      m.roles.includes('FAMILY_ADMIN')
+  );
+
   let primaryRole = 'member';
   if (me.permissions && me.permissions.length > 0) {
     primaryRole = 'admin';
   } else if (activeBusinessOwnerMembership) {
     primaryRole = 'family_head';
+  } else if (activeFamilyAdminMembership) {
+    primaryRole = 'family_admin';
   }
 
-  const primaryClan = activeBusinessOwnerMembership || me.memberships?.[0];
+  const primaryClan = activeBusinessOwnerMembership || activeFamilyAdminMembership || me.memberships?.[0];
 
   return {
     id: me.user_id,

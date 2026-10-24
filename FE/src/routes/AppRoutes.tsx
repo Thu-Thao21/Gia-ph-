@@ -92,7 +92,7 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
         path="/user/*"
         element={
           <ProtectedRoute>
-            <RoleGuard allowedRoles={['member', 'family_head']}>
+            <RoleGuard allowedRoles={['member', 'family_head', 'family_admin']}>
               <Dashboard userName={userName} onLogout={handleLogout} />
             </RoleGuard>
           </ProtectedRoute>

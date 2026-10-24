@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { fetchFamilies } from '../../../services/member.service';
 import { buildErgoTreeFromDB } from '../../../services/tree.service';
 import type { Family, Member } from '../../../types/member';
@@ -11,17 +12,27 @@ import './TreeLayout.css';
 
 export interface TreeLayoutProps {
   onSelectMemberProfile?: (memberId: string) => void;
+  initialMode?: 'vertical' | 'horizontal' | 'focus';
+  familyId?: string;
 }
 
 export const TreeLayout: React.FC<TreeLayoutProps> = ({
   onSelectMemberProfile,
+  initialMode = 'vertical',
+  familyId,
 }) => {
+  const { account } = useAuth();
+  const isAdmin = account?.primary_role === 'admin';
+  const effectiveFamilyId = familyId || account?.clan_id || account?.memberships?.[0]?.clan_id;
+
   const [families, setFamilies] = useState<Family[]>([]);
-  const [selectedFamilyId, setSelectedFamilyId] = useState<string>('9316f9b9-6d70-4d08-bce1-9911dc117a24');
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string>(effectiveFamilyId || '');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [treeNodes, setTreeNodes] = useState<ErgoTreeNode[]>([]);
   const [focusMemberId, setFocusMemberId] = useState<string | undefined>(undefined);
-  const [treeDirection, setTreeDirection] = useState<'vertical' | 'horizontal'>('vertical');
+  const [treeDirection, setTreeDirection] = useState<'vertical' | 'horizontal'>(
+    initialMode === 'horizontal' ? 'horizontal' : 'vertical'
+  );
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -52,15 +63,19 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   useEffect(() => {
     fetchFamilies().then((fams) => {
-      setFamilies(fams);
-      if (fams.length > 0) {
-        const activeFam =
-          fams.find((f) => f.id === '9316f9b9-6d70-4d08-bce1-9911dc117a24' || f.name.includes('Gia đình A')) ||
-          fams[0];
-        setSelectedFamilyId(activeFam.id);
+      const allowedFams = isAdmin
+        ? fams
+        : effectiveFamilyId
+        ? fams.filter((f) => f.id === effectiveFamilyId)
+        : fams;
+      setFamilies(allowedFams.length > 0 ? allowedFams : fams);
+      if (effectiveFamilyId && fams.some((f) => f.id === effectiveFamilyId)) {
+        setSelectedFamilyId(effectiveFamilyId);
+      } else if (fams.length > 0) {
+        setSelectedFamilyId(fams[0].id);
       }
     });
-  }, []);
+  }, [effectiveFamilyId, isAdmin]);
 
   const requestCounterRef = React.useRef<number>(0);
 

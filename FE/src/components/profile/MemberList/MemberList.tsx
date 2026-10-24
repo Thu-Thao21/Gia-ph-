@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { fetchFamilies, fetchMembers } from '../../../services/member.service';
 import type { Family, Member } from '../../../types/member';
 import { GenderAvatar } from '../../common/GenderAvatar';
@@ -9,20 +10,31 @@ export interface MemberListProps {
 }
 
 export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
+  const { account } = useAuth();
+  const isAdmin = account?.primary_role === 'admin';
+  const userClanId = account?.clan_id || account?.memberships?.[0]?.clan_id;
+
   const [members, setMembers] = useState<Member[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
-  const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
+  const [selectedFamilyId, setSelectedFamilyId] = useState<string>(userClanId || '');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     fetchFamilies().then((data) => {
-      setFamilies(data);
-      if (data.length > 0) {
-        setSelectedFamilyId(data[0].id);
+      const allowedFams = isAdmin
+        ? data
+        : userClanId
+        ? data.filter((f) => f.id === userClanId)
+        : data;
+      setFamilies(allowedFams);
+      if (userClanId && data.some((f) => f.id === userClanId)) {
+        setSelectedFamilyId(userClanId);
+      } else if (allowedFams.length > 0) {
+        setSelectedFamilyId(allowedFams[0].id);
       }
     });
-  }, []);
+  }, [isAdmin, userClanId]);
 
   useEffect(() => {
     setLoading(true);
@@ -46,7 +58,7 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
           <input
             type="text"
             className="member-search-input"
-            placeholder=" Tìm tên, nghề nghiệp..."
+            placeholder="🔍 Tìm tên, nghề nghiệp..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -56,7 +68,7 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
             value={selectedFamilyId}
             onChange={(e) => setSelectedFamilyId(e.target.value)}
           >
-            <option value="">-- Tất cả dòng họ --</option>
+            {isAdmin && <option value="">-- Tất cả dòng họ --</option>}
             {families.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name} ({f.memberCount} thành viên)

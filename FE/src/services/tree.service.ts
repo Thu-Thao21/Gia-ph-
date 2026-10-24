@@ -11,13 +11,6 @@ export async function buildErgoTreeFromDB(
     let res = await fetchMembers({ familyId, limit: 1000 });
     let allMembers = Array.isArray(res?.items) ? res.items : [];
 
-    if (allMembers.length === 0 && familyId) {
-      const fallbackRes = await fetchMembers({ limit: 1000 });
-      if (Array.isArray(fallbackRes?.items) && fallbackRes.items.length > 0) {
-        allMembers = fallbackRes.items;
-      }
-    }
-
     if (allMembers.length === 0) {
       return { rootNodes: [], allMembers: [] };
     }

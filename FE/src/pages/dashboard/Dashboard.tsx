@@ -169,8 +169,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
 
   const displayUserName = account?.display_name || account?.username || firebaseUser?.displayName || userName || 'Người dùng';
   const primaryRole = account?.primary_role || 'member';
-  const isFamilyManager = account?.roles?.some((role) => role.role === 'manager' && role.status === 'active') && !account?.roles?.some((role) => role.role === 'family_head' && role.status === 'active');
-  const userRole = primaryRole === 'admin' ? 'Admin' : primaryRole === 'family_head' ? 'Chủ dòng họ' : isFamilyManager ? 'Family Admin' : 'Thành viên';
+  const isFamilyManager = (account?.roles?.some((role) => (role.role === 'manager' || role.role === 'family_admin') && role.status === 'active') || primaryRole === 'family_admin') && !account?.roles?.some((role) => role.role === 'family_head' && role.status === 'active');
+  const userRole = primaryRole === 'admin' ? 'Admin' : primaryRole === 'family_head' ? 'Chủ dòng họ' : (primaryRole === 'family_admin' || isFamilyManager) ? 'Family Admin' : 'Thành viên';
   const basePath = primaryRole === 'admin' ? ROUTES.ADMIN.ROOT : ROUTES.USER.ROOT;
 
   // [L-17] Mandatory first password change check
@@ -275,6 +275,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       'family-import-export': 'exchange', 'family-logs': 'audit',
     };
     if (familyViews[activeTab]) {
+      if (familyViews[activeTab] === 'tree') {
+        return (
+          <TreeLayout
+            familyId={account?.clan_id || account?.memberships?.[0]?.clan_id}
+            onSelectMemberProfile={(memberId) => {
+              setSelectedMemberId(memberId);
+              setActiveTab('member-profile');
+              navigate(ROUTES.USER.MEMBER_PROFILE, { replace: false });
+            }}
+          />
+        );
+      }
       const tabs: Record<FamilyAdminView, string> = {
         overview: 'dashboard', members: 'family-members', relations: 'family-relations',
         tree: 'family-tree', search: 'family-search', branches: 'family-branches',
@@ -292,7 +304,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
 
     // Tree Layout
     if (activeTab.startsWith('tree')) {
-      if (canManageFamily) return <FamilyAdminModule view="tree" onNavigate={() => handleSelectTab('family-relations')} />;
       const mode: TreeViewMode =
         activeTab === 'tree-horizontal'
           ? 'horizontal'
@@ -301,6 +312,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
           : 'vertical';
       return (
         <TreeLayout
+          familyId={account?.clan_id || account?.memberships?.[0]?.clan_id}
           initialMode={mode}
           onSelectMemberProfile={(memberId) => {
             setSelectedMemberId(memberId);

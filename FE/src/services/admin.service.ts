@@ -158,3 +158,47 @@ export async function approveAndProvisionRegistration(
   return res.data;
 }
 
+export interface ClanUserItem {
+  user_id: string;
+  display_name: string;
+  email: string;
+  user_status: string;
+  membership_status: string;
+  roles: string[];
+  is_family_admin: boolean;
+  joined_at?: string | null;
+}
+
+/** GET /clans/{clan_id}/users */
+export async function fetchClanUsers(
+  clanId: string,
+  params: { q?: string; page?: number; page_size?: number } = {}
+): Promise<Page<ClanUserItem>> {
+  const res = await apiClient.get<Page<ClanUserItem>>(`/clans/${clanId}/users`, {
+    params: {
+      q: params.q || undefined,
+      page: params.page ?? 1,
+      page_size: params.page_size ?? 100,
+    },
+  });
+  return res.data;
+}
+
+/** POST /clans/{clan_id}/admins */
+export async function assignFamilyAdmin(
+  clanId: string,
+  userId: string,
+  permissionCodes: string[] = []
+): Promise<{ clan_id: string; user_id: string; assignment_id: string }> {
+  const res = await apiClient.post(`/clans/${clanId}/admins`, {
+    user_id: userId,
+    permission_codes: permissionCodes,
+  });
+  return res.data;
+}
+
+/** DELETE /clans/{clan_id}/admins/{user_id} */
+export async function revokeFamilyAdmin(clanId: string, userId: string): Promise<void> {
+  await apiClient.delete(`/clans/${clanId}/admins/${userId}`);
+}
+

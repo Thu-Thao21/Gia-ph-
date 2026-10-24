@@ -1,4 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import apiClient from '../../api/axios';
+import {
+  fetchClanUsers, assignFamilyAdmin, revokeFamilyAdmin, type ClanUserItem,
+} from '../../services/admin.service';
 import {
   getFamilyAdminState, importPersons, issueAccount, removeRelation, requestAccountReset,
   reviewLinkRequest, reviewProposal, saveBranch, savePerson, saveRelation, sendLinkRequest,
@@ -62,13 +67,101 @@ function parseCsv(text: string): string[][] {
 }
 
 export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
+  const { account } = useAuth();
+  const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id || 'c0000000-0000-0000-0000-000000000001';
+  const isLeader = account?.primary_role === 'family_head';
+
   const data = useFamilyAdminState();
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [clanUsers, setClanUsers] = useState<ClanUserItem[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
+
+  const loadClanUsers = useCallback(async () => {
+    if (!clanId) return;
+    try {
+      setLoadingUsers(true);
+      const res = await fetchClanUsers(clanId);
+      setClanUsers(res.items);
+    } catch (err) {
+      console.error('Failed to load clan users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [clanId]);
 
   useEffect(() => {
-    // Tự động đồng bộ dữ liệu phả hệ thật từ Neon DB
-    syncFamilyAdminFromBackend('c9a59088-7ad7-4b21-8cba-19e2ea46d15a');
-  }, []);
+    syncFamilyAdminFromBackend(clanId);
+    loadClanUsers();
+  }, [clanId, loadClanUsers]);
+
+  const handleAssignFA = async (userId: string, userName: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn nâng quyền Quản trị viên dòng họ (Family Admin) cho "${userName}" không?`)) {
+      return;
+    }
+    setActionUserId(userId);
+    try {
+      await assignFamilyAdmin(clanId, userId);
+      setNotice({ text: `Đã nâng quyền Family Admin thành công cho ${userName}.`, error: false });
+      await loadClanUsers();
+    } catch (err: any) {
+      setNotice({ text: err?.response?.data?.message || err?.message || 'Không thể nâng quyền Family Admin.', error: true });
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  const handleRevokeFA = async (userId: string, userName: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn thu hồi quyền Family Admin của "${userName}" không?`)) {
+      return;
+    }
+    setActionUserId(userId);
+    try {
+      await revokeFamilyAdmin(clanId, userId);
+      setNotice({ text: `Đã thu hồi quyền Family Admin của ${userName}.`, error: false });
+      await loadClanUsers();
+    } catch (err: any) {
+      setNotice({ text: err?.response?.data?.message || err?.message || 'Không thể thu hồi quyền.', error: true });
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
+  const handleExportClanMembers = async () => {
+    try {
+      const response = await apiClient.get(`/families/${clanId}/persons/export?format=csv`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'danh-sach-thanh-vien.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+      setNotice({ text: 'Đã xuất danh sách thành viên dòng họ thành công.', error: false });
+    } catch (err) {
+      const current = getFamilyAdminState();
+      const rows = [
+        ['fullName', 'gender', 'birthDate', 'branch', 'generation'],
+        ...current.persons
+          .filter((person) => !person.hidden && person.visibility !== 'private')
+          .map((person) => [
+            person.fullName,
+            person.gender,
+            person.birthDate,
+            current.branches.find((branch) => branch.id === person.branchId)?.name || '',
+            String(person.generation),
+          ]),
+      ];
+      downloadFile(
+        'danh-sach-thanh-vien.csv',
+        rows.map((row) => row.map(csvEscape).join(',')).join('\r\n'),
+        'text/csv;charset=utf-8'
+      );
+      setNotice({ text: 'Đã xuất danh sách thành viên dòng họ.', error: false });
+    }
+  };
 
   const [query, setQuery] = useState('');
   const [personForm, setPersonForm] = useState<Omit<FamilyPerson, 'id'> | null>(null);
@@ -241,11 +334,106 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
 
     {view === 'approvals' && <div className="fa-panel"><h2>Đề xuất chờ xử lý</h2><p className="fa-muted">Khi duyệt, thay đổi được áp dụng vào dữ liệu bản xem trước. Từ chối giữ nguyên dữ liệu.</p>{data.proposals.length ? <div className="fa-proposals">{data.proposals.map((proposal) => <article className="fa-proposal" key={proposal.id}><div className="fa-proposal-top"><div><span className="fa-card-eyebrow">{proposal.type === 'profile' ? 'HỒ SƠ' : 'QUAN HỆ'} · {proposal.proposer}</span><h3>{proposal.summary}</h3></div><span className={`fa-status ${proposal.status}`}>{proposal.status === 'pending' ? 'Chờ duyệt' : proposal.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}</span></div><p>Person: <strong>{personName(proposal.personId)}</strong>{proposal.type === 'profile' ? ` · Giá trị đề xuất: ${proposal.proposedValue}` : proposal.relation ? ` · ${relationLabels[proposal.relation.type]}: ${personName(proposal.relation.fromId)} → ${personName(proposal.relation.toId)}` : ''}</p>{proposal.status === 'pending' ? <><label>Lý do / ghi chú<textarea rows={2} value={reviewNote[proposal.id] || ''} onChange={(event) => setReviewNote({ ...reviewNote, [proposal.id]: event.target.value })} placeholder="Bắt buộc khi từ chối" /></label><div className="fa-actions"><button type="button" className="fa-primary" onClick={() => run(() => reviewProposal(proposal.id, 'approved', reviewNote[proposal.id] || ''), 'Đã duyệt và cập nhật dữ liệu bản xem trước.')}>Phê duyệt</button><button type="button" onClick={() => run(() => reviewProposal(proposal.id, 'rejected', reviewNote[proposal.id] || ''), 'Đã từ chối đề xuất.')}>Từ chối</button></div></> : <small>{proposal.note || 'Không có ghi chú'}{proposal.reviewedAt ? ` · ${new Date(proposal.reviewedAt).toLocaleString('vi-VN')}` : ''}</small>}</article>)}</div> : <p>Chưa có đề xuất.</p>}</div>}
 
-    {view === 'accounts' && <><div className="fa-panel"><h2>Cấp bản nháp tài khoản cho Person</h2><p className="fa-muted">Chưa tạo tài khoản đăng nhập thật, chưa gửi email và không lưu mật khẩu trong trình duyệt.</p><form className="fa-form-grid" onSubmit={(event) => { event.preventDefault(); try { issueAccount(accountForm); setAccountForm({ personId: '', username: '', email: '' }); setNotice({ text: 'Đã tạo bản nháp tài khoản. Backend chưa cấp quyền đăng nhập.', error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể tạo bản nháp.', error: true }); } }}><label>Person *<select required value={accountForm.personId} onChange={(event) => setAccountForm({ ...accountForm, personId: event.target.value })}><option value="">Chọn Person</option>{data.persons.filter((person) => !person.deathDate && !data.accounts.some((account) => account.personId === person.id)).map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label><label>Username *<input required value={accountForm.username} onChange={(event) => setAccountForm({ ...accountForm, username: event.target.value })} /></label><label>Email<input type="email" value={accountForm.email} onChange={(event) => setAccountForm({ ...accountForm, email: event.target.value })} /></label><div className="fa-wide"><button className="fa-primary" type="submit">Tạo bản nháp tài khoản</button></div></form></div><div className="fa-panel"><h2>Danh sách tài khoản bản xem trước</h2><div className="fa-table-wrap"><table><thead><tr><th>Username</th><th>Person</th><th>Vai trò</th><th>Email</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{data.accounts.map((account) => <tr key={account.id}><td><strong>{account.username}</strong></td><td>{personName(account.personId)}</td><td>{account.role === 'owner' ? 'Owner' : 'Member'}</td><td>{account.email || '—'}</td><td><span className={`fa-status ${account.status === 'locked' ? 'rejected' : account.status === 'active' ? 'approved' : 'pending'}`}>{account.status === 'locked' ? 'Đã khóa' : account.status === 'active' ? 'Hoạt động (mẫu)' : 'Chờ kích hoạt'}</span>{account.resetRequestedAt && <small>Đã đánh dấu reset</small>}</td><td>{account.role === 'owner' ? <small>Không được quản lý Owner</small> : <div className="fa-actions"><button type="button" onClick={() => run(() => toggleAccountLock(account.id), 'Đã đổi trạng thái bản nháp. Không ảnh hưởng phiên đăng nhập thật.')}>{account.status === 'locked' ? 'Mở khóa' : 'Khóa'}</button><button type="button" onClick={() => run(() => requestAccountReset(account.id), 'Đã đánh dấu yêu cầu reset; chưa gửi email hoặc đổi mật khẩu thật.')}>Reset</button></div>}</td></tr>)}</tbody></table></div></div></>}
+    {view === 'accounts' && <>
+      <div className="fa-panel">
+        <div className="fa-panel-heading">
+          <div>
+            <h2>Phân quyền Quản trị viên dòng họ (Family Admin)</h2>
+            <p className="fa-muted">Trưởng tộc bổ nhiệm và phân quyền Family Admin từ các thành viên chính thức thuộc dòng họ.</p>
+          </div>
+          <button type="button" onClick={loadClanUsers} disabled={loadingUsers}>
+            {loadingUsers ? 'Đang tải...' : '🔄 Làm mới'}
+          </button>
+        </div>
+
+        <div className="fa-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Họ và tên</th>
+                <th>Email</th>
+                <th>Vai trò hiện tại</th>
+                <th>Trạng thái tài khoản</th>
+                <th>Thao tác quản trị</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clanUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '16px' }}>
+                    {loadingUsers ? 'Đang tải danh sách thành viên dòng họ...' : 'Chưa có thành viên nào trong dòng họ.'}
+                  </td>
+                </tr>
+              ) : (
+                clanUsers.map((u) => {
+                  const isOwner = u.roles.includes('BUSINESS_OWNER') || u.roles.includes('owner');
+                  return (
+                    <tr key={u.user_id}>
+                      <td><strong>{u.display_name}</strong></td>
+                      <td>{u.email}</td>
+                      <td>
+                        {isOwner ? (
+                          <span className="fa-status approved">Trưởng tộc (Chủ sở hữu)</span>
+                        ) : u.is_family_admin ? (
+                          <span className="fa-status approved" style={{ background: '#dcfce7', color: '#15803d', fontWeight: 600 }}>
+                            Family Admin
+                          </span>
+                        ) : (
+                          <span className="fa-status pending">Thành viên</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`fa-status ${u.user_status === 'ACTIVE' ? 'approved' : 'rejected'}`}>
+                          {u.user_status === 'ACTIVE' ? 'Hoạt động' : u.user_status}
+                        </span>
+                      </td>
+                      <td>
+                        {isOwner ? (
+                          <small>Không thể chỉnh sửa Chủ sở hữu</small>
+                        ) : u.is_family_admin ? (
+                          <button
+                            type="button"
+                            style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #f87171' }}
+                            disabled={!isLeader || actionUserId === u.user_id}
+                            onClick={() => handleRevokeFA(u.user_id, u.display_name)}
+                          >
+                            {actionUserId === u.user_id ? 'Đang xử lý...' : 'Thu hồi Family Admin'}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="fa-primary"
+                            disabled={!isLeader || actionUserId === u.user_id}
+                            onClick={() => handleAssignFA(u.user_id, u.display_name)}
+                          >
+                            {actionUserId === u.user_id ? 'Đang xử lý...' : 'Nâng quyền Family Admin'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="fa-panel">
+        <h2>Cấp bản nháp tài khoản cho Person</h2>
+        <p className="fa-muted">Dành cho việc tạo hồ sơ đăng nhập mẫu hoặc quản lý Person chưa có tài khoản thật.</p>
+        <form className="fa-form-grid" onSubmit={(event) => { event.preventDefault(); try { issueAccount(accountForm); setAccountForm({ personId: '', username: '', email: '' }); setNotice({ text: 'Đã tạo bản nháp tài khoản.', error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể tạo bản nháp.', error: true }); } }}>
+          <label>Person *<select required value={accountForm.personId} onChange={(event) => setAccountForm({ ...accountForm, personId: event.target.value })}><option value="">Chọn Person</option>{data.persons.filter((person) => !person.deathDate && !data.accounts.some((account) => account.personId === person.id)).map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label>
+          <label>Username *<input required value={accountForm.username} onChange={(event) => setAccountForm({ ...accountForm, username: event.target.value })} /></label>
+          <label>Email<input type="email" value={accountForm.email} onChange={(event) => setAccountForm({ ...accountForm, email: event.target.value })} /></label>
+          <div className="fa-wide"><button className="fa-primary" type="submit">Tạo bản nháp tài khoản</button></div>
+        </form>
+      </div>
+    </>}
 
     {view === 'links' && <><div className="fa-panel"><h2>Yêu cầu liên kết dòng họ</h2><p className="fa-muted">Yêu cầu và kết quả phê duyệt ở đây chỉ tồn tại trong bản xem trước; không chia sẻ dữ liệu với dòng họ khác.</p><form className="fa-form-grid" onSubmit={(event) => { event.preventDefault(); try { sendLinkRequest(linkForm.targetFamily, linkForm.reason); setLinkForm({ targetFamily: '', reason: '' }); setNotice({ text: 'Đã lưu bản nháp yêu cầu liên họ.', error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể tạo yêu cầu.', error: true }); } }}><label>Dòng họ đích *<input required value={linkForm.targetFamily} onChange={(event) => setLinkForm({ ...linkForm, targetFamily: event.target.value })} placeholder="Ví dụ: Dòng họ Trần" /></label><label>Lý do / quan hệ<input value={linkForm.reason} onChange={(event) => setLinkForm({ ...linkForm, reason: event.target.value })} placeholder="Thông gia, bên ngoại..." /></label><div className="fa-wide"><button className="fa-primary" type="submit">Gửi bản nháp yêu cầu</button></div></form></div><div className="fa-panel"><h2>Danh sách yêu cầu</h2>{data.linkRequests.length ? <div className="fa-table-wrap"><table><thead><tr><th>Dòng họ đích</th><th>Lý do</th><th>Ngày tạo</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{data.linkRequests.map((request) => <tr key={request.id}><td><strong>{request.targetFamily}</strong></td><td>{request.reason || '—'}</td><td>{new Date(request.createdAt).toLocaleDateString('vi-VN')}</td><td><span className={`fa-status ${request.status}`}>{request.status === 'pending' ? 'Chờ duyệt' : request.status === 'approved' ? 'Đã duyệt (mẫu)' : 'Từ chối'}</span></td><td>{request.status === 'pending' && <div className="fa-actions"><button type="button" onClick={() => run(() => reviewLinkRequest(request.id, 'approved'), 'Đã đổi trạng thái bản nháp; chưa tạo liên kết thật.')}>Duyệt mẫu</button><button type="button" onClick={() => run(() => reviewLinkRequest(request.id, 'rejected'), 'Đã từ chối bản nháp.')}>Từ chối</button></div>}</td></tr>)}</tbody></table></div> : <p className="fa-muted">Chưa có yêu cầu liên họ.</p>}</div></>}
 
-    {view === 'exchange' && <><div className="fa-panel"><h2>Nhập và xuất Excel (.xlsx)</h2><p className="fa-muted">Xử lý hoàn toàn trong trình duyệt. File Person phải có các cột fullName, gender, birthDate, branch, generation. Nhập sẽ hủy toàn bộ nếu có dòng lỗi hoặc trùng.</p><div className="fa-actions"><button type="button" onClick={async () => { try { await downloadPersonTemplateXlsx(); } catch { setNotice({ text: 'Không thể tạo file Excel mẫu.', error: true }); } }}>Tải mẫu Excel</button><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Chọn tệp Excel" onChange={async (event) => { try { const file = event.target.files?.[0]; setXlsxPreview(null); if (!file) return; if (file.size > 2_000_000) throw new Error('Tệp vượt quá 2 MB.'); const rows = await readPersonXlsx(file); if (rows.length < 2) throw new Error('File Excel chưa có dữ liệu Person.'); const header = rows[0].map(clean); const required = ['fullname', 'gender', 'birthdate', 'branch', 'generation']; if (!required.every((name) => header.includes(name))) throw new Error('Thiếu cột bắt buộc: fullName, gender, birthDate, branch, generation.'); const index = (name: string) => header.indexOf(name); const parsed = rows.slice(1).map((row, rowIndex) => { const branchText = row[index('branch')]?.trim() || ''; const branch = data.branches.find((item) => clean(item.name) === clean(branchText) || item.id === branchText); const gender = clean(row[index('gender')] || ''); const birthDate = row[index('birthdate')]?.trim() || ''; const generation = Number(row[index('generation')]); if (!branch || !['male', 'female', 'other'].includes(gender) || birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || !Number.isInteger(generation) || generation < 1) throw new Error(`Dòng ${rowIndex + 2}: giới tính, ngày sinh, Chi/Nhánh hoặc đời thứ không hợp lệ.`); return { fullName: row[index('fullname')]?.trim() || '', gender: gender as FamilyPerson['gender'], birthDate, branchId: branch.id, generation }; }); setXlsxPreview(parsed); setNotice({ text: `Đã đọc ${parsed.length} dòng Excel. Xác nhận để nhập cục bộ.`, error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không đọc được file Excel.', error: true }); } }} /><button type="button" className="fa-primary" disabled={!xlsxPreview?.length} onClick={() => { try { const count = importPersons(xlsxPreview || []); setXlsxPreview(null); setNotice({ text: `Đã nhập ${count} Person từ Excel vào dữ liệu cục bộ.`, error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể nhập Excel.', error: true }); } }}>Xác nhận nhập Excel</button><button type="button" className="fa-primary" data-testid="btn-export-excel" onClick={() => { const current = getFamilyAdminState(); const rows = [['fullName', 'gender', 'birthDate', 'branch', 'generation'], ...current.persons.filter((person) => !person.hidden && person.visibility !== 'private').map((person) => [person.fullName, person.gender, person.birthDate, current.branches.find((branch) => branch.id === person.branchId)?.name || '', String(person.generation)])]; downloadFile('danh-sach-person-family.csv', rows.map((row) => row.map(csvEscape).join(',')).join('\r\n'), 'text/csv;charset=utf-8'); }}>Xuất file Excel/CSV</button></div>{xlsxPreview && <p className="fa-muted">Sẵn sàng nhập {xlsxPreview.length} Person. Hãy kiểm tra tên Chi/Nhánh và bản ghi trùng trước khi xác nhận.</p>}</div><div className="fa-panel"><h2>Nhập Person từ CSV</h2><p className="fa-muted">CSV UTF-8 là lựa chọn nhẹ hơn Excel; nhập tất cả hoặc không nhập dòng nào khi có lỗi.</p><div className="fa-actions"><button type="button" onClick={() => downloadFile('mau-person-family-admin.csv', 'fullName,gender,birthDate,branch,generation\n"Võ Văn Mẫu",male,1990-01-01,"Chi Trưởng",6\n', 'text/csv;charset=utf-8')}>Tải file mẫu</button><input type="file" accept=".csv,text/csv" aria-label="Chọn tệp CSV" onChange={(event) => { setCsvFile(event.target.files?.[0] || null); setCsvPreview(null); }} /></div>{csvFile && <p className="fa-muted">Đã chọn: {csvFile.name}</p>}<div className="fa-actions"><button type="button" onClick={async () => { try { if (!csvFile) throw new Error('Vui lòng chọn tệp CSV.'); if (csvFile.size > 2_000_000) throw new Error('Tệp vượt quá 2 MB.'); const rows = parseCsv(await csvFile.text()); if (rows.length < 2) throw new Error('Tệp chưa có dữ liệu Person.'); const header = rows[0].map(clean); const required = ['fullname', 'gender', 'birthdate', 'branch', 'generation']; if (!required.every((name) => header.includes(name))) throw new Error('Thiếu cột bắt buộc: fullName, gender, birthDate, branch, generation.'); const index = (name: string) => header.indexOf(name); const parsed = rows.slice(1).map((row, rowIndex) => { const branchText = row[index('branch')]?.trim() || ''; const branch = data.branches.find((item) => clean(item.name) === clean(branchText) || item.id === branchText); const gender = clean(row[index('gender')] || ''); const birthDate = row[index('birthdate')]?.trim() || ''; const generation = Number(row[index('generation')]); if (!branch || !['male', 'female', 'other'].includes(gender) || birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || !Number.isInteger(generation) || generation < 1) throw new Error(`Dòng ${rowIndex + 2}: giới tính, ngày sinh, Chi/Nhánh hoặc đời thứ không hợp lệ.`); return { fullName: row[index('fullname')]?.trim() || '', gender: gender as FamilyPerson['gender'], birthDate, branchId: branch.id, generation }; }); setCsvPreview(parsed); setNotice({ text: `Đã kiểm tra định dạng ${parsed.length} dòng. Xác nhận để nhập cục bộ.`, error: false }); } catch (error) { setCsvPreview(null); setNotice({ text: error instanceof Error ? error.message : 'Không đọc được tệp CSV.', error: true }); } }}>Kiểm tra tệp</button><button type="button" className="fa-primary" disabled={!csvPreview?.length} onClick={() => { try { const count = importPersons(csvPreview || []); setCsvPreview(null); setCsvFile(null); setNotice({ text: `Đã nhập ${count} Person vào dữ liệu cục bộ.`, error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể nhập dữ liệu.', error: true }); } }}>Xác nhận nhập</button></div>{csvPreview && <div className="fa-table-wrap"><table><thead><tr><th>Họ tên</th><th>Giới tính</th><th>Ngày sinh</th><th>Chi/Nhánh</th><th>Đời</th></tr></thead><tbody>{csvPreview.slice(0, 10).map((person, index) => <tr key={`${person.fullName}-${index}`}><td>{person.fullName}</td><td>{genderLabels[person.gender]}</td><td>{person.birthDate || '—'}</td><td>{branchName(person.branchId)}</td><td>{person.generation}</td></tr>)}</tbody></table>{csvPreview.length > 10 && <p className="fa-muted">Đang xem 10/{csvPreview.length} dòng.</p>}</div>}</div><div className="fa-panel"><h2>Xuất dữ liệu cục bộ</h2><p className="fa-muted">Chỉ xuất tên, giới tính, ngày sinh, Chi/Nhánh, đời thứ và quan hệ đã ghi; không đưa email, số điện thoại hoặc hồ sơ riêng tư vào file CSV.</p><div className="fa-actions"><button type="button" className="fa-primary" onClick={() => { const current = getFamilyAdminState(); const rows = [['fullName', 'gender', 'birthDate', 'branch', 'generation'], ...current.persons.filter((person) => !person.hidden && person.visibility !== 'private').map((person) => [person.fullName, person.gender, person.birthDate, current.branches.find((branch) => branch.id === person.branchId)?.name || '', String(person.generation)])]; downloadFile('person-family-admin.csv', rows.map((row) => row.map(csvEscape).join(',')).join('\r\n'), 'text/csv;charset=utf-8'); }}>Xuất Person CSV</button><button type="button" onClick={() => { const current = getFamilyAdminState(); const visible = new Set(current.persons.filter((person) => !person.hidden && person.visibility !== 'private').map((person) => person.id)); const rows = [['type', 'from', 'to', 'since'], ...current.relations.filter((relation) => visible.has(relation.fromId) && visible.has(relation.toId)).map((relation) => [relation.type, current.persons.find((person) => person.id === relation.fromId)?.fullName || '', current.persons.find((person) => person.id === relation.toId)?.fullName || '', relation.since])]; downloadFile('quan-he-family-admin.csv', rows.map((row) => row.map(csvEscape).join(',')).join('\r\n'), 'text/csv;charset=utf-8'); }}>Xuất quan hệ CSV</button></div></div></>}
+    {view === 'exchange' && <><div className="fa-panel"><h2>Nhập và xuất Excel (.xlsx)</h2><p className="fa-muted">Xử lý hoàn toàn trong trình duyệt. File Person phải có các cột fullName, gender, birthDate, branch, generation. Nhập sẽ hủy toàn bộ nếu có dòng lỗi hoặc trùng.</p><div className="fa-actions"><button type="button" onClick={async () => { try { await downloadPersonTemplateXlsx(); } catch { setNotice({ text: 'Không thể tạo file Excel mẫu.', error: true }); } }}>Tải mẫu Excel</button><input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Chọn tệp Excel" onChange={async (event) => { try { const file = event.target.files?.[0]; setXlsxPreview(null); if (!file) return; if (file.size > 2_000_000) throw new Error('Tệp vượt quá 2 MB.'); const rows = await readPersonXlsx(file); if (rows.length < 2) throw new Error('File Excel chưa có dữ liệu Person.'); const header = rows[0].map(clean); const required = ['fullname', 'gender', 'birthdate', 'branch', 'generation']; if (!required.every((name) => header.includes(name))) throw new Error('Thiếu cột bắt buộc: fullName, gender, birthDate, branch, generation.'); const index = (name: string) => header.indexOf(name); const parsed = rows.slice(1).map((row, rowIndex) => { const branchText = row[index('branch')]?.trim() || ''; const branch = data.branches.find((item) => clean(item.name) === clean(branchText) || item.id === branchText); const gender = clean(row[index('gender')] || ''); const birthDate = row[index('birthdate')]?.trim() || ''; const generation = Number(row[index('generation')]); if (!branch || !['male', 'female', 'other'].includes(gender) || birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || !Number.isInteger(generation) || generation < 1) throw new Error(`Dòng ${rowIndex + 2}: giới tính, ngày sinh, Chi/Nhánh hoặc đời thứ không hợp lệ.`); return { fullName: row[index('fullname')]?.trim() || '', gender: gender as FamilyPerson['gender'], birthDate, branchId: branch.id, generation }; }); setXlsxPreview(parsed); setNotice({ text: `Đã đọc ${parsed.length} dòng Excel. Xác nhận để nhập cục bộ.`, error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không đọc được file Excel.', error: true }); } }} /><button type="button" className="fa-primary" disabled={!xlsxPreview?.length} onClick={() => { try { const count = importPersons(xlsxPreview || []); setXlsxPreview(null); setNotice({ text: `Đã nhập ${count} Person từ Excel vào dữ liệu cục bộ.`, error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể nhập Excel.', error: true }); } }}>Xác nhận nhập Excel</button><button type="button" className="fa-primary" data-testid="btn-export-excel" onClick={handleExportClanMembers}>Xuất file Excel/CSV</button></div>{xlsxPreview && <p className="fa-muted">Sẵn sàng nhập {xlsxPreview.length} Person. Hãy kiểm tra tên Chi/Nhánh và bản ghi trùng trước khi xác nhận.</p>}</div><div className="fa-panel"><h2>Nhập Person từ CSV</h2><p className="fa-muted">CSV UTF-8 là lựa chọn nhẹ hơn Excel; nhập tất cả hoặc không nhập dòng nào khi có lỗi.</p><div className="fa-actions"><button type="button" onClick={() => downloadFile('mau-person-family-admin.csv', 'fullName,gender,birthDate,branch,generation\n"Võ Văn Mẫu",male,1990-01-01,"Chi Trưởng",6\n', 'text/csv;charset=utf-8')}>Tải file mẫu</button><input type="file" accept=".csv,text/csv" aria-label="Chọn tệp CSV" onChange={(event) => { setCsvFile(event.target.files?.[0] || null); setCsvPreview(null); }} /></div>{csvFile && <p className="fa-muted">Đã chọn: {csvFile.name}</p>}<div className="fa-actions"><button type="button" onClick={async () => { try { if (!csvFile) throw new Error('Vui lòng chọn tệp CSV.'); if (csvFile.size > 2_000_000) throw new Error('Tệp vượt quá 2 MB.'); const rows = parseCsv(await csvFile.text()); if (rows.length < 2) throw new Error('Tệp chưa có dữ liệu Person.'); const header = rows[0].map(clean); const required = ['fullname', 'gender', 'birthdate', 'branch', 'generation']; if (!required.every((name) => header.includes(name))) throw new Error('Thiếu cột bắt buộc: fullName, gender, birthDate, branch, generation.'); const index = (name: string) => header.indexOf(name); const parsed = rows.slice(1).map((row, rowIndex) => { const branchText = row[index('branch')]?.trim() || ''; const branch = data.branches.find((item) => clean(item.name) === clean(branchText) || item.id === branchText); const gender = clean(row[index('gender')] || ''); const birthDate = row[index('birthdate')]?.trim() || ''; const generation = Number(row[index('generation')]); if (!branch || !['male', 'female', 'other'].includes(gender) || birthDate && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || !Number.isInteger(generation) || generation < 1) throw new Error(`Dòng ${rowIndex + 2}: giới tính, ngày sinh, Chi/Nhánh hoặc đời thứ không hợp lệ.`); return { fullName: row[index('fullname')]?.trim() || '', gender: gender as FamilyPerson['gender'], birthDate, branchId: branch.id, generation }; }); setCsvPreview(parsed); setNotice({ text: `Đã kiểm tra định dạng ${parsed.length} dòng. Xác nhận để nhập cục bộ.`, error: false }); } catch (error) { setCsvPreview(null); setNotice({ text: error instanceof Error ? error.message : 'Không đọc được tệp CSV.', error: true }); } }}>Kiểm tra tệp</button><button type="button" className="fa-primary" disabled={!csvPreview?.length} onClick={() => { try { const count = importPersons(csvPreview || []); setCsvPreview(null); setCsvFile(null); setNotice({ text: `Đã nhập ${count} Person vào dữ liệu cục bộ.`, error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể nhập dữ liệu.', error: true }); } }}>Xác nhận nhập</button></div>{csvPreview && <div className="fa-table-wrap"><table><thead><tr><th>Họ tên</th><th>Giới tính</th><th>Ngày sinh</th><th>Chi/Nhánh</th><th>Đời</th></tr></thead><tbody>{csvPreview.slice(0, 10).map((person, index) => <tr key={`${person.fullName}-${index}`}><td>{person.fullName}</td><td>{genderLabels[person.gender]}</td><td>{person.birthDate || '—'}</td><td>{branchName(person.branchId)}</td><td>{person.generation}</td></tr>)}</tbody></table>{csvPreview.length > 10 && <p className="fa-muted">Đang xem 10/{csvPreview.length} dòng.</p>}</div>}</div><div className="fa-panel"><h2>Xuất dữ liệu cục bộ</h2><p className="fa-muted">Chỉ xuất tên, giới tính, ngày sinh, Chi/Nhánh, đời thứ và quan hệ đã ghi; không đưa email, số điện thoại hoặc hồ sơ riêng tư vào file CSV.</p><div className="fa-actions"><button type="button" className="fa-primary" onClick={() => { const current = getFamilyAdminState(); const rows = [['fullName', 'gender', 'birthDate', 'branch', 'generation'], ...current.persons.filter((person) => !person.hidden && person.visibility !== 'private').map((person) => [person.fullName, person.gender, person.birthDate, current.branches.find((branch) => branch.id === person.branchId)?.name || '', String(person.generation)])]; downloadFile('person-family-admin.csv', rows.map((row) => row.map(csvEscape).join(',')).join('\r\n'), 'text/csv;charset=utf-8'); }}>Xuất Person CSV</button><button type="button" onClick={() => { const current = getFamilyAdminState(); const visible = new Set(current.persons.filter((person) => !person.hidden && person.visibility !== 'private').map((person) => person.id)); const rows = [['type', 'from', 'to', 'since'], ...current.relations.filter((relation) => visible.has(relation.fromId) && visible.has(relation.toId)).map((relation) => [relation.type, current.persons.find((person) => person.id === relation.fromId)?.fullName || '', current.persons.find((person) => person.id === relation.toId)?.fullName || '', relation.since])]; downloadFile('quan-he-family-admin.csv', rows.map((row) => row.map(csvEscape).join(',')).join('\r\n'), 'text/csv;charset=utf-8'); }}>Xuất quan hệ CSV</button></div></div></>}
 
     {view === 'audit' && <div className="fa-panel"><h2>Nhật ký trong trình duyệt</h2><p className="fa-muted">Nhật ký này không thay thế AuditLog ở máy chủ.</p>{data.audit.length ? <ul className="fa-audit-list">{data.audit.map((item) => <li key={item.id}><span>{item.action}</span><time>{new Date(item.at).toLocaleString('vi-VN')}</time></li>)}</ul> : <p>Chưa có thao tác.</p>}</div>}
   </section>;
