@@ -355,15 +355,16 @@ export async function registerWithEmailPassword(payload: RegisterPayload): Promi
 
 /**
  * Đăng nhập Email/Password qua Firebase, rồi đổi ID token lấy phiên BE.
- * Bắt buộc địa chỉ email phải là Gmail (@gmail.com).
+ * Hỗ trợ Gmail (@gmail.com) cho Member/Admin và @giapha.com cho Trưởng tộc.
  */
 export async function loginWithEmailPassword(payload: LoginPayload): Promise<AccountProfile> {
   const email = payload.email.trim();
   if (!email.includes('@')) {
-    throw new Error('Vui lòng đăng nhập bằng địa chỉ Gmail (@gmail.com).');
+    throw new Error('Vui lòng đăng nhập bằng địa chỉ email hợp lệ (@gmail.com hoặc @giapha.com).');
   }
-  if (!email.toLowerCase().endsWith('@gmail.com')) {
-    throw new Error('Hệ thống chỉ hỗ trợ đăng nhập bằng tài khoản Gmail (kết thúc bằng @gmail.com).');
+  const emailLower = email.toLowerCase();
+  if (!emailLower.endsWith('@gmail.com') && !emailLower.endsWith('@giapha.com')) {
+    throw new Error('Hệ thống chỉ hỗ trợ đăng nhập bằng tài khoản Gmail (@gmail.com) hoặc tài khoản Trưởng tộc (@giapha.com).');
   }
   let user: FirebaseUser;
   try {

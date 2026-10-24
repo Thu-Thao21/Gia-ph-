@@ -122,7 +122,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ident === 'member@test.com' ||
       ident === 'member' ||
       ident === 'dev-member-a@example.test' ||
-      ident === 'dev-member-a';
+      ident === 'dev-member-a' ||
+      ident === 'quankophaiwibu@gmail.com' ||
+      ident === 'minhquan' ||
+      ident === 'thangvo250904@gmail.com' ||
+      ident === 'thangvo' ||
+      ident === 'huy13052005@gmail.com' ||
+      ident === 'giahuy' ||
+      ident === 'maiphuchau144@gmail.com' ||
+      ident === 'phuchau' ||
+      ident.endsWith('@giapha.com');
 
     if (isDevIdent) {
       const res = await apiClient.post<SessionCreateResponse>('/auth/dev-session', { email: ident });

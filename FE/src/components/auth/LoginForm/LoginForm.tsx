@@ -32,9 +32,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     setError('');
 
     const identifier = formData.emailOrPhone.trim();
-    if (identifier.includes('@') && !identifier.toLowerCase().endsWith('@gmail.com')) {
-      setError('Hệ thống chỉ hỗ trợ đăng nhập bằng tài khoản Gmail (kết thúc bằng @gmail.com).');
-      return;
+    if (identifier.includes('@')) {
+      const lower = identifier.toLowerCase();
+      if (!lower.endsWith('@gmail.com') && !lower.endsWith('@giapha.com')) {
+        setError('Hệ thống chỉ hỗ trợ đăng nhập bằng Gmail (@gmail.com) hoặc tài khoản Trưởng tộc (@giapha.com).');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -99,14 +102,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
       <form onSubmit={handleSubmit} className="login-form-body">
         <div className="login-form-group">
-          <label className="login-form-label" htmlFor="login-identifier">Địa chỉ Gmail (@gmail.com) hoặc Tên đăng nhập *</label>
+          <label className="login-form-label" htmlFor="login-identifier">Email (@gmail.com, @giapha.com) hoặc Tên đăng nhập *</label>
           <input
             id="login-identifier"
             type="text"
             name="emailOrPhone"
             value={formData.emailOrPhone}
             onChange={handleChange}
-            placeholder="VD: nguyenvana@gmail.com"
+            placeholder="VD: nguyenvana@gmail.com hoặc truongtoc@giapha.com"
             autoComplete="username"
             required
             className="login-form-input"
