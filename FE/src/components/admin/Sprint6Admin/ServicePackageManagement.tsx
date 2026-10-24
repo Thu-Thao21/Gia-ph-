@@ -74,9 +74,10 @@ export const ServicePackageManagement: React.FC = () => {
   const [confirmPackage, setConfirmPackage] = useState<ServicePackage | null>(null);
   const { toast, showToast, dismissToast } = useAdminToast();
 
-  useEffect(() => {
+  const loadPackages = useCallback(() => {
     setLoading(true);
-    apiClient.get<any>('/service-plans')
+    apiClient.get<any>('/admin/service-plans')
+      .catch(() => apiClient.get<any>('/service-plans'))
       .then((res) => {
         const items = Array.isArray(res.data?.items) ? res.data.items : Array.isArray(res.data) ? res.data : [];
         const mapped: ServicePackage[] = items.map((p: any) => ({
@@ -84,13 +85,13 @@ export const ServicePackageManagement: React.FC = () => {
           code: p.code || p.plan_code || 'PLAN',
           name: p.name || 'Gói dịch vụ',
           description: p.description || '',
-          monthlyPrice: p.price_cents ? p.price_cents / 100 : p.monthly_price || 0,
-          durationMonths: p.duration_months || 12,
-          memberLimit: p.member_limit || 500,
-          storageGb: p.storage_gb || 20,
+          monthlyPrice: p.price_cents ? p.price_cents / 100 : (p.monthly_price !== undefined ? p.monthly_price : (p.price ? Number(p.price) / (p.billing_period_months || 12) : 0)),
+          durationMonths: p.duration_months || p.billing_period_months || 12,
+          memberLimit: p.member_limit || p.max_members || 500,
+          storageGb: p.storage_gb || (p.storage_mb ? Math.round(p.storage_mb / 1024) : 20),
           subscriberCount: p.subscriber_count || 0,
-          features: Array.isArray(p.features) ? p.features : ['Cây gia phả', 'Hồ sơ thành viên'],
-          status: (p.status || 'active').toLowerCase(),
+          features: Array.isArray(p.features) ? p.features.map((f: any) => typeof f === 'string' ? f : f.feature_code || '') : ['Cây gia phả', 'Hồ sơ thành viên'],
+          status: (p.status || 'active').toLowerCase() === 'active' ? 'active' : 'disabled',
           updatedAt: p.updated_at ? p.updated_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
         }));
         setPackages(mapped);
@@ -98,6 +99,10 @@ export const ServicePackageManagement: React.FC = () => {
       .catch(() => setPackages([]))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadPackages();
+  }, [loadPackages]);
 
   useEffect(() => setPage(1), [searchQuery, statusFilter]);
 
@@ -143,7 +148,7 @@ export const ServicePackageManagement: React.FC = () => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSave = (event: React.FormEvent) => {
+  const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     const code = form.code.trim().toUpperCase().replace(/\s+/g, '-');
     const features = form.features.split('\n').map((item) => item.trim()).filter(Boolean);
@@ -169,41 +174,53 @@ export const ServicePackageManagement: React.FC = () => {
       return;
     }
 
-    const nextPackage: ServicePackage = {
-      id: editingId || `pkg-${Date.now()}`,
+    const payload = {
       code,
       name: form.name.trim(),
       description: form.description.trim(),
-      monthlyPrice: price,
-      durationMonths: duration,
-      memberLimit,
-      storageGb: storage,
-      subscriberCount: editingId ? packages.find((item) => item.id === editingId)?.subscriberCount || 0 : 0,
+      price: price * (duration || 12),
+      billing_period_months: duration || 12,
+      max_members: memberLimit,
+      max_family_admins: 5,
+      storage_mb: storage * 1024,
       features,
-      status: form.status,
-      updatedAt: new Date().toISOString().slice(0, 10),
+      status: form.status === 'active' ? 'ACTIVE' : 'INACTIVE',
     };
 
-    if (editingId) {
-      setPackages((current) => current.map((item) => item.id === editingId ? nextPackage : item));
-      showToast(`Đã cập nhật gói “${nextPackage.name}”.`);
-    } else {
-      setPackages((current) => [nextPackage, ...current]);
-      showToast(`Đã tạo gói “${nextPackage.name}” ở trạng thái ${nextPackage.status === 'draft' ? 'bản nháp' : 'hoạt động'}.`);
+    try {
+      if (editingId && !editingId.startsWith('pkg-')) {
+        await apiClient.put(`/admin/service-plans/${editingId}`, payload);
+        showToast(`Đã cập nhật gói “${form.name}” lên cơ sở dữ liệu.`);
+      } else {
+        await apiClient.post('/admin/service-plans', payload);
+        showToast(`Đã tạo gói “${form.name}” thành công trên cơ sở dữ liệu.`);
+      }
+      loadPackages();
+      closeEditor();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi khi lưu gói dịch vụ.';
+      setFormError(msg);
     }
-    closeEditor();
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     if (!confirmPackage) return;
     const nextStatus: ServicePackageStatus = confirmPackage.status === 'active' ? 'disabled' : 'active';
-    setPackages((current) => current.map((item) => item.id === confirmPackage.id
-      ? { ...item, status: nextStatus, updatedAt: new Date().toISOString().slice(0, 10) }
-      : item));
-    showToast(nextStatus === 'active'
-      ? `Đã bật gói “${confirmPackage.name}”.`
-      : `Đã tắt gói “${confirmPackage.name}”.`, nextStatus === 'active' ? 'success' : 'info');
-    setConfirmPackage(null);
+    try {
+      if (!confirmPackage.id.startsWith('pkg-')) {
+        await apiClient.patch(`/admin/service-plans/${confirmPackage.id}/status`, {
+          status: nextStatus === 'active' ? 'ACTIVE' : 'INACTIVE',
+        });
+      }
+      showToast(nextStatus === 'active'
+        ? `Đã bật gói “${confirmPackage.name}”.`
+        : `Đã tắt gói “${confirmPackage.name}”.`, nextStatus === 'active' ? 'success' : 'info');
+      loadPackages();
+    } catch (err: any) {
+      showToast(`Đổi trạng thái thất bại: ${err?.message || 'Lỗi kết nối'}`, 'error');
+    } finally {
+      setConfirmPackage(null);
+    }
   };
 
   return (
