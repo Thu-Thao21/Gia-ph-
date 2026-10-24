@@ -165,7 +165,7 @@ export function toAccountProfile(me: MeResponse): AccountProfile {
     id: me.user_id,
     firebase_uid: fbUser?.uid ?? 'dev-uid',
     username: null,
-    email: fbUser?.email ?? (me.permissions.length > 0 ? 'dev-sa@example.test' : 'dev-member-a@example.test'),
+    email: fbUser?.email ?? '',
     phone_e164: fbUser?.phoneNumber ?? null,
     display_name: me.display_name,
     email_verified: fbUser?.emailVerified ?? true,

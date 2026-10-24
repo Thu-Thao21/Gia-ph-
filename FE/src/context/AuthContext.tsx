@@ -115,14 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (payload: { emailOrPhone: string; password: string }): Promise<AccountProfile> => {
     const ident = payload.emailOrPhone.trim().toLowerCase();
     const isDevIdent =
-      ident === 'admin@test.com' ||
-      ident === 'admin' ||
-      ident === 'dev-sa@example.test' ||
-      ident === 'dev-sa' ||
-      ident === 'member@test.com' ||
-      ident === 'member' ||
-      ident === 'dev-member-a@example.test' ||
-      ident === 'dev-member-a' ||
       ident === 'quankophaiwibu@gmail.com' ||
       ident === 'minhquan' ||
       ident === 'thangvo250904@gmail.com' ||
