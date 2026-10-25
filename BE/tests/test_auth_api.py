@@ -1,19 +1,25 @@
-"""Auth API (M???c D) over HTTP with the real router and fakes: no DB, no Firebase."""
+"""Auth API (Mốc D, Mốc M1) over HTTP with the real router and fakes: no DB, no Firebase.
+
+Sessions come from POST /auth/login (the only way in; its own rules are in test_login_api.py).
+Hashes use bcrypt cost 4 so the suite stays fast.
+"""
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.controllers.auth_access import router as router_module
 from app.controllers.auth_access.router import router
 from app.core.errors import register_exception_handlers
-from app.core.integrations.firebase import PasswordRejected, ProviderUnavailable, get_identity_provider
+from app.core.integrations.firebase import ProviderUnavailable, ProviderUser, get_identity_provider
 from app.core.middleware.request_id import RequestIdMiddleware
+from app.core.utils import otp_service
 from app.db.postgres import get_db
 from app.dependencies.auth import get_user_access_repo
 from app.dependencies.permissions import get_family_repo, owner_actions, system_admin_actions
@@ -26,9 +32,16 @@ from tests.fakes import (
     make_user,
 )
 
+PASSWORD = "Mat-Khau-Cu-123"
+NEW_PASSWORD = "Mat-Khau-Moi-456"
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def quick_hash(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(4)).decode()
 
 
 class World:
@@ -48,18 +61,22 @@ class World:
         app.dependency_overrides[get_identity_provider] = lambda: self.provider
         self.client = TestClient(app)
 
-    def user(self, status="ACTIVE", **cred):
+    def user(self, status="ACTIVE", *, password=PASSWORD, firebase=False, **cred):
+        """A user that can log in with `password` (password=None: no hash at all)."""
         user = self.repo.add_user(make_user(status, first_login_required=cred.pop("first_login", False)))
-        if cred:
-            self.repo.set_cred(user, **cred)
+        self.repo.set_cred(user, password_hash=quick_hash(password) if password else None, **cred)
+        if firebase:  # the Firebase account exists, so a password change is synced to it
+            self.provider.provider_users[user.firebase_uid] = ProviderUser(
+                uid=user.firebase_uid, email=user.email, display_name=user.display_name, disabled=False
+            )
         return user
 
-    def login(self, user, **kw):
-        return self.client.post("/api/v1/auth/session", json={"id_token": self.provider.issue(user.firebase_uid, **kw)})
+    def login(self, user, password=PASSWORD):
+        return self.client.post("/api/v1/auth/login", json={"email": user.email, "password": password})
 
-    def token_for(self, user) -> str:
-        r = self.login(user)
-        assert r.status_code == 201, r.text
+    def token_for(self, user, password=PASSWORD) -> str:
+        r = self.login(user, password)
+        assert r.status_code == 200, r.text
         return r.json()["access_token"]
 
 
@@ -80,144 +97,21 @@ def restricted_cred(**extra):
     return dict(must_change_password=True, temporary_password_expires_at=utcnow() + timedelta(days=1), **extra)
 
 
-# ----- POST /auth/session -----
+# ----- GET /auth/me -----
 
 
-def test_login_creates_session_and_returns_token_once(w):
-    user = w.user()
-    r = w.login(user)
-    assert r.status_code == 201
-    body = r.json()
-    token = body["access_token"]
-    assert body["token_type"] == "Bearer"
-    assert body["requires_password_change"] is False
-    assert body["user"] == {
-        "user_id": str(user.user_id), "display_name": user.display_name,
-        "email": user.email, "status": "ACTIVE",
-    }
-    assert body["expires_at"].endswith("Z")
-    expires = datetime.fromisoformat(body["expires_at"].replace("Z", "+00:00"))
-    assert timedelta(hours=7, minutes=59) < expires - utcnow() <= timedelta(hours=8)
-    # Only SHA-256 is stored; the raw token is never a key or a value.
-    stored = list(w.repo.sessions.values())
-    assert [s.token_jti_hash for s in stored] == [hashlib.sha256(token.encode()).hexdigest()]
-    assert token not in w.repo.sessions
-    assert user.last_login_at is not None
-    assert [(h.success, h.failure_reason) for h in w.repo.login_history] == [(True, None)]
-    assert w.db.commits == 1
-    assert "firebase_uid" not in r.text
-
-
-def test_session_token_works_on_auth_me(w):
+def test_session_token_works_on_auth_me_and_me_carries_email_and_name(w):
     user = w.user()
     r = w.client.get("/api/v1/auth/me", headers=bearer(w.token_for(user)))
-    assert r.status_code == 200 and r.json()["user_id"] == str(user.user_id)
-
-
-def test_invalid_id_token_is_401_and_not_written(w):
-    users_before = dict(w.repo.users)
-    r = w.client.post("/api/v1/auth/session", json={"id_token": "garbage"})
-    assert (r.status_code, code(r)) == (401, "INVALID_ID_TOKEN")
-    assert w.repo.login_history == [] and w.repo.sessions == {} and w.repo.users == users_before
-
-
-def test_provider_unavailable_is_503(w):
-    user = w.user()
-    w.provider.unavailable = True
-    r = w.login(user)
-    assert (r.status_code, code(r)) == (503, "PROVIDER_UNAVAILABLE")
-
-
-def test_unknown_uid_is_rejected_without_creating_a_user(w):
-    w.user()
-    users_before = dict(w.repo.users)
-    token = w.provider.issue("uid-nobody-knows")
-    r = w.client.post("/api/v1/auth/session", json={"id_token": token})
-    assert (r.status_code, code(r)) == (401, "INVALID_ID_TOKEN")
-    # Same answer as a bad token (no enumeration), nothing created, nothing in the DB.
-    assert r.json()["error"]["message"] == w.client.post(
-        "/api/v1/auth/session", json={"id_token": "garbage"}
-    ).json()["error"]["message"]
-    assert w.repo.users == users_before
-    assert w.repo.sessions == {} and w.repo.login_history == [] and w.db.commits == 0
-
-
-def test_same_email_different_uid_is_not_linked(w):
-    user = w.user()
-    token = w.provider.issue("another-uid", email=user.email)
-    r = w.client.post("/api/v1/auth/session", json={"id_token": token})
-    assert (r.status_code, code(r)) == (401, "INVALID_ID_TOKEN")
-    assert w.repo.sessions == {}
-
-
-@pytest.mark.parametrize("status", ["LOCKED", "SUSPENDED", "DISABLED"])
-def test_blocked_user_failure_is_committed_before_the_error(w, status):
-    user = w.user(status)
-    r = w.login(user)
-    assert (r.status_code, code(r)) == (403, "ACCOUNT_BLOCKED")
-    assert w.repo.sessions == {}
-    # The failure row was committed (snapshot taken at commit), not just added.
-    assert [(h.user_id, h.success, h.failure_reason) for h in w.db.committed_login_history] == [
-        (user.user_id, False, "ACCOUNT_BLOCKED")
-    ]
-
-
-def test_pending_without_password_flag_is_blocked(w):
-    r = w.login(w.user("PENDING"))
-    assert (r.status_code, code(r)) == (403, "ACCOUNT_BLOCKED")
-
-
-def test_expired_temporary_password_is_403_and_logged(w):
-    user = w.user("PENDING", must_change_password=True,
-                  temporary_password_expires_at=utcnow() - timedelta(minutes=1))
-    r = w.login(user)
-    assert (r.status_code, code(r)) == (403, "TEMPORARY_PASSWORD_EXPIRED")
-    assert [h.failure_reason for h in w.db.committed_login_history] == ["TEMPORARY_PASSWORD_EXPIRED"]
-
-
-def test_id_token_older_than_password_change_is_rejected(w):
-    user = w.user(password_changed_at=utcnow() - timedelta(minutes=5))
-    r = w.login(user, auth_time=utcnow() - timedelta(minutes=10))
-    assert (r.status_code, code(r)) == (401, "INVALID_ID_TOKEN")
-    assert [h.failure_reason for h in w.db.committed_login_history] == [
-        "ID_TOKEN_BEFORE_PASSWORD_CHANGE"
-    ]
-    assert w.repo.sessions == {}
-    # Signing in again after the change is fine.
-    assert w.login(user, auth_time=utcnow() - timedelta(seconds=5)).status_code == 201
-
-
-def test_pending_user_with_temporary_password_gets_restricted_session(w):
-    r = w.login(w.user("PENDING", **restricted_cred()))
-    assert r.status_code == 201 and r.json()["requires_password_change"] is True
-
-
-@pytest.mark.parametrize("body", [{}, {"id_token": ""}, {"id_token": "x", "extra": 1}])
-def test_session_body_validation(w, body):
-    r = w.client.post("/api/v1/auth/session", json=body)
-    assert (r.status_code, code(r)) == (422, "VALIDATION_ERROR")
-
-
-def test_no_token_or_uid_in_logs(w, caplog):
-    caplog.set_level(logging.DEBUG)
-    blocked = w.user("LOCKED")
-    id_token = w.provider.issue(blocked.firebase_uid)
-    w.client.post("/api/v1/auth/session", json={"id_token": id_token})
-    w.client.post("/api/v1/auth/session", json={"id_token": "garbage-secret-token"})
-    ok = w.user()
-    ok_id_token = w.provider.issue(ok.firebase_uid)
-    access = w.client.post("/api/v1/auth/session", json={"id_token": ok_id_token}).json()["access_token"]
-    text = caplog.text
-    for secret in (id_token, ok_id_token, "garbage-secret-token", access, blocked.firebase_uid,
-                   ok.firebase_uid, blocked.email):
-        assert secret not in text
-
-
-# ----- GET /auth/me -----
+    assert r.status_code == 200
+    body = r.json()
+    assert body["user_id"] == str(user.user_id)
+    assert body["email"] == user.email and body["display_name"] == user.display_name
 
 
 def test_me_for_system_admin_business_owner_and_family_admin(w):
     sa, bo, fa = w.user(), w.user(), w.user()
+    bo.email = "bo.test@giapha.com"  # an Owner logs in with a @giapha.com address
     w.repo.grant(sa, "SYSTEM_ADMIN")
     clan = w.family.add_clan("ACTIVE")
     w.repo.grant(bo, "BUSINESS_OWNER", clan.clan_id)
@@ -243,6 +137,7 @@ def test_me_for_system_admin_business_owner_and_family_admin(w):
 
 def test_me_lists_roles_but_no_permissions_when_clan_not_active(w):
     bo = w.user()
+    bo.email = "bo.pending@giapha.com"
     clan = w.family.add_clan("PENDING")
     w.repo.grant(bo, "BUSINESS_OWNER", clan.clan_id)
     w.family.add_owner(clan, bo)
@@ -275,105 +170,157 @@ def test_logout_without_token_is_401(w):
     assert (r.status_code, code(r)) == (401, "UNAUTHENTICATED")
 
 
-# ----- POST /auth/change-password -----
+# ----- POST /auth/change-password (checked and written in the DB) -----
 
 
-def change(w, access, recent, password="New-password-123"):
+def change(w, access, current=PASSWORD, new=NEW_PASSWORD):
     return w.client.post(
         "/api/v1/auth/change-password",
         headers=bearer(access),
-        json={"new_password": password, "recent_id_token": recent},
+        json={"current_password": current, "new_password": new},
     )
 
 
-def test_first_password_change_activates_account_and_revokes_sessions(w):
-    user = w.user("PENDING", first_login=True, **restricted_cred())
-    old_id_token = w.provider.issue(user.firebase_uid, auth_time=utcnow() - timedelta(seconds=60))
-    access = w.client.post("/api/v1/auth/session", json={"id_token": old_id_token}).json()["access_token"]
-    other = w.token_for(user)
+def test_first_password_change_activates_account_and_returns_a_new_session(w):
+    user = w.user("PENDING", first_login=True, firebase=True, **restricted_cred())
+    access, other = w.token_for(user), w.token_for(user)
+    assert w.client.get("/api/v1/auth/me", headers=bearer(access)).json()["requires_password_change"] is True
 
-    r = change(w, access, w.provider.issue(user.firebase_uid))
-    assert r.status_code == 204
-    assert w.provider.password_changes == [user.firebase_uid]
+    r = change(w, access)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["requires_password_change"] is False and body["user"]["status"] == "ACTIVE"
+    new_access = body["access_token"]
+
     cred = w.repo.creds[user.user_id]
     assert user.status == "ACTIVE" and user.first_login_required is False
-    assert cred.must_change_password is False and cred.temporary_password_expires_at is None
+    assert cred.must_change_password is False
+    assert cred.temporary_password_expires_at is None and cred.temporary_password_issued_at is None
     assert cred.password_changed_at is not None
-    for token in (access, other):  # every app session is gone
+    assert bcrypt.checkpw(NEW_PASSWORD.encode(), cred.password_hash.encode())
+    # Every OLD session is gone, the restricted one included...
+    for token in (access, other):
         assert code(w.client.get("/api/v1/auth/me", headers=bearer(token))) == "SESSION_INVALID"
-    # The ID token from before the change can no longer be exchanged...
-    r = w.client.post("/api/v1/auth/session", json={"id_token": old_id_token})
-    assert (r.status_code, code(r)) == (401, "INVALID_ID_TOKEN")
-    # ...a fresh sign-in can, and the session is no longer restricted.
-    fresh = w.login(user, auth_time=utcnow() + timedelta(seconds=1))
-    assert fresh.status_code == 201 and fresh.json()["requires_password_change"] is False
+    # ...and the one returned works, no longer restricted.
+    me = w.client.get("/api/v1/auth/me", headers=bearer(new_access))
+    assert me.status_code == 200 and me.json()["requires_password_change"] is False
+    # Login: old password refused, new one accepted.
+    assert code(w.login(user, PASSWORD)) == "AUTHENTICATION_FAILED"
+    assert w.login(user, NEW_PASSWORD).status_code == 200
+    # Firebase kept in sync AFTER the DB commit.
+    assert w.provider.password_changes == [user.firebase_uid]
     assert w.repo.audit[-1]["action"] == "auth.password_changed"
     assert w.repo.audit[-1]["old_data"] == {"status": "PENDING"}
-    assert "new-password-123" not in str(w.repo.audit)
+    for secret in (PASSWORD, NEW_PASSWORD):
+        assert secret not in str(w.repo.audit)
 
 
-def test_change_password_rejects_token_of_another_user(w):
-    user, other = w.user(), w.user()
-    r = change(w, w.token_for(user), w.provider.issue(other.firebase_uid))
-    assert (r.status_code, code(r)) == (401, "RECENT_LOGIN_REQUIRED")
-    assert w.provider.password_changes == []
-
-
-def test_change_password_requires_recent_sign_in(w):
-    user = w.user()
-    stale = w.provider.issue(user.firebase_uid, auth_time=utcnow() - timedelta(seconds=301))
-    r = change(w, w.token_for(user), stale)
-    assert (r.status_code, code(r)) == (401, "RECENT_LOGIN_REQUIRED")
-    assert w.provider.password_changes == []
-
-
-def test_change_password_with_invalid_recent_token(w):
-    r = change(w, w.token_for(w.user()), "garbage")
-    assert (r.status_code, code(r)) == (401, "RECENT_LOGIN_REQUIRED")
-
-
-def test_change_password_provider_down_changes_nothing(w):
-    user = w.user("PENDING", **restricted_cred())
+def test_wrong_current_password_changes_nothing_and_counts(w):
+    user = w.user(firebase=True)
     access = w.token_for(user)
-    w.provider.set_password_error = ProviderUnavailable("down")
-    r = change(w, access, w.provider.issue(user.firebase_uid))
-    assert (r.status_code, code(r)) == (503, "PROVIDER_UNAVAILABLE")
-    assert user.status == "PENDING" and w.repo.creds[user.user_id].must_change_password is True
+    before = w.repo.creds[user.user_id].password_hash
+    r = change(w, access, current="Sai-Mat-Khau-999")
+    assert (r.status_code, code(r)) == (401, "AUTHENTICATION_FAILED")
+    assert r.json()["error"]["message"] == "Mật khẩu hiện tại không đúng."
+    cred = w.repo.creds[user.user_id]
+    assert cred.password_hash == before and cred.failed_login_count == 1
+    assert w.provider.password_changes == []
     assert w.client.get("/api/v1/auth/me", headers=bearer(access)).status_code == 200
 
 
-def test_change_password_policy_rejection_is_422(w):
+def test_five_wrong_current_passwords_lock_the_account_and_end_its_sessions(w):
     user = w.user()
-    w.provider.set_password_error = PasswordRejected()
-    r = change(w, w.token_for(user), w.provider.issue(user.firebase_uid))
+    access = w.token_for(user)
+    for _ in range(4):
+        assert code(change(w, access, current="Sai-Mat-Khau-999")) == "AUTHENTICATION_FAILED"
+    r = change(w, access, current="Sai-Mat-Khau-999")
+    assert (r.status_code, code(r)) == (403, "ACCOUNT_LOCKED") and "Retry-After" in r.headers
+    assert w.repo.creds[user.user_id].locked_until is not None
+    assert code(w.client.get("/api/v1/auth/me", headers=bearer(access))) == "SESSION_INVALID"
+    assert code(w.login(user)) == "ACCOUNT_LOCKED"  # even with the right password
+
+
+def test_new_password_must_differ_from_the_current_one(w):
+    user = w.user()
+    r = change(w, w.token_for(user), new=PASSWORD)
     assert (r.status_code, code(r)) == (422, "VALIDATION_ERROR")
-    assert "new-password-123" not in r.text
+    assert PASSWORD not in r.text
 
 
-def test_change_password_db_failure_after_firebase_is_503_with_request_id(w):
-    user = w.user("PENDING", **restricted_cred())
+@pytest.mark.parametrize("weak", ["12345", "alllower123", "ALLUPPER123", "NoDigitsHere", "Aa1" + "x" * 70])
+def test_weak_new_password_is_422_and_never_reaches_firebase(w, weak):
+    user = w.user(firebase=True)
+    r = change(w, w.token_for(user), new=weak)
+    assert (r.status_code, code(r)) == (422, "VALIDATION_ERROR")
+    assert weak not in r.text and w.provider.provider_calls == []
+
+
+def test_firebase_down_still_succeeds_db_is_the_source_of_truth(w, caplog):
+    caplog.set_level(logging.WARNING)
+    user = w.user(firebase=True)
+    w.provider.faults["get_user"] = [ProviderUnavailable("timeout")]
+    r = change(w, w.token_for(user))
+    assert r.status_code == 200
+    assert bcrypt.checkpw(NEW_PASSWORD.encode(), w.repo.creds[user.user_id].password_hash.encode())
+    assert "firebase_sync_failed:timeout" in caplog.text
+    assert NEW_PASSWORD not in caplog.text and PASSWORD not in caplog.text
+
+
+def test_no_firebase_account_is_fine(w):
+    user = w.user(firebase=False)
+    assert change(w, w.token_for(user)).status_code == 200
+    assert w.provider.password_changes == []
+
+
+def test_db_failure_is_503_and_firebase_is_not_touched(w):
+    user = w.user(firebase=True)
     access = w.token_for(user)
     w.db.fail_commit = True
-    r = change(w, access, w.provider.issue(user.firebase_uid))
+    r = change(w, access)
     assert (r.status_code, code(r)) == (503, "DATABASE_UNAVAILABLE")
     assert r.json()["error"]["request_id"] == r.headers["X-Request-ID"]
-    assert w.provider.password_changes == [user.firebase_uid] and w.db.rollbacks == 1
+    assert w.db.rollbacks == 1 and w.provider.password_changes == []
 
 
-def test_change_password_too_short_never_reaches_firebase(w):
+def test_old_body_with_recent_id_token_is_rejected(w):
     user = w.user()
-    r = change(w, w.token_for(user), w.provider.issue(user.firebase_uid), password="12345")
+    r = w.client.post(
+        "/api/v1/auth/change-password",
+        headers=bearer(w.token_for(user)),
+        json={"new_password": NEW_PASSWORD, "recent_id_token": "x"},
+    )
     assert (r.status_code, code(r)) == (422, "VALIDATION_ERROR")
-    assert "12345" not in r.text and w.provider.password_changes == []
 
 
 def test_restricted_session_still_blocked_on_business_routes_by_dependency():
-    """Covered in test_auth_dependency.py; listed here so the M???c D surface is complete."""
+    """Covered in test_login_api.py; listed here so the Mốc D surface is complete."""
     from app.dependencies.auth import RESTRICTED_ALLOWED_PATHS
 
-    assert RESTRICTED_ALLOWED_PATHS == {
-        "/api/v1/auth/me", "/api/v1/auth/change-password", "/api/v1/auth/logout"
-    }
+    # Compared after route_path() strips the API prefix: both mounts of the same three routes.
+    assert RESTRICTED_ALLOWED_PATHS == {"/auth/me", "/auth/change-password", "/auth/logout"}
+
+
+def test_the_firebase_session_exchange_is_gone(w):
+    r = w.client.post("/api/v1/auth/session", json={"id_token": "anything"})
+    assert r.status_code in (404, 405)
+
+
+# ----- registration (OTP + register-public) -----
+
+
+@pytest.fixture
+def sent_otps(monkeypatch) -> dict[str, str]:
+    """Captures the OTP the router would e-mail (the cache only keeps its hash)."""
+    monkeypatch.setattr(otp_service, "_otp_cache", {})
+    monkeypatch.setattr(otp_service, "_verified_emails", {})
+    sent: dict[str, str] = {}
+
+    def fake_send(to_email: str, otp: str) -> bool:
+        sent[to_email] = otp
+        return True
+
+    monkeypatch.setattr(router_module, "send_otp_via_email", fake_send)
+    return sent
 
 
 def test_register_send_otp_rejects_non_gmail(w):
@@ -381,15 +328,15 @@ def test_register_send_otp_rejects_non_gmail(w):
     assert r.status_code == 422
 
 
-def test_register_send_otp_and_verify(w):
-    from app.core.utils.otp_service import _otp_cache
+def test_register_send_otp_and_verify(w, sent_otps):
     email = "testuser123@gmail.com"
     r = w.client.post("/api/v1/auth/register-send-otp", json={"email": email})
     assert r.status_code == 200
-    otp = _otp_cache[email]["code"]
+    otp = sent_otps[email]
 
     # Verify wrong OTP
-    r_bad = w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": "999999"})
+    wrong = "000000" if otp != "000000" else "111111"
+    r_bad = w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": wrong})
     assert r_bad.status_code == 400
 
     # Verify correct OTP
@@ -397,25 +344,47 @@ def test_register_send_otp_and_verify(w):
     assert r_ok.status_code == 200
 
 
-def test_register_public_success(w):
-    from app.core.utils.otp_service import _otp_cache
-    email = "newmember@gmail.com"
+def register(w, sent_otps, email="newmember@gmail.com", password="Password123!"):
     w.client.post("/api/v1/auth/register-send-otp", json={"email": email})
-    otp = _otp_cache[email]["code"]
+    otp = sent_otps[email]
     w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": otp})
-
-    r = w.client.post(
+    return w.client.post(
         "/api/v1/auth/register-public",
         json={
             "email": email,
-            "password": "Password123!",
+            "password": password,
             "display_name": "Thành viên Mới",
             "username": "newmember",
             "otp": otp,
         },
     )
-    assert r.status_code == 201
+
+
+def test_register_public_success(w, sent_otps):
+    r = register(w, sent_otps)
+    assert r.status_code == 201, r.text
     body = r.json()
     assert "access_token" in body
-    assert body["user"]["email"] == email
+    assert body["user"]["email"] == "newmember@gmail.com"
+    [user] = w.repo.users.values()
+    # Firebase account created first, with an own-<uuid> uid, then the DB user with a bcrypt hash.
+    assert user.firebase_uid == f"own-{user.user_id}" and user.firebase_uid in w.provider.provider_users
+    assert bcrypt.checkpw(b"Password123!", w.repo.creds[user.user_id].password_hash.encode())
+    # The new account logs in through the one door.
+    assert w.client.post(
+        "/api/v1/auth/login", json={"email": "newmember@gmail.com", "password": "Password123!"}
+    ).status_code == 200
 
+
+def test_register_public_firebase_failure_creates_no_db_user(w, sent_otps):
+    w.provider.faults["create_user"] = [ProviderUnavailable("down")]
+    r = register(w, sent_otps)
+    assert (r.status_code, code(r)) == (503, "PROVIDER_UNAVAILABLE")
+    assert w.repo.users == {} and w.repo.creds == {} and w.repo.sessions == {}
+    assert "Password123!" not in r.text
+
+
+def test_register_public_weak_password_is_422_before_firebase(w, sent_otps):
+    r = register(w, sent_otps, password="weakpass")
+    assert (r.status_code, code(r)) == (422, "VALIDATION_ERROR")
+    assert w.repo.users == {} and w.provider.provider_calls == []

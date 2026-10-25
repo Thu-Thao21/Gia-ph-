@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-  loginWithGoogle,
-  loginWithFacebook,
+  passwordPolicyError,
   registerWithEmailPassword,
   sendRegisterOtp,
   verifyRegisterOtp,
 } from '../../../services/auth.service';
-import { useAuth } from '../../../hooks/useAuth';
 import PasswordInput from '../PasswordInput/PasswordInput';
 import type { AccountProfile } from '../../../context/AuthContext';
 import './RegisterForm.css';
@@ -17,7 +15,6 @@ export interface RegisterFormProps {
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onSuccess }) => {
-  const { refreshAccount } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -94,32 +91,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    try {
-      const profile = await loginWithGoogle();
-      if (profile.id) {
-        localStorage.removeItem('auth_token');
-        onSuccess(await refreshAccount() || profile);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Đăng nhập Google thất bại.');
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    setError('');
-    try {
-      const profile = await loginWithFacebook();
-      if (profile.id) {
-        localStorage.removeItem('auth_token');
-        onSuccess(await refreshAccount() || profile);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Đăng nhập Facebook thất bại.');
-    }
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -139,8 +110,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự.');
+    const policyError = passwordPolicyError(formData.password);
+    if (policyError) {
+      setError(policyError);
       return;
     }
 
@@ -302,7 +274,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
             name="password"
             value={formData.password}
             onChange={handleChange}
-            placeholder="Ít nhất 6 ký tự"
+            placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường và số"
             autoComplete="new-password"
             required
             className="register-form-input"
@@ -327,23 +299,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
         <button type="submit" disabled={isSubmitting} className="register-form-submit">
           {isSubmitting ? 'Đang xử lý...' : 'Tạo Tài Khoản'}
         </button>
-
-        <div className="register-form-divider">
-          <span className="register-form-divider-line" />
-          <span className="register-form-divider-text">HOẶC</span>
-          <span className="register-form-divider-line" />
-        </div>
-
-        <div className="register-form-socials">
-          <button type="button" onClick={handleGoogleLogin} className="btn-social-google">
-            <span className="btn-social-icon-google">G</span>
-            <span>Google</span>
-          </button>
-          <button type="button" onClick={handleFacebookLogin} className="btn-social-facebook">
-            <span className="btn-social-icon-facebook">F</span>
-            <span>Facebook</span>
-          </button>
-        </div>
+        {/* Nhóm chốt (Mốc M1): chỉ đăng ký/đăng nhập bằng email + mật khẩu, không Google/Facebook/SMS. */}
       </form>
 
       <div className="register-form-switch">

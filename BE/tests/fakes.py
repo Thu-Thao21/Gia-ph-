@@ -62,13 +62,13 @@ def make_user(
 
 
 def disabled_rate_limiters() -> RateLimiters:
-    """For a test app that mounts a rate-limited router (POST /auth/session, Mốc H2) but does not
+    """For a test app that mounts a rate-limited router (POST /auth/login, Mốc M1) but does not
     test the limiter: without app.state.rate_limiters the dependency fails loudly."""
     return RateLimiters(
         enabled=False,
         registration=SlidingWindowLimiter(5, 3600),
         track=SlidingWindowLimiter(20, 600),
-        session=SlidingWindowLimiter(20, 600),
+        login=SlidingWindowLimiter(10, 600),
     )
 
 
@@ -309,6 +309,12 @@ class FakeUserAccessRepo:
         self.calls.append("lock_credential")
         return self.creds.get(user_id)
 
+    async def lock_or_create_credential_metadata(self, user_id, *, now):
+        self.calls.append("lock_or_create_credential")
+        if user_id not in self.creds:
+            await self.add_credential_metadata(user_id, now=now)
+        return self.creds[user_id]
+
     async def get_user_fresh(self, user_id):
         self.calls.append("get_user_fresh")
         return self.users.get(user_id)
@@ -346,6 +352,13 @@ class FakeUserAccessRepo:
     async def get_user_by_email_ci(self, email):
         self.calls.append("get_user_by_email_ci")
         return next((u for u in self.users.values() if u.email.lower() == email.lower()), None)
+
+    async def get_user_by_login_identifier(self, identifier):
+        self.calls.append("get_user_by_login_identifier")
+        needle = identifier.lower()
+        return next((u for u in self.users.values() if u.email.lower() == needle), None) or next(
+            (u for u in self.users.values() if (u.username or "").lower() == needle), None
+        )
 
     async def create_user_account(
         self, *, user_id, firebase_uid, email, display_name, phone, status, first_login_required, now

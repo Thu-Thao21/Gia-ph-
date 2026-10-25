@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Select, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_access.entities import (
@@ -87,6 +88,20 @@ class UserAccessRepository:
         stmt = select(User).where(func.lower(User.email) == email.lower())
         return (await self._session.execute(stmt)).scalar_one_or_none()
 
+    async def get_user_by_login_identifier(self, identifier: str) -> User | None:
+        """POST /auth/login: the user whose e-mail, else whose username, equals `identifier` in
+        any letter case. E-mail wins, so another user's username can never shadow an e-mail."""
+        user = await self.get_user_by_email_ci(identifier)
+        if user is not None:
+            return user
+        stmt = (
+            select(User)
+            .where(func.lower(User.username) == identifier.lower())
+            .order_by(User.created_at, User.user_id)
+            .limit(1)
+        )
+        return (await self._session.execute(stmt)).scalars().first()
+
     async def create_user_account(
         self,
         *,
@@ -131,6 +146,32 @@ class UserAccessRepository:
             .execution_options(populate_existing=True)
         )
         return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def lock_or_create_credential_metadata(
+        self, user_id: uuid.UUID, *, now: datetime
+    ) -> CredentialMetadata:
+        """The credential row, created first when the user has none, then locked like
+        lock_credential_metadata. POST /auth/login needs a row to count wrong passwords on: an
+        existing account without one must lock after 5 like any other (no tell-tale difference).
+
+        INSERT ... ON CONFLICT DO NOTHING: two concurrent first attempts cannot both insert (the
+        loser's insert is a no-op) and both then lock the SAME row, one after the other.
+        Defaults as add_credential_metadata: no hash, so the account still cannot log in."""
+        await self._session.execute(
+            pg_insert(CredentialMetadata)
+            .values(
+                user_id=user_id,
+                auth_provider="FIREBASE",
+                must_change_password=False,
+                failed_login_count=0,
+                updated_at=now,
+            )
+            .on_conflict_do_nothing(index_elements=[CredentialMetadata.user_id])
+        )
+        cred = await self.lock_credential_metadata(user_id)
+        if cred is None:  # cannot happen: just inserted or already there, inside this transaction
+            raise RuntimeError("credential_metadata row missing after insert")
+        return cred
 
     async def get_user_fresh(self, user_id: uuid.UUID) -> User | None:
         """The users row re-read from the database WITHOUT a lock (E6b: a status already committed by

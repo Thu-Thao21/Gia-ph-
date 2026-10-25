@@ -1,22 +1,23 @@
 -- =============================================================================
 -- KỊCH BẢN DỮ LIỆU MẪU THỰC TẾ CHO NEON POSTGRESQL (MFGMS - HỆ THỐNG GIA PHẢ LIÊN HỌ)
 -- 1. System Admin (Quản trị hệ thống toàn quyền):
---    - Email: thuthaor120608@gmail.com (Mật khẩu: Admin@123 - Đã băm bảo mật bcrypt)
+--    - Email: thuthaor120608@gmail.com
 -- 2. Trưởng tộc (Business Owner - Đăng nhập bằng tài khoản @giapha.com do hệ thống cấp):
 --    - vo.danang@giapha.com      -> Trưởng tộc Dòng Họ Võ (Liên kết đại diện Gmail: thangvo250904@gmail.com)
 --    - mai.phongdien@giapha.com  -> Trưởng tộc Dòng Họ Mai (Liên kết đại diện Gmail: maiphuchau144@gmail.com)
 -- 3. Quản trị viên gia tộc (Family Admin Chi 1 Họ Võ):
---    - huy13052005@gmail.com     -> Nguyễn Gia Huy (Mật khẩu: Admin@123)
+--    - huy13052005@gmail.com     -> Nguyễn Gia Huy
 -- 4. Thành viên dòng họ (Member - Đăng nhập bằng Gmail thật):
 --    - quankophaiwibu@gmail.com  -> Trần Minh Quân (Thành viên Dòng họ & Cầu nối liên họ)
 --    - thangvo250904@gmail.com   -> Võ Trí Thắng (Thành viên cá nhân Họ Võ)
 --    - maiphuchau144@gmail.com   -> Mai Phúc Hậu (Thành viên cá nhân Họ Mai)
+-- MẬT KHẨU: file này KHÔNG chứa mật khẩu hay hash nào. Mọi tài khoản seed có password_hash = NULL
+-- và must_change_password = true, nên chưa đăng nhập được cho tới khi đặt mật khẩu riêng bằng
+--   python scripts/set_password.py <email> [--must-change]
+-- Mật khẩu được gửi riêng cho từng người. Cột password_hash do migration 0005 tạo (alembic).
 -- =============================================================================
 
 BEGIN;
-
--- Đảm bảo bảng credential_metadata có cột password_hash để lưu mật khẩu băm bảo mật
-ALTER TABLE credential_metadata ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
 
 -- -----------------------------------------------------------------------------
 -- 1. ĐẢM BẢO ROLES HỆ THỐNG ĐÃ TỒN TẠI
@@ -179,18 +180,22 @@ INSERT INTO users (
   status = 'ACTIVE',
   email_verified = true;
 
--- Tạo credential_metadata với mật khẩu băm bảo mật bcrypt (Admin@123)
-INSERT INTO credential_metadata (user_id, auth_provider, password_hash, must_change_password, failed_login_count, updated_at)
-SELECT u.user_id, 'LOCAL', '$2b$12$8dtDboRhxibCXxKfLBf98OzjMF8aSXL7lL85yrhHQ9jzphnmLKJTO', false, 0, CURRENT_TIMESTAMP
+-- Tạo credential_metadata KHÔNG có mật khẩu: password_hash = NULL (đăng nhập bị từ chối) và
+-- must_change_password = true. Mật khẩu riêng từng người đặt bằng scripts/set_password.py.
+-- Chạy lại file này sẽ XÓA mật khẩu đã đặt của các tài khoản seed (phải đặt lại).
+INSERT INTO credential_metadata (user_id, auth_provider, password_hash, must_change_password, failed_login_count, locked_until, updated_at)
+SELECT u.user_id, 'LOCAL', NULL, true, 0, NULL, CURRENT_TIMESTAMP
 FROM users u
 WHERE u.email IN (
   'thuthaor120608@gmail.com', 'thangvo250904@gmail.com', 'maiphuchau144@gmail.com',
   'huy13052005@gmail.com', 'quankophaiwibu@gmail.com', 'vo.danang@giapha.com', 'mai.phongdien@giapha.com'
 )
-ON CONFLICT (user_id) DO UPDATE SET 
-  password_hash = EXCLUDED.password_hash,
+ON CONFLICT (user_id) DO UPDATE SET
+  password_hash = NULL,
   auth_provider = 'LOCAL',
-  must_change_password = false;
+  must_change_password = true,
+  failed_login_count = 0,
+  locked_until = NULL;
 
 -- -----------------------------------------------------------------------------
 -- 3. TẠO 2 DÒNG HỌ THỰC TẾ (HỌ VÕ ĐẠI TỘC & HỌ MAI THẾ TỘC)

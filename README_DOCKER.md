@@ -7,7 +7,18 @@ Bất kỳ thành viên nào trong nhóm khi clone repo về máy **không cần
 
 ## 1. Khởi chạy toàn bộ hệ thống (Chỉ 1 câu lệnh)
 
-Mở Terminal tại thư mục gốc của dự án và chạy:
+**Trước tiên** tạo file `.env` ở thư mục gốc (cạnh `docker-compose.yml`). `docker-compose.yml` không
+còn giá trị mặc định cho bí mật, nên thiếu file này thì backend không kết nối được DB:
+
+```env
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require
+SECRET_KEY=<chuoi-ngau-nhien-dai>
+```
+
+File `.env` đã bị `.gitignore` chặn (kiểm tra: `git check-ignore -v .env` phải in ra một dòng).
+**Không bao giờ commit file này.** Chuỗi kết nối DB được trưởng nhóm gửi riêng.
+
+Sau đó mở Terminal tại thư mục gốc của dự án và chạy:
 
 ```bash
 docker compose up --build -d
@@ -31,13 +42,16 @@ Docker sẽ tự động:
 
 ## 3. Danh sách tài khoản đăng nhập mẫu
 
-| Vai trò | Email đăng nhập | Mật khẩu | Dòng họ / Quyền hạn |
-|---|---|---|---|
-| **System Admin** | `thuthaor120608@gmail.com` | `Admin@123` | Quản trị toàn hệ thống |
-| **Trưởng tộc Họ Võ** | `vo.danang@giapha.com` | `Admin@123` | Chủ quản Dòng Họ Võ Đại Tộc |
-| **Trưởng tộc Họ Mai** | `mai.phongdien@giapha.com` | `Admin@123` | Chủ quản Dòng Họ Mai Thế Tộc |
-| **Family Admin** | `huy13052005@gmail.com` | `Admin@123` | Quản trị viên Chi 1 Họ Võ |
-| **Member** | `quankophaiwibu@gmail.com` | `Admin@123` | Thành viên dòng họ & Cầu nối liên họ |
+Mật khẩu được gửi riêng cho từng người (không ghi trong repo). Mật khẩu được đặt bằng
+`BE/scripts/set_password.py`; tài khoản seed chưa đặt mật khẩu thì không đăng nhập được.
+
+| Vai trò | Email đăng nhập | Dòng họ / Quyền hạn |
+|---|---|---|
+| **System Admin** | `thuthaor120608@gmail.com` | Quản trị toàn hệ thống |
+| **Trưởng tộc Họ Võ** | `vo.danang@giapha.com` | Chủ quản Dòng Họ Võ Đại Tộc |
+| **Trưởng tộc Họ Mai** | `mai.phongdien@giapha.com` | Chủ quản Dòng Họ Mai Thế Tộc |
+| **Family Admin** | `huy13052005@gmail.com` | Quản trị viên Chi 1 Họ Võ |
+| **Member** | `quankophaiwibu@gmail.com` | Thành viên dòng họ & Cầu nối liên họ |
 
 ---
 

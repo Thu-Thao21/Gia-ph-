@@ -200,11 +200,36 @@ def test_the_fingerprint_command_prints_only_the_database_and_the_fingerprint():
 
 def test_the_history_is_one_line_baseline_then_0002_then_0003():
     script = ScriptDirectory.from_config(Config(str(BE_DIR / "alembic.ini")))
-    assert script.get_heads() == ["0004_genealogy_fields"]
+    assert script.get_heads() == ["0005_credential_password_hash"]
+    assert script.get_revision("0005_credential_password_hash").down_revision == "0004_genealogy_fields"
     assert script.get_revision("0004_genealogy_fields").down_revision == "0003_provisioning_idempotency"
     assert script.get_revision("0003_provisioning_idempotency").down_revision == "0002_integrity_constraints"
     assert script.get_revision("0002_integrity_constraints").down_revision == "0001_baseline"
     assert script.get_revision("0001_baseline").down_revision is None
+
+
+def test_0005_upgrade_twice_is_harmless_and_downgrade_drops_only_the_column(monkeypatch):
+    """The main database already has password_hash (old seed file): every statement must be
+    IF [NOT] EXISTS so running the upgrade there, or twice, changes nothing and raises nothing."""
+    module = load_migration("0005_credential_password_hash")
+    executed: list[str] = []
+    monkeypatch.setattr(module.op, "execute", executed.append)
+    module.upgrade()
+    module.upgrade()
+    assert executed == [
+        "ALTER TABLE credential_metadata ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
+    ] * 2
+    executed.clear()
+    module.downgrade()
+    module.downgrade()
+    assert executed == ["ALTER TABLE credential_metadata DROP COLUMN IF EXISTS password_hash;"] * 2
+
+
+def test_0005_offline_preview_adds_the_column_idempotently():
+    proc = run_cli("-m", "alembic", "upgrade", "0004_genealogy_fields:0005_credential_password_hash", "--sql")
+    assert proc.returncode == 0, proc.stderr[-600:]
+    assert "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)" in proc.stdout
+    assert_no_secret(proc.stdout + proc.stderr)
 
 
 def test_the_baseline_is_empty():

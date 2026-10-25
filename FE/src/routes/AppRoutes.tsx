@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LoginPage from '../pages/auth/Login';
 import RegisterPage from '../pages/auth/Register';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword';
+import ChangePasswordPage from '../pages/auth/ChangePassword';
 import Dashboard from '../pages/dashboard/Dashboard';
 import { PublicHomePage } from '../pages/public/Home';
 import { PublicFamilySearchPage } from '../pages/public/FamilySearch';
@@ -12,7 +13,7 @@ import { BusinessTrackStatusPage } from '../pages/public/BusinessTrack';
 import { InviteActivationPage } from '../pages/public/InviteActivation';
 import { FamilyAdminPreviewPage } from '../features/familyAdmin/FamilyAdminPreviewPage';
 import { ProtectedRoute, RoleGuard } from './RouteGuards';
-import type { AccountProfile } from '../context/AuthContext';
+import { homePathFor, useAuthContext, type AccountProfile } from '../context/AuthContext';
 
 export type AuthView = 'login' | 'register' | 'forgot-password' | 'dashboard';
 
@@ -30,13 +31,12 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
   onLogout,
 }) => {
   const navigate = useNavigate();
+  const { account } = useAuthContext();
+  // [L-17] Phiên hạn chế luôn đi tới /change-password, không bao giờ vào dashboard.
+  const homePath = account ? homePathFor(account) : primaryRole === 'admin' ? '/admin' : '/user';
 
   const handleAuthSuccess = (profile?: AccountProfile) => {
-    if ((profile?.primary_role || primaryRole) === 'admin') {
-      navigate('/admin');
-    } else {
-      navigate('/user');
-    }
+    navigate(homePathFor(profile ?? account));
   };
 
   const handleLogout = () => {
@@ -61,7 +61,7 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
         path="/login"
         element={
           isAuthenticated ? (
-            <Navigate to={primaryRole === 'admin' ? '/admin' : '/user'} replace />
+            <Navigate to={homePath} replace />
           ) : (
             <LoginPage
               onSwitchToRegister={() => navigate('/register')}
@@ -80,6 +80,7 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
           />
         }
       />
+      <Route path="/change-password" element={<ChangePasswordPage />} />
       <Route
         path="/forgot-password"
         element={
@@ -116,7 +117,7 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
         path="*"
         element={
           isAuthenticated ? (
-            <Navigate to={primaryRole === 'admin' ? '/admin' : '/user'} replace />
+            <Navigate to={homePath} replace />
           ) : (
             <Navigate to="/public" replace />
           )

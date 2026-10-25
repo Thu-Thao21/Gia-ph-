@@ -32,14 +32,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     # When true, unhandled-error logs include the traceback. Keep false outside local dev.
     DEBUG: bool = False
-    # Firebase project whose ID tokens are accepted (token audience). No default on
-    # purpose: when empty, POST /auth/session fails closed with 503.
+    # Firebase project of the Admin API (Owner provisioning, password sync). No default on
+    # purpose: when empty, those calls fail closed with 503. Login does NOT use Firebase.
     FIREBASE_PROJECT_ID: str = ""
     FIREBASE_API_KEY: str = "AIzaSyBT-yyl7zQo_d8rZandALAWTdMvCYetLnQ"
     # Service account JSON path, only for the Admin API (password change, token
     # revocation check). The file content is never read or logged by app code.
     FIREBASE_SERVICE_ACCOUNT_PATH: str = ""
-    # Application session lifetime and how fresh recent_id_token must be.
+    # Application session lifetime. RECENT_LOGIN_MAX_AGE_SECONDS is no longer read (change-password
+    # checks the current password in the DB since Moc M1); kept so existing .env files still load.
     SESSION_TTL_HOURS: int = 8
     RECENT_LOGIN_MAX_AGE_SECONDS: int = 300
     FRONTEND_ORIGINS: str = "http://localhost:5173,http://localhost:8080"
@@ -53,8 +54,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_REGISTRATION_WINDOW_SECONDS: int = 3600
     RATE_LIMIT_TRACK_MAX: int = 20
     RATE_LIMIT_TRACK_WINDOW_SECONDS: int = 600
-    RATE_LIMIT_SESSION_MAX: int = 20
-    RATE_LIMIT_SESSION_WINDOW_SECONDS: int = 600
+    # POST /auth/login (DB password login, Moc M1): 10 per 10 minutes per caller address.
+    RATE_LIMIT_LOGIN_MAX: int = 10
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 600
     RATE_LIMIT_MAX_KEYS: int = 10_000
     # X-Forwarded-For is ignored unless this is true (the caller can write that header).
     # TRUSTED_PROXY_COUNT is how many proxies sit in front of the app; the address is the

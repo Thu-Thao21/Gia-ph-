@@ -17,7 +17,6 @@ import { NotificationCenterModule } from '../../components/member/NotificationCe
 import { AIConsentModule } from '../../components/member/AIConsentModule';
 import { AncestralLibraryModule } from '../../components/member/AncestralLibraryModule';
 import { DataExchangeModule } from '../../components/member/DataExchangeModule';
-import { FirstLoginPasswordModal } from '../../components/auth/FirstLoginPasswordModal';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { FamilyPaternalTab } from '../../components/network/FamilyPaternalTab';
 import { FamilyMaternalTab } from '../../components/network/FamilyMaternalTab';
@@ -156,7 +155,7 @@ export interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
-  const { account, firebaseUser } = useAuth();
+  const { account } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -164,21 +163,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth <= 760);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [isProcessingToastOpen, setIsProcessingToastOpen] = useState(false);
-  const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
   const [selectedAncestorId, setSelectedAncestorId] = useState<string | undefined>();
 
-  const displayUserName = account?.display_name || account?.username || firebaseUser?.displayName || userName || 'Người dùng';
+  const displayUserName = account?.display_name || account?.username || userName || 'Người dùng';
   const primaryRole = account?.primary_role || 'member';
   const isFamilyManager = (account?.roles?.some((role) => (role.role === 'manager' || role.role === 'family_admin') && role.status === 'active') || primaryRole === 'family_admin') && !account?.roles?.some((role) => role.role === 'family_head' && role.status === 'active');
   const userRole = primaryRole === 'admin' ? 'Admin' : primaryRole === 'family_head' ? 'Chủ dòng họ' : (primaryRole === 'family_admin' || isFamilyManager) ? 'Family Admin' : 'Thành viên';
   const basePath = primaryRole === 'admin' ? ROUTES.ADMIN.ROOT : ROUTES.USER.ROOT;
 
-  // [L-17] Mandatory first password change check
-  useEffect(() => {
-    if (account?.requires_password_change) {
-      setShowFirstLoginModal(true);
-    }
-  }, [account?.requires_password_change]);
+  // [L-17] A restricted session never reaches the dashboard: ProtectedRoute sends it to /change-password.
 
   // Sync URL → activeTab
   useEffect(() => {
@@ -403,13 +396,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       <NotificationModal
         isOpen={isProcessingToastOpen}
         onClose={() => setIsProcessingToastOpen(false)}
-      />
-
-      {/* Mandatory First-Time Password Modal */}
-      <FirstLoginPasswordModal
-        isOpen={showFirstLoginModal}
-        onSuccess={() => setShowFirstLoginModal(false)}
-        onCancel={onLogout}
       />
     </div>
   );

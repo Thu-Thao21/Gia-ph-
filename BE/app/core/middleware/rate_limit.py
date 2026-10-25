@@ -3,8 +3,9 @@
 Three limiters, each per caller address (settings RATE_LIMIT_<NAME>_MAX / _WINDOW_SECONDS):
   * "registration": POST /business-registrations (default 5 per hour);
   * "track": POST /business-registrations/track (default 20 per 10 minutes);
-  * "session": POST /auth/session, the login (default 20 per 10 minutes; KI-06). It runs before
-    the Firebase ID token is verified, so refused calls never reach Firebase.
+  * "login": POST /auth/login, the only login (default 10 per 10 minutes, KI-06, Moc M1). It runs
+    before the user lookup and bcrypt, so refused calls cost nothing. The per-account lockout
+    (5 wrong passwords) lives in the use case, not here.
 They count separately: using up one never affects the others. An unknown name is an error
 (ValueError), never "no limit".
 
@@ -53,7 +54,7 @@ from app.schemas.errors import ErrorCode
 
 UNKNOWN_CLIENT = "unknown"
 DEFAULT_SWEEP_INTERVAL_SECONDS = 60.0
-LIMITER_NAMES = ("registration", "track", "session")
+LIMITER_NAMES = ("registration", "track", "login")
 
 
 def limiter_key(ip: str | None) -> str:
@@ -144,14 +145,14 @@ class RateLimiters:
         enabled: bool,
         registration: SlidingWindowLimiter,
         track: SlidingWindowLimiter,
-        session: SlidingWindowLimiter,
+        login: SlidingWindowLimiter,
         trust_proxy_headers: bool = False,
         trusted_proxy_count: int = 1,
     ) -> None:
         self.enabled = enabled
         self.registration = registration
         self.track = track
-        self.session = session
+        self.login = login
         self.trust_proxy_headers = trust_proxy_headers
         self.trusted_proxy_count = trusted_proxy_count
 
@@ -197,9 +198,9 @@ def build_rate_limiters(settings, clock: Callable[[], float] = time.monotonic) -
             max_keys=settings.RATE_LIMIT_MAX_KEYS,
             clock=clock,
         ),
-        session=SlidingWindowLimiter(
-            settings.RATE_LIMIT_SESSION_MAX,
-            settings.RATE_LIMIT_SESSION_WINDOW_SECONDS,
+        login=SlidingWindowLimiter(
+            settings.RATE_LIMIT_LOGIN_MAX,
+            settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
             max_keys=settings.RATE_LIMIT_MAX_KEYS,
             clock=clock,
         ),

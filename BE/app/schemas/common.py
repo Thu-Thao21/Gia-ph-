@@ -18,6 +18,8 @@ from pydantic import (
     StringConstraints,
 )
 
+from app.core.security.password_hash import check_password_policy
+
 MAX_PAGE_SIZE = 100
 DEFAULT_PAGE_SIZE = 20
 
@@ -171,14 +173,7 @@ Phone = Annotated[
 
 def _validate_password_strength(val: SecretStr) -> SecretStr:
     raw = val.get_secret_value() if hasattr(val, "get_secret_value") else str(val)
-    if len(raw) < 8:
-        raise ValueError("Password must be at least 8 characters long")
-    if not re.search(r"[A-Z]", raw):
-        raise ValueError("Password must contain at least one uppercase letter")
-    if not re.search(r"[a-z]", raw):
-        raise ValueError("Password must contain at least one lowercase letter")
-    if not re.search(r"[0-9]", raw):
-        raise ValueError("Password must contain at least one digit")
+    check_password_policy(raw)  # the one shared policy (app.core.security.password_hash)
     return val
 
 

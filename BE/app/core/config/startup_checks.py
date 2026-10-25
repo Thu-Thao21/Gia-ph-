@@ -13,7 +13,10 @@ import os
 from typing import Mapping
 
 from app.core.config.config import Settings
-from app.core.integrations.firebase import EMULATOR_ENV
+
+# NOT imported from app.core.integrations.firebase at module level: that module imports
+# app.core.config, whose __init__ imports this file, so a top-level import is a circular import
+# whenever firebase is the first app module loaded (tests/test_import_cycles.py).
 
 
 class ConfigurationError(RuntimeError):
@@ -27,12 +30,14 @@ class ConfigurationError(RuntimeError):
 def find_config_problems(
     settings: Settings, environ: Mapping[str, str] | None = None
 ) -> list[str]:
+    from app.core.integrations.firebase import EMULATOR_ENV  # see the note on the imports
+
     environ = os.environ if environ is None else environ
     problems: list[str] = []
 
     if not (settings.FIREBASE_PROJECT_ID or "").strip():
         problems.append(
-            "FIREBASE_PROJECT_ID is not set (ID tokens cannot be verified, so login would fail)"
+            "FIREBASE_PROJECT_ID is not set (Firebase Admin calls: Owner provisioning and password sync would fail)"
         )
 
     if environ.get(EMULATOR_ENV):
@@ -59,8 +64,8 @@ def find_config_problems(
         "RATE_LIMIT_REGISTRATION_WINDOW_SECONDS",
         "RATE_LIMIT_TRACK_MAX",
         "RATE_LIMIT_TRACK_WINDOW_SECONDS",
-        "RATE_LIMIT_SESSION_MAX",
-        "RATE_LIMIT_SESSION_WINDOW_SECONDS",
+        "RATE_LIMIT_LOGIN_MAX",
+        "RATE_LIMIT_LOGIN_WINDOW_SECONDS",
         "RATE_LIMIT_MAX_KEYS",
         "TRUSTED_PROXY_COUNT",
     ):

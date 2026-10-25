@@ -22,10 +22,14 @@ class ErrorCode(StrEnum):
     INVALID_ID_TOKEN = "INVALID_ID_TOKEN"
     SESSION_INVALID = "SESSION_INVALID"
     RECENT_LOGIN_REQUIRED = "RECENT_LOGIN_REQUIRED"
+    # POST /auth/login: one answer for unknown identifier, wrong password and missing hash
+    AUTHENTICATION_FAILED = "AUTHENTICATION_FAILED"
 
     # 403 - authenticated but not allowed
     FORBIDDEN = "FORBIDDEN"
     ACCOUNT_BLOCKED = "ACCOUNT_BLOCKED"
+    # POST /auth/login: too many wrong passwords in a row, locked for a while
+    ACCOUNT_LOCKED = "ACCOUNT_LOCKED"
     PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED"
     TEMPORARY_PASSWORD_EXPIRED = "TEMPORARY_PASSWORD_EXPIRED"
 
@@ -62,8 +66,10 @@ ERROR_HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.INVALID_ID_TOKEN: 401,
     ErrorCode.SESSION_INVALID: 401,
     ErrorCode.RECENT_LOGIN_REQUIRED: 401,
+    ErrorCode.AUTHENTICATION_FAILED: 401,
     ErrorCode.FORBIDDEN: 403,
     ErrorCode.ACCOUNT_BLOCKED: 403,
+    ErrorCode.ACCOUNT_LOCKED: 403,
     ErrorCode.PASSWORD_CHANGE_REQUIRED: 403,
     ErrorCode.TEMPORARY_PASSWORD_EXPIRED: 403,
     ErrorCode.NOT_FOUND: 404,
@@ -87,8 +93,10 @@ DEFAULT_ERROR_MESSAGE: dict[ErrorCode, str] = {
     ErrorCode.INVALID_ID_TOKEN: "The identity token is invalid or revoked.",
     ErrorCode.SESSION_INVALID: "The session is invalid, expired or revoked.",
     ErrorCode.RECENT_LOGIN_REQUIRED: "Please sign in again to continue.",
+    ErrorCode.AUTHENTICATION_FAILED: "Email/tên đăng nhập hoặc mật khẩu không đúng.",
     ErrorCode.FORBIDDEN: "You do not have permission to perform this action.",
     ErrorCode.ACCOUNT_BLOCKED: "This account cannot be used.",
+    ErrorCode.ACCOUNT_LOCKED: "Tài khoản tạm thời bị khóa do đăng nhập sai nhiều lần.",
     ErrorCode.PASSWORD_CHANGE_REQUIRED: "You must change your password first.",
     ErrorCode.TEMPORARY_PASSWORD_EXPIRED: "The temporary password has expired.",
     ErrorCode.NOT_FOUND: "Resource not found.",

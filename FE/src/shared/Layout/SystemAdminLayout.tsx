@@ -41,14 +41,14 @@ const TAB_TO_ROUTE: Record<string, string> = {
 };
 
 export const SystemAdminLayout: React.FC = () => {
-  const { account, firebaseUser } = useAuth();
+  const { account } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const displayUserName = account?.display_name || account?.username || firebaseUser?.displayName || 'Quản Trị Viên Hệ Thống';
+  const displayUserName = account?.display_name || account?.username || 'Quản Trị Viên Hệ Thống';
   const userRole = 'Admin';
   const basePath = ROUTES.ADMIN.ROOT;
 

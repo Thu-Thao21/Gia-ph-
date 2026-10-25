@@ -7,9 +7,11 @@ services:
       dockerfile: Dockerfile
     container_name: mfg-backend
     restart: unless-stopped
+    # Secrets have NO default here. Put DATABASE_URL and SECRET_KEY in a file named .env next to
+    # this docker-compose.yml (that file is git-ignored, never commit it). See README_DOCKER.md.
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://neondb_owner:npg_XkwBJVU8WF4e@ep-green-mode-b4ugmgu4-pooler.c-6.us-east-2.aws.neon.tech/mfgms_ai?sslmode=require&channel_binding=require}
-      SECRET_KEY: ${SECRET_KEY:-supersecretkey123_mfgms_genealogy_2026}
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
       SESSION_TTL_HOURS: 8
       FRONTEND_ORIGINS: "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
       DEBUG: "false"
