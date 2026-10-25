@@ -114,22 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (payload: { emailOrPhone: string; password: string }): Promise<AccountProfile> => {
     const ident = payload.emailOrPhone.trim().toLowerCase();
-    const isDevIdent =
-      ident === 'thuthaor120608@gmail.com' ||
-      ident === 'admin' ||
-      ident === 'quankophaiwibu@gmail.com' ||
-      ident === 'minhquan' ||
-      ident === 'thangvo250904@gmail.com' ||
-      ident === 'thangvo' ||
-      ident === 'huy13052005@gmail.com' ||
-      ident === 'giahuy' ||
-      ident === 'maiphuchau144@gmail.com' ||
-      ident === 'phuchau' ||
-      ident === 'truongtoc_vo' ||
-      ident === 'truongtoc_mai' ||
-      ident.endsWith('@giapha.com');
 
-    if (isDevIdent) {
+    // 1. Thử đăng nhập trực tiếp qua Backend session dựa trên dữ liệu thật trong DB
+    try {
       const res = await apiClient.post<SessionCreateResponse>('/auth/dev-session', { email: ident });
       setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
       try {
@@ -140,8 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const info = readApiError(err);
         if (info.code === 'PASSWORD_CHANGE_REQUIRED') {
           const restrictedProfile: AccountProfile = {
-            id: 'dev-user',
-            firebase_uid: 'dev-user',
+            id: 'user',
+            firebase_uid: 'user',
             email: ident,
             display_name: ident,
             email_verified: true,
@@ -156,14 +143,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         throw err;
       }
+    } catch {
+      // 2. Nếu Backend không tìm thấy tài khoản (hoặc Firebase được dùng), thử qua Firebase Authentication
+      try {
+        const profile = await loginWithEmailPassword({
+          email: payload.emailOrPhone,
+          password: payload.password,
+        });
+        setAccount(profile);
+        return profile;
+      } catch (fbErr: any) {
+        throw new Error(fbErr?.message || 'Tài khoản hoặc mật khẩu không chính xác trong hệ thống.');
+      }
     }
-
-    const profile = await loginWithEmailPassword({
-      email: payload.emailOrPhone,
-      password: payload.password,
-    });
-    setAccount(profile);
-    return profile;
   };
 
   useEffect(() => {

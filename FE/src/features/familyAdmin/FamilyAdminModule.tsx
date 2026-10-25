@@ -68,7 +68,7 @@ function parseCsv(text: string): string[][] {
 
 export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
   const { account } = useAuth();
-  const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id || 'c0000000-0000-0000-0000-000000000001';
+  const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id || '';
   const isLeader = account?.primary_role === 'family_head';
 
   const data = useFamilyAdminState();
