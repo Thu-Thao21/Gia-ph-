@@ -122,7 +122,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           onSelectFocus(node);
         }}
       >
-        Làm người trung tâm
+        {node.isFocusPerson ? 'Bỏ chọn người trung tâm' : 'Làm người trung tâm'}
       </button>
 
       <div className="tree-context-menu-divider" />

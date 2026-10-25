@@ -115,9 +115,14 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
     e.stopPropagation();
     console.log('[TreeLayout] handleCardClick on:', node.id, node.fullName);
-    // Tự động phóng to lên 1.15x để làm nổi bật người trung tâm và sơ đồ 3 đời
-    setZoomScale(1.15);
-    setFocusMemberId(node.id);
+    // Ấn lần đầu là chọn, ấn lần 2 thì thoát không chọn nữa
+    if (focusMemberId === node.id) {
+      setFocusMemberId(undefined);
+      setZoomScale(1.0);
+    } else {
+      setZoomScale(1.15);
+      setFocusMemberId(node.id);
+    }
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
   };
 
@@ -132,8 +137,14 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   };
 
   const handleSelectFocus = (node: ErgoTreeNode) => {
-    setZoomScale(1.15);
-    setFocusMemberId(node.id);
+    // Ấn lần đầu là chọn, ấn lần 2 thì thoát không chọn nữa
+    if (focusMemberId === node.id) {
+      setFocusMemberId(undefined);
+      setZoomScale(1.0);
+    } else {
+      setZoomScale(1.15);
+      setFocusMemberId(node.id);
+    }
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
   };
 
@@ -378,55 +389,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Focus View Clean Notification */}
-      {focusMemberId && (
-        <div
-          className="focus-view-banner"
-          style={{
-            margin: '0 24px 12px 24px',
-            padding: '10px 18px',
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>
-              Đang chọn làm trung tâm mạng lưới:
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: 800, color: '#15803d' }}>
-              {allMembers.find((m) => m.id === focusMemberId)?.fullName || 'Thành viên'}
-            </span>
-            <span style={{ fontSize: '12px', color: '#16a34a' }}>
-              (Camera lướt mượt căn giữa & phóng to 115%)
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setZoomScale(1.0);
-              setFocusMemberId(undefined);
-            }}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #86efac',
-              color: '#166534',
-              borderRadius: '8px',
-              padding: '4px 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            }}
-          >
-            ✕ Bỏ chọn tâm điểm (Quay lại xem toàn bộ cây)
-          </button>
-        </div>
-      )}
 
       {/* Canvas Area */}
       {loading ? (
