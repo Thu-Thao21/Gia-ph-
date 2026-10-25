@@ -114,10 +114,19 @@ async def create_registration(
     client: ClientInfo,
     now: datetime | None = None,
 ) -> BusinessRegistrationCreateResponse:
+    from app.core.utils.otp_service import is_email_verified, consume_verified_email
+
     plan_id = body.requested_plan_id
     plan = await family.get_plan_by_id(plan_id)
     if plan is None or plan.status != "ACTIVE":
         raise _invalid_plan()  # same answer for "unknown" and "not selectable"
+
+    # Enforce OTP verification for representative email
+    if not is_email_verified(body.representative_email):
+        raise AppError(
+            ErrorCode.VALIDATION_ERROR,
+            "Địa chỉ email đại diện chưa được xác thực bằng mã OTP. Vui lòng xác thực qua OTP trước khi nộp hồ sơ.",
+        )
 
     if await family.exists_pending_registration(
         email=body.representative_email, clan_name=body.clan_name
@@ -163,6 +172,7 @@ async def create_registration(
                 occurred_at=created_at,
             )
             await db.commit()
+            consume_verified_email(body.representative_email)
         except IntegrityError as exc:
             await db.rollback()
             name = constraint_name(exc)

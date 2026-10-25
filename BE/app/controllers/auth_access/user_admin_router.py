@@ -43,22 +43,21 @@ router = APIRouter(tags=["user-admin"])
 @router.get(
     "/admin/stats",
     response_model=dict,
+    dependencies=[Depends(require_action(Action.USER_LIST))],
+    responses=error_responses(*AUTHENTICATED, ErrorCode.FORBIDDEN),
 )
 async def get_admin_stats(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     from sqlalchemy import text
-    try:
-        u_count = (await db.execute(text("SELECT count(*) FROM users;"))).scalar() or 0
-        u_active = (await db.execute(text("SELECT count(*) FROM users WHERE status = 'ACTIVE';"))).scalar() or 0
-        c_count = (await db.execute(text("SELECT count(*) FROM clans;"))).scalar() or 0
-        c_active = (await db.execute(text("SELECT count(*) FROM clans WHERE status = 'ACTIVE';"))).scalar() or 0
-        p_count = (await db.execute(text("SELECT count(*) FROM persons;"))).scalar() or 0
-        r_pending = (await db.execute(text("SELECT count(*) FROM business_registrations WHERE status = 'PENDING';"))).scalar() or 0
-        pkg_count = (await db.execute(text("SELECT count(*) FROM subscription_plans;"))).scalar() or 0
-        doc_count = (await db.execute(text("SELECT count(*) FROM documents;"))).scalar() or 0
-    except Exception:
-        u_count, u_active, c_count, c_active, p_count, r_pending, pkg_count, doc_count = 26, 11, 19, 18, 1040, 0, 12, 0
+    u_count = (await db.execute(text("SELECT count(*) FROM users;"))).scalar() or 0
+    u_active = (await db.execute(text("SELECT count(*) FROM users WHERE status = 'ACTIVE';"))).scalar() or 0
+    c_count = (await db.execute(text("SELECT count(*) FROM clans;"))).scalar() or 0
+    c_active = (await db.execute(text("SELECT count(*) FROM clans WHERE status = 'ACTIVE';"))).scalar() or 0
+    p_count = (await db.execute(text("SELECT count(*) FROM persons;"))).scalar() or 0
+    r_pending = (await db.execute(text("SELECT count(*) FROM business_registrations WHERE status = 'PENDING';"))).scalar() or 0
+    pkg_count = (await db.execute(text("SELECT count(*) FROM subscription_plans;"))).scalar() or 0
+    doc_count = (await db.execute(text("SELECT count(*) FROM documents;"))).scalar() or 0
 
     return {
         "total_users": u_count,

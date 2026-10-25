@@ -1,17 +1,13 @@
-import sys
 import asyncio
+import sys
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    import uvicorn.loops.asyncio
+    uvicorn.loops.asyncio.asyncio_loop_factory = lambda use_subprocess=False: asyncio.SelectorEventLoop
 
 import uvicorn
+from app.main import app
 
 if __name__ == "__main__":
-    if sys.platform.startswith("win"):
-        loop = asyncio.WindowsSelectorEventLoopPolicy().new_event_loop()
-        asyncio.set_event_loop(loop)
-        config = uvicorn.Config("app.main:app", host="127.0.0.1", port=8001, loop="asyncio")
-        server = uvicorn.Server(config)
-        loop.run_until_complete(server.serve())
-    else:
-        uvicorn.run("app.main:app", host="127.0.0.1", port=8001)
+    uvicorn.run(app, host="127.0.0.1", port=8001, loop="asyncio")
