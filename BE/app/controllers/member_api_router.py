@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.postgres import get_db
 from app.models.family.entities import Clan, ClanProfile
 from app.models.genealogy.entities import Person, Relationship, FamilyBranch
+from app.models.user_access.entities import User
 
 router = APIRouter(tags=["members-families"])
 
@@ -525,4 +526,333 @@ async def export_persons(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+class MemberCreateRequest(BaseModel):
+    family_id: Optional[str] = None
+    fullName: str
+    gender: Optional[str] = "male"
+    birthDate: Optional[str] = None
+    deathDate: Optional[str] = None
+    isAlive: Optional[bool] = True
+    generation: Optional[int] = None
+    branchId: Optional[str] = None
+    occupation: Optional[str] = None
+    bio: Optional[str] = None
+    parentId: Optional[str] = None
+    spouseId: Optional[str] = None
+
+
+class MemberUpdateRequest(BaseModel):
+    fullName: Optional[str] = None
+    gender: Optional[str] = None
+    birthDate: Optional[str] = None
+    deathDate: Optional[str] = None
+    isAlive: Optional[bool] = None
+    generation: Optional[int] = None
+    branchId: Optional[str] = None
+    occupation: Optional[str] = None
+    bio: Optional[str] = None
+
+
+class MemberRelocateRequest(BaseModel):
+    newParentId: Optional[str] = None
+    newBranchId: Optional[str] = None
+
+
+@router.post("/members", status_code=status.HTTP_201_CREATED)
+async def create_member(
+    data: MemberCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new member and automatically establish parent-child or spouse relationships."""
+    clean_name = data.fullName.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Họ và tên không được để trống")
+
+    fam_id = None
+    parent_obj = None
+    spouse_obj = None
+
+    if data.parentId:
+        try:
+            p_uuid = uuid.UUID(data.parentId)
+            res = await db.execute(select(Person).where(Person.id == p_uuid))
+            parent_obj = res.scalar_one_or_none()
+            if parent_obj:
+                fam_id = parent_obj.family_id
+        except ValueError:
+            pass
+
+    if data.spouseId and not fam_id:
+        try:
+            s_uuid = uuid.UUID(data.spouseId)
+            res = await db.execute(select(Person).where(Person.id == s_uuid))
+            spouse_obj = res.scalar_one_or_none()
+            if spouse_obj:
+                fam_id = spouse_obj.family_id
+        except ValueError:
+            pass
+
+    if not fam_id and data.family_id:
+        try:
+            fam_id = uuid.UUID(data.family_id)
+        except ValueError:
+            pass
+
+    if not fam_id:
+        # Default to first clan if not specified
+        res = await db.execute(select(Clan.clan_id).limit(1))
+        fam_id = res.scalar_one_or_none()
+        if not fam_id:
+            raise HTTPException(status_code=400, detail="Không tìm thấy dòng họ để thêm thành viên")
+
+    gen = data.generation
+    if not gen:
+        if parent_obj:
+            gen = (parent_obj.generation or 1) + 1
+        elif spouse_obj:
+            gen = spouse_obj.generation or 1
+        else:
+            gen = 1
+
+    b_date = None
+    if data.birthDate:
+        try:
+            from datetime import date
+            parts = [int(p) for p in data.birthDate.split("-")]
+            if len(parts) == 3:
+                b_date = date(parts[0], parts[1], parts[2])
+            elif len(parts) == 1:
+                b_date = date(parts[0], 1, 1)
+        except Exception:
+            pass
+
+    d_date = None
+    if data.deathDate:
+        try:
+            from datetime import date
+            parts = [int(p) for p in data.deathDate.split("-")]
+            if len(parts) == 3:
+                d_date = date(parts[0], parts[1], parts[2])
+            elif len(parts) == 1:
+                d_date = date(parts[0], 1, 1)
+        except Exception:
+            pass
+
+    admin_uid_res = await db.execute(select(User.user_id).limit(1))
+    admin_uid = admin_uid_res.scalar_one_or_none()
+
+    new_person = Person(
+        family_id=fam_id,
+        full_name=clean_name,
+        gender=(data.gender or "male").upper(),
+        birth_date=b_date,
+        death_date=d_date,
+        is_alive=data.isAlive if data.isAlive is not None else True,
+        generation=gen,
+        bio=data.bio or f"Thành viên đời thứ {gen}",
+        status="ACTIVE",
+        created_by=admin_uid,
+    )
+    db.add(new_person)
+    await db.flush()
+
+    # Create relationship if requested
+    if parent_obj:
+        rel = Relationship(
+            family_id=fam_id,
+            from_member_id=parent_obj.id,
+            to_member_id=new_person.id,
+            relationship_type="PARENT_CHILD",
+            parent_type="BIOLOGICAL",
+            status="ACTIVE",
+            created_by=admin_uid,
+        )
+        db.add(rel)
+
+    if spouse_obj:
+        rel = Relationship(
+            family_id=fam_id,
+            from_member_id=spouse_obj.id,
+            to_member_id=new_person.id,
+            relationship_type="SPOUSE",
+            status="ACTIVE",
+            created_by=admin_uid,
+        )
+        db.add(rel)
+
+    await db.commit()
+    await db.refresh(new_person)
+
+    return {
+        "id": str(new_person.id),
+        "familyId": str(new_person.family_id),
+        "fullName": new_person.full_name,
+        "gender": (new_person.gender or "MALE").lower(),
+        "generation": new_person.generation,
+        "isAlive": new_person.is_alive,
+        "message": "Thêm thành viên thành công!",
+    }
+
+
+@router.patch("/members/{member_id}")
+async def update_member(
+    member_id: str,
+    data: MemberUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update member personal details."""
+    try:
+        p_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid member_id")
+
+    res = await db.execute(select(Person).where(Person.id == p_uuid))
+    p = res.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thành viên")
+
+    if data.fullName is not None:
+        name = data.fullName.strip()
+        if name:
+            p.full_name = name
+
+    if data.gender is not None:
+        p.gender = data.gender.strip().upper()
+
+    if data.generation is not None:
+        p.generation = data.generation
+
+    if data.isAlive is not None:
+        p.is_alive = data.isAlive
+
+    if data.bio is not None:
+        p.bio = data.bio
+
+    if data.birthDate is not None:
+        if not data.birthDate:
+            p.birth_date = None
+        else:
+            try:
+                from datetime import date
+                parts = [int(x) for x in data.birthDate.split("-")]
+                if len(parts) == 3:
+                    p.birth_date = date(parts[0], parts[1], parts[2])
+                elif len(parts) == 1:
+                    p.birth_date = date(parts[0], 1, 1)
+            except Exception:
+                pass
+
+    if data.deathDate is not None:
+        if not data.deathDate:
+            p.death_date = None
+        else:
+            try:
+                from datetime import date
+                parts = [int(x) for x in data.deathDate.split("-")]
+                if len(parts) == 3:
+                    p.death_date = date(parts[0], parts[1], parts[2])
+                elif len(parts) == 1:
+                    p.death_date = date(parts[0], 1, 1)
+            except Exception:
+                pass
+
+    await db.commit()
+    await db.refresh(p)
+    return {
+        "id": str(p.id),
+        "fullName": p.full_name,
+        "gender": (p.gender or "MALE").lower(),
+        "generation": p.generation,
+        "isAlive": p.is_alive,
+        "message": "Cập nhật thành viên thành công!",
+    }
+
+
+@router.delete("/members/{member_id}", status_code=status.HTTP_200_OK)
+async def delete_member(
+    member_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a member and all their relationships from the family tree."""
+    try:
+        p_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid member_id")
+
+    res = await db.execute(select(Person).where(Person.id == p_uuid))
+    p = res.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thành viên")
+
+    # Delete all relationships involving this person
+    rel_stmt = select(Relationship).where(
+        or_(Relationship.from_member_id == p_uuid, Relationship.to_member_id == p_uuid)
+    )
+    rel_res = await db.execute(rel_stmt)
+    for r in rel_res.scalars().all():
+        await db.delete(r)
+
+    await db.delete(p)
+    await db.commit()
+    return {"success": True, "message": f"Đã xóa thành viên '{p.full_name}' khỏi cây gia phả."}
+
+
+@router.post("/members/{member_id}/relocate")
+async def relocate_member(
+    member_id: str,
+    data: MemberRelocateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Relocate a member under a new parent or branch."""
+    try:
+        p_uuid = uuid.UUID(member_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid member_id")
+
+    res = await db.execute(select(Person).where(Person.id == p_uuid))
+    p = res.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thành viên")
+
+    if data.newParentId:
+        try:
+            parent_uuid = uuid.UUID(data.newParentId)
+            parent_res = await db.execute(select(Person).where(Person.id == parent_uuid))
+            parent = parent_res.scalar_one_or_none()
+            if not parent:
+                raise HTTPException(status_code=404, detail="Không tìm thấy cha/mẹ mới")
+
+            # Remove existing parent-child relationships
+            old_rels = await db.execute(
+                select(Relationship).where(
+                    Relationship.to_member_id == p_uuid,
+                    Relationship.relationship_type == "PARENT_CHILD"
+                )
+            )
+            for r in old_rels.scalars().all():
+                await db.delete(r)
+
+            admin_uid_res = await db.execute(select(User.user_id).limit(1))
+            admin_uid = admin_uid_res.scalar_one_or_none()
+
+            # Add new relationship
+            new_rel = Relationship(
+                family_id=parent.family_id,
+                from_member_id=parent.id,
+                to_member_id=p.id,
+                relationship_type="PARENT_CHILD",
+                parent_type="BIOLOGICAL",
+                status="ACTIVE",
+                created_by=admin_uid,
+            )
+            db.add(new_rel)
+            p.generation = (parent.generation or 1) + 1
+            p.family_id = parent.family_id
+        except ValueError:
+            pass
+
+    await db.commit()
+    return {"success": True, "message": f"Đã di chuyển thành viên '{p.full_name}' thành công."}
 

@@ -6,6 +6,7 @@ import type { Family, Member } from '../../../types/member';
 import type { ErgoTreeNode, TreeContextMenuState } from '../../../types/tree';
 import { ErgoTreeCanvas } from '../ErgoTreeCanvas';
 import { TreeContextMenu } from '../TreeContextMenu';
+import TreeActionModals, { type ModalType } from '../TreeActionModals/TreeActionModals';
 import { NotificationModal } from '../../common/NotificationModal';
 import '../Tree.css';
 import './TreeLayout.css';
@@ -46,6 +47,13 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   // Toast state for action feedback
   const [isToastOpen, setIsToastOpen] = useState(false);
+
+  // Tree Action Modals State (Edit, Delete, Add Child, Add Spouse, Relocate)
+  const [actionModal, setActionModal] = useState<{
+    type: ModalType;
+    node: ErgoTreeNode | null;
+  }>({ type: null, node: null });
+  const [successToastMessage, setSuccessToastMessage] = useState<string | null>(null);
 
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
   const [selectedGeneration, setSelectedGeneration] = useState<number | undefined>(undefined);
@@ -139,6 +147,42 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const handleActionToast = () => {
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
     setIsToastOpen(true);
+  };
+
+  const reloadTree = React.useCallback(() => {
+    if (!selectedFamilyId) return;
+    const currentReqId = ++requestCounterRef.current;
+    buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
+      .then(({ rootNodes, allMembers: mems }) => {
+        if (currentReqId === requestCounterRef.current) {
+          setTreeNodes(rootNodes);
+          setAllMembers(mems);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[TreeLayout] Reload error:', err);
+      });
+  }, [selectedFamilyId, focusMemberId]);
+
+  const handleEdit = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'edit', node });
+  };
+
+  const handleDelete = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'delete', node });
+  };
+
+  const handleAddChild = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'addChild', node });
+  };
+
+  const handleAddSpouse = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'addSpouse', node });
+  };
+
+  const handleRelocate = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'relocate', node });
   };
 
   // Quick stats calculation
@@ -412,7 +456,26 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
         onSelectFocus={handleSelectFocus}
         onViewBio={handleViewBio}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onAddChild={handleAddChild}
+        onAddSpouse={handleAddSpouse}
+        onRelocate={handleRelocate}
         onActionToast={handleActionToast}
+      />
+
+      {/* Tree Action Modals (Edit, Delete, Add Child, Add Spouse, Relocate) */}
+      <TreeActionModals
+        type={actionModal.type}
+        node={actionModal.node}
+        familyId={selectedFamilyId}
+        allMembers={allMembers}
+        onClose={() => setActionModal({ type: null, node: null })}
+        onSuccess={(msg) => {
+          setSuccessToastMessage(msg);
+          reloadTree();
+          setTimeout(() => setSuccessToastMessage(null), 4000);
+        }}
       />
 
       {/* Notification Toast */}
@@ -420,6 +483,47 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         isOpen={isToastOpen}
         onClose={() => setIsToastOpen(false)}
       />
+
+      {/* Interactive Success Alert Banner */}
+      {successToastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            background: 'linear-gradient(135deg, #15803d, #16a34a)',
+            color: '#ffffff',
+            padding: '14px 22px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px -5px rgba(22, 163, 74, 0.4)',
+            fontSize: '14px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            zIndex: 10000,
+            animation: 'modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <span>🎉</span>
+          <span>{successToastMessage}</span>
+          <button
+            onClick={() => setSuccessToastMessage(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '16px',
+              cursor: 'pointer',
+              marginLeft: '8px',
+              padding: 0,
+              opacity: 0.8,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 };
