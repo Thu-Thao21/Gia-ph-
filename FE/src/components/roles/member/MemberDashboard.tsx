@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './MemberDashboard.css';
 import { PersonalizedOverview } from '../../dashboard/PersonalizedOverview';
 import { UpcomingEventsWidget } from '../../dashboard/UpcomingEventsWidget';
 import { RecentActivitiesWidget } from '../../dashboard/RecentActivitiesWidget';
+import { useAuth } from '../../../context/AuthContext';
+import { fetchMembers } from '../../../services/member.service';
 
 export interface MemberDashboardProps {
   userName: string;
@@ -15,13 +17,48 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   userRole,
   onNavigateTab,
 }) => {
+  const { account } = useAuth();
   const isFamilyOwner = userRole === 'Chủ dòng họ';
+
+  const clanName = account?.clan_name || account?.memberships?.[0]?.clan_name || 'Võ Đại Tộc (Gò Nổi - Quảng Nam)';
+  const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id;
+
+  const [familyBranch, setFamilyBranch] = useState<string>(clanName);
+  const [generationLevel, setGenerationLevel] = useState<string>('Đời thứ 3');
+  const [totalMembers, setTotalMembers] = useState<number>(14);
+  const [linkedFamiliesCount, setLinkedFamiliesCount] = useState<number>(2);
+
+  useEffect(() => {
+    if (clanName) {
+      setFamilyBranch(clanName);
+    }
+    if (clanId) {
+      fetchMembers({ familyId: clanId, limit: 100 })
+        .then((res) => {
+          if (res?.items && res.items.length > 0) {
+            setTotalMembers(res.items.length);
+            const myName = (account?.display_name || userName || '').trim().toLowerCase();
+            const meInClan = res.items.find(
+              (m) => m.fullName.trim().toLowerCase() === myName
+            );
+            if (meInClan?.generation) {
+              setGenerationLevel(`Đời thứ ${meInClan.generation}`);
+            }
+          }
+        })
+        .catch(console.error);
+    }
+  }, [account, clanId, clanName, userName]);
 
   return (
     <>
       <PersonalizedOverview
         userName={userName}
         userRole={userRole}
+        familyBranch={familyBranch}
+        generationLevel={generationLevel}
+        totalMembers={totalMembers}
+        linkedFamiliesCount={linkedFamiliesCount}
       />
 
       {isFamilyOwner && (
