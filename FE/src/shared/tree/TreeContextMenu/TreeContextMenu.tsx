@@ -7,6 +7,7 @@ export interface TreeContextMenuProps {
   x: number;
   y: number;
   node: ErgoTreeNode | null;
+  focusMemberId?: string;
   onClose: () => void;
   onSelectFocus: (node: ErgoTreeNode) => void;
   onViewBio: (node: ErgoTreeNode) => void;
@@ -23,6 +24,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
   x,
   y,
   node,
+  focusMemberId,
   onClose,
   onSelectFocus,
   onViewBio,
@@ -115,15 +117,26 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
         Thêm Vợ/Chồng
       </button>
 
-      <button
-        className="tree-context-menu-item tree-context-menu-focus-btn"
-        onClick={() => {
-          onClose();
-          onSelectFocus(node);
-        }}
-      >
-        {node.isFocusPerson ? 'Bỏ chọn người trung tâm' : 'Làm người trung tâm'}
-      </button>
+      {(() => {
+        const isCurrentlyFocused = Boolean(
+          node.isFocusPerson ||
+          (focusMemberId && (
+            focusMemberId === node.id ||
+            (node.spouses && node.spouses.some((s) => s.id === focusMemberId))
+          ))
+        );
+        return (
+          <button
+            className="tree-context-menu-item tree-context-menu-focus-btn"
+            onClick={() => {
+              onClose();
+              onSelectFocus(node);
+            }}
+          >
+            {isCurrentlyFocused ? 'Thoát khỏi người trung tâm' : 'Làm người trung tâm'}
+          </button>
+        );
+      })()}
 
       <div className="tree-context-menu-divider" />
 

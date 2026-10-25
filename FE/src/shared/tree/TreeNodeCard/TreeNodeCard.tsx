@@ -72,7 +72,11 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
           e.stopPropagation();
           onContextMenu(e, node);
         }}
-        title={`Click để xem sơ đồ 3 đời của ${node.fullName}`}
+        title={
+          node.isFocusPerson
+            ? `Click vào ${node.fullName} để thoát khỏi người làm trung tâm (hiện lại cây bình thường)`
+            : `Click vào ${node.fullName} để chọn làm người trung tâm gia phả`
+        }
       >
         <div className={`tree-person-gen-badge ${node.isFocusPerson ? 'is-focus-badge' : ''}`}>
           {`ĐỜI ${node.generation || 1}`}
@@ -133,7 +137,11 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
                 gender: primarySpouse.gender,
               });
             }}
-            title={`Click để xem sơ đồ 3 đời của ${primarySpouse.fullName}`}
+            title={
+              node.isFocusPerson
+                ? `Click để thoát khỏi người làm trung tâm (hiện lại cây bình thường)`
+                : `Click vào ${primarySpouse.fullName} để chọn làm người trung tâm gia phả`
+            }
           >
             <div className="tree-person-gen-badge spouse">
               {`ĐỜI ${node.generation || 1}`}

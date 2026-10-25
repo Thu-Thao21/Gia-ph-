@@ -86,19 +86,23 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   }, [effectiveFamilyId, isAdmin]);
 
   const requestCounterRef = React.useRef<number>(0);
+  const allMembersCacheRef = React.useRef<Member[]>([]);
 
   useEffect(() => {
     if (!selectedFamilyId) return;
     const currentReqId = ++requestCounterRef.current;
 
-    // Chỉ bật loading ở lần đầu tải dữ liệu (tránh chớp tắt / nháy màn khi chuyển người trung tâm)
-    if (allMembers.length === 0) {
+    // Dùng cache members nếu có để chuyển đổi tức thì (0ms) giữa cây bình thường và người trung tâm
+    const cached = allMembersCacheRef.current.length > 0 ? allMembersCacheRef.current : undefined;
+    if (!cached) {
       setLoading(true);
     }
-    buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
+
+    buildErgoTreeFromDB(selectedFamilyId, focusMemberId, cached)
       .then(({ rootNodes, allMembers: mems }) => {
         // Chống race condition: Chỉ áp dụng kết quả của request mới nhất
         if (currentReqId === requestCounterRef.current) {
+          allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
           setLoading(false);
@@ -115,8 +119,17 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
     e.stopPropagation();
     console.log('[TreeLayout] handleCardClick on:', node.id, node.fullName);
-    // Ấn lần đầu là chọn, ấn lần 2 thì thoát không chọn nữa
-    if (focusMemberId === node.id) {
+
+    const isCurrentlyFocused = Boolean(
+      node.isFocusPerson ||
+      (focusMemberId && (
+        focusMemberId === node.id ||
+        (node.spouses && node.spouses.some((s) => s.id === focusMemberId))
+      ))
+    );
+
+    // Ấn lần đầu là chọn làm người trung tâm, ấn lần 2 thì thoát khỏi người trung tâm
+    if (isCurrentlyFocused) {
       setFocusMemberId(undefined);
       setZoomScale(1.0);
     } else {
@@ -137,8 +150,16 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   };
 
   const handleSelectFocus = (node: ErgoTreeNode) => {
-    // Ấn lần đầu là chọn, ấn lần 2 thì thoát không chọn nữa
-    if (focusMemberId === node.id) {
+    const isCurrentlyFocused = Boolean(
+      node.isFocusPerson ||
+      (focusMemberId && (
+        focusMemberId === node.id ||
+        (node.spouses && node.spouses.some((s) => s.id === focusMemberId))
+      ))
+    );
+
+    // Ấn lần đầu là chọn làm người trung tâm, ấn lần 2 thì thoát khỏi người trung tâm
+    if (isCurrentlyFocused) {
       setFocusMemberId(undefined);
       setZoomScale(1.0);
     } else {
@@ -163,9 +184,11 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const reloadTree = React.useCallback(() => {
     if (!selectedFamilyId) return;
     const currentReqId = ++requestCounterRef.current;
+    allMembersCacheRef.current = [];
     buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
       .then(({ rootNodes, allMembers: mems }) => {
         if (currentReqId === requestCounterRef.current) {
+          allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
           setLoading(false);
@@ -415,6 +438,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         x={contextMenu.x}
         y={contextMenu.y}
         node={contextMenu.member as ErgoTreeNode}
+        focusMemberId={focusMemberId}
         onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
         onSelectFocus={handleSelectFocus}
         onViewBio={handleViewBio}
