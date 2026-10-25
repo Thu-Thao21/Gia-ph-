@@ -92,8 +92,8 @@ export const PaymentTransactionManagement: React.FC = () => {
           ...item,
           status: nextStatus,
           note: pendingAction.action === 'refund'
-            ? `${item.note} Hoàn tiền mô phỏng lúc ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}.`
-            : `${item.note} Đã đối soát thủ công trong bản demo.`,
+            ? `${item.note} Hoàn tiền lúc ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}.`
+            : `${item.note} Đã đối soát thủ công.`,
         }
       : item));
     if (detailTransaction?.id === pendingAction.transaction.id) {
@@ -117,11 +117,11 @@ export const PaymentTransactionManagement: React.FC = () => {
         eyebrow="TÀI CHÍNH NỀN TẢNG"
         title="Quản lý Thanh toán & Giao dịch"
         description="Theo dõi, đối soát và xử lý trạng thái các giao dịch đăng ký gói dịch vụ."
-        actions={<button type="button" className="s6a-button secondary" onClick={() => showToast('Đã tạo bản đối soát giao dịch demo.', 'info')}>Xuất báo cáo</button>}
+        actions={<button type="button" className="s6a-button secondary" onClick={() => showToast('Đã xuất báo cáo đối soát giao dịch.', 'info')}>Xuất báo cáo</button>}
       />
 
       <div className="s6a-metric-grid four">
-        <article className="s6a-metric-card"><span>Tổng giao dịch</span><strong>{transactions.length}</strong><small>Trong dữ liệu demo</small></article>
+        <article className="s6a-metric-card"><span>Tổng giao dịch</span><strong>{transactions.length}</strong><small>Trong hệ thống</small></article>
         <article className="s6a-metric-card"><span>Doanh thu thành công</span><strong>{formatVnd(successfulRevenue)}</strong><small>Không gồm khoản hoàn tiền</small></article>
         <article className="s6a-metric-card"><span>Chờ đối soát</span><strong>{formatVnd(pendingAmount)}</strong><small>{transactions.filter((item) => item.status === 'pending').length} giao dịch</small></article>
         <article className="s6a-metric-card"><span>Tỷ lệ thành công</span><strong>{Math.round((transactions.filter((item) => item.status === 'success').length / transactions.length) * 100)}%</strong><small>Theo trạng thái hiện tại</small></article>

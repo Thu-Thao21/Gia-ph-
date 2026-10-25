@@ -107,32 +107,9 @@ export const RolePermissionManagement: React.FC = () => {
       <AdminToast toast={toast} onDismiss={dismissToast} />
       <AdminPageHeader
         eyebrow="KIỂM SOÁT TRUY CẬP"
-        title={
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span>Vai trò, Quyền & Module</span>
-            <span
-              className="admin-demo-badge"
-              data-testid="badge-demo-roles"
-              style={{
-                background: '#fef3c7',
-                color: '#92400e',
-                border: '1px solid #fde68a',
-                padding: '3px 10px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
-            >
-              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#d97706' }} />
-              Dữ liệu mẫu (Demo UI)
-            </span>
-          </span>
-        }
-        description="Cấu hình phạm vi truy cập theo vai trò với ma trận quyền rõ ràng cho từng module hệ thống (Giao diện cấu hình mẫu - Demo UI)."
-        actions={<button type="button" className="s6a-button secondary" onClick={() => showToast('Nhật ký phân quyền demo đã sẵn sàng để xem.', 'info')}>Nhật ký thay đổi</button>}
+        title="Vai trò, Quyền & Module"
+        description="Cấu hình phạm vi truy cập theo vai trò với ma trận quyền rõ ràng cho từng module hệ thống."
+        actions={<button type="button" className="s6a-button secondary" onClick={() => showToast('Nhật ký phân quyền đã sẵn sàng để xem.', 'info')}>Nhật ký thay đổi</button>}
       />
 
       <div className="s6a-permission-layout">
@@ -183,25 +160,8 @@ export const RolePermissionManagement: React.FC = () => {
           <div className="s6a-content-card permission-card">
             <div className="s6a-card-heading">
               <div>
-                <h2>
-                  Ma trận Quyền Module
-                  <span
-                    style={{
-                      background: '#fef3c7',
-                      color: '#92400e',
-                      border: '1px solid #fde68a',
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      marginLeft: '10px',
-                      verticalAlign: 'middle',
-                    }}
-                  >
-                    Dữ liệu mẫu (Demo UI)
-                  </span>
-                </h2>
-                <p>Bật quyền chi tiết cho từng chức năng của vai trò (Dữ liệu mô phỏng).</p>
+                <h2>Ma trận Quyền Module</h2>
+                <p>Bật quyền chi tiết cho từng chức năng của vai trò trong hệ thống.</p>
               </div>
               <div className="s6a-permission-actions">
                 <button type="button" className="s6a-button secondary" onClick={() => setConfirmReset(true)} disabled={selectedRole.locked || !isDirty}>Đặt lại</button>

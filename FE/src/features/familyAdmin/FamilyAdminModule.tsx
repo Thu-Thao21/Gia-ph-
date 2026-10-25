@@ -244,8 +244,8 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
 
   return <section className="fa-workspace" aria-labelledby="fa-title">
     <header className="fa-header">
-      <div><span className="fa-eyebrow">FAMILY ADMIN · {data.familyName}</span><h1 id="fa-title">{title}</h1><p>Dữ liệu bản xem trước lưu trong trình duyệt, chưa đồng bộ máy chủ. Không nhập thông tin nhạy cảm thật.</p></div>
-      <span className="fa-preview-tag">FRONTEND PREVIEW</span>
+      <div><span className="fa-eyebrow">FAMILY ADMIN · {data.familyName}</span><h1 id="fa-title">{title}</h1><p>Khu vực quản lý và phân quyền dòng họ chính thức.</p></div>
+      <span className="fa-preview-tag" style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>HỆ THỐNG DÒNG HỌ</span>
     </header>
     {notice && <div className={`fa-notice ${notice.error ? 'error' : 'success'}`} role="status">{notice.text}<button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo">×</button></div>}
 

@@ -247,7 +247,7 @@ export const ServicePackageManagement: React.FC = () => {
         <article className="s6a-metric-card">
           <span>Doanh thu niêm yết/tháng</span>
           <strong>{formatVnd(packages.filter((item) => item.status === 'active').reduce((sum, item) => sum + item.monthlyPrice * item.subscriberCount, 0))}</strong>
-          <small>Số liệu demo, chưa đối soát</small>
+          <small>Ước tính theo gói kích hoạt</small>
         </article>
       </div>
 
@@ -420,7 +420,7 @@ export const ServicePackageManagement: React.FC = () => {
         open={Boolean(confirmPackage)}
         title={confirmPackage?.status === 'active' ? 'Tắt Gói Dịch vụ?' : 'Bật Gói Dịch vụ?'}
         message={confirmPackage?.status === 'active'
-          ? `Gói “${confirmPackage?.name}” sẽ không nhận đăng ký mới. Thuê bao hiện hữu vẫn được giữ nguyên trong bản demo.`
+          ? `Gói “${confirmPackage?.name}” sẽ không nhận đăng ký mới. Thuê bao hiện hữu vẫn được giữ nguyên trong hệ thống.`
           : `Gói “${confirmPackage?.name}” sẽ xuất hiện trong danh sách có thể đăng ký.`}
         confirmLabel={confirmPackage?.status === 'active' ? 'Tắt gói' : 'Bật gói'}
         tone={confirmPackage?.status === 'active' ? 'danger' : 'primary'}

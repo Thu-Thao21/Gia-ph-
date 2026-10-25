@@ -21,7 +21,7 @@ export const AdminProfilePage: React.FC = () => {
 
           <div className="profile-header-info">
             <h1 className="profile-name">
-              Quản Trị Viên (Demo)
+              Quản Trị Viên Hệ Thống
               <span className="profile-generation-badge">System Admin</span>
             </h1>
 
@@ -66,7 +66,7 @@ export const AdminProfilePage: React.FC = () => {
                 <span className="profile-info-label">Họ và tên</span>
                 <input 
                   type="text" 
-                  defaultValue="Quản Trị Viên (Demo)" 
+                  defaultValue="Quản Trị Viên Hệ Thống" 
                   style={{ padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', width: '100%', outline: 'none' }} 
                 />
               </div>

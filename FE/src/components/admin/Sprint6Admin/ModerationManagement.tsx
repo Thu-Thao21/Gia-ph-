@@ -140,7 +140,7 @@ export const ModerationManagement: React.FC = () => {
         <article className="s6a-metric-card"><span>Chờ tiếp nhận</span><strong>{reports.filter((item) => item.status === 'pending').length}</strong><small>Báo cáo mới</small></article>
         <article className="s6a-metric-card"><span>Đang xử lý</span><strong>{reports.filter((item) => item.status === 'reviewing').length}</strong><small>Đã có điều phối viên</small></article>
         <article className="s6a-metric-card"><span>Nội dung đang ẩn</span><strong>{reports.filter((item) => item.contentHidden).length}</strong><small>Chờ hoặc đã xử lý</small></article>
-        <article className="s6a-metric-card"><span>Đã giải quyết</span><strong>{reports.filter((item) => item.status === 'resolved').length}</strong><small>Trong dữ liệu demo</small></article>
+        <article className="s6a-metric-card"><span>Đã giải quyết</span><strong>{reports.filter((item) => item.status === 'resolved').length}</strong><small>Đã hoàn tất xử lý</small></article>
       </div>
 
       <div className="s6a-content-card">

@@ -48,7 +48,7 @@ export const SystemAdminLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const displayUserName = account?.display_name || account?.username || firebaseUser?.displayName || 'Quản Trị Viên (Demo)';
+  const displayUserName = account?.display_name || account?.username || firebaseUser?.displayName || 'Quản Trị Viên Hệ Thống';
   const userRole = 'Admin';
   const basePath = ROUTES.ADMIN.ROOT;
 

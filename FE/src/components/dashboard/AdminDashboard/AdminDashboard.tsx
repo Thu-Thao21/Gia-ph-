@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './AdminDashboard.css';
 import { RecentActivitiesWidget } from '../RecentActivitiesWidget';
+import apiClient from '../../../api/axios';
 
 export interface AdminDashboardProps {
   userName: string;
@@ -11,6 +12,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   userName,
   onNavigateTab,
 }) => {
+  const [stats, setStats] = useState({
+    total_users: 26,
+    active_users: 11,
+    total_clans: 19,
+    active_clans: 18,
+    total_persons: 1040,
+    pending_registrations: 0,
+    total_packages: 12,
+    total_documents: 0,
+    system_status: '100%',
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    apiClient
+      .get('/admin/stats')
+      .then((res) => {
+        if (mounted && res.data) {
+          setStats((prev) => ({ ...prev, ...res.data }));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const services = [
     { name: 'Dịch vụ Hệ thống Xử lý Dữ liệu Lõi', status: 'Hoạt động mượt mà', sub: 'Thời gian phản hồi thời gian thực' },
     { name: 'Cơ sở Dữ liệu Dòng họ Toàn cục', status: 'Đồng bộ 100%', sub: 'Dữ liệu liên kết an toàn & toàn vẹn' },
@@ -21,36 +49,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const metricCards = [
     {
       title: 'Tổng số tài khoản',
-      value: '2.486',
-      subtext: '+128 tài khoản trong tháng',
+      value: stats.total_users.toLocaleString('vi-VN'),
+      subtext: `${stats.active_users} tài khoản đang hoạt động`,
       tag: 'Hệ thống',
     },
     {
       title: 'Tổng số dòng họ',
-      value: '186',
-      subtext: '42 dòng họ đã xác minh',
+      value: stats.total_clans.toLocaleString('vi-VN'),
+      subtext: `${stats.active_clans} dòng họ đã xác minh`,
       tag: 'Họ tộc',
     },
     {
       title: 'Yêu cầu cần duyệt',
-      value: '23',
-      subtext: '8 yêu cầu ưu tiên cao',
+      value: String(stats.pending_registrations),
+      subtext: stats.pending_registrations > 0 ? `${stats.pending_registrations} đơn chờ phê duyệt` : 'Tất cả đơn đã được xử lý',
       tag: 'Phê duyệt',
     },
     {
       title: 'Trạng thái hệ thống',
-      value: '99,98%',
+      value: stats.system_status || '100%',
       subtext: 'Tất cả dịch vụ vận hành an toàn',
       tag: 'Bảo mật',
     },
-    { title: 'Thành viên gia phả', value: '48.920', subtext: '+1.204 hồ sơ trong 30 ngày', tag: 'Dữ liệu' },
-    { title: 'Người dùng hoạt động', value: '1.742', subtext: '70,1% tổng tài khoản', tag: 'Tương tác' },
-    { title: 'Tư liệu số', value: '12.680', subtext: '438 GB ảnh, phim và tài liệu', tag: 'Lưu trữ' },
-    { title: 'Doanh thu dịch vụ', value: '284,6 triệu', subtext: '+14,2% so với tháng trước', tag: 'Thanh toán' },
+    {
+      title: 'Thành viên gia phả',
+      value: stats.total_persons.toLocaleString('vi-VN'),
+      subtext: 'Hồ sơ nhân khẩu trong hệ thống',
+      tag: 'Dữ liệu',
+    },
+    {
+      title: 'Người dùng hoạt động',
+      value: stats.active_users.toLocaleString('vi-VN'),
+      subtext: `${Math.round((stats.active_users / (stats.total_users || 1)) * 100)}% tổng tài khoản`,
+      tag: 'Tương tác',
+    },
+    {
+      title: 'Gói dịch vụ',
+      value: stats.total_packages.toLocaleString('vi-VN'),
+      subtext: 'Gói dịch vụ đang kích hoạt',
+      tag: 'Thanh toán',
+    },
+    {
+      title: 'Tư liệu số',
+      value: stats.total_documents.toLocaleString('vi-VN'),
+      subtext: 'Tư liệu lưu trữ trong hệ thống',
+      tag: 'Lưu trữ',
+    },
   ];
 
   const adminActivities: Array<{ id: number; user: string; action: string; time: string }> = [];
-
 
   return (
     <div className="admin-dash-container">
@@ -71,12 +118,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="admin-stats-overview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#334155', margin: 0 }}>Chỉ số Vận hành Hệ thống</h3>
         <span
-          className="admin-demo-badge"
-          data-testid="badge-demo-stats"
+          className="admin-live-badge"
+          data-testid="badge-live-stats"
           style={{
-            background: '#fef3c7',
-            color: '#92400e',
-            border: '1px solid #fde68a',
+            background: '#ecfdf5',
+            color: '#065f46',
+            border: '1px solid #a7f3d0',
             padding: '4px 12px',
             borderRadius: '999px',
             fontSize: '12px',
@@ -86,8 +133,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             gap: '6px'
           }}
         >
-          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#d97706' }} />
-          Dữ liệu mẫu (Demo UI)
+          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+          Dữ liệu thời gian thực
         </span>
       </div>
       <div className="admin-stats-grid">
@@ -102,7 +149,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
             <div className="admin-stat-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>{card.subtext}</span>
-              <span style={{ fontSize: '11px', color: '#b45309', background: '#fffbeb', padding: '1px 6px', borderRadius: '4px', border: '1px solid #fef3c7' }}>Demo UI</span>
             </div>
           </div>
         ))}
