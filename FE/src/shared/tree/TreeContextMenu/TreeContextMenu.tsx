@@ -56,7 +56,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           else if (onActionToast) onActionToast('Chỉnh sửa');
         }}
       >
-        ✏️ Sửa thông tin
+        Sửa thông tin
       </button>
 
       <button
@@ -66,7 +66,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           onViewBio(node);
         }}
       >
-        📖 Xem tiểu sử
+        Xem tiểu sử
       </button>
 
       <button
@@ -77,7 +77,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           else if (onActionToast) onActionToast('Xóa');
         }}
       >
-        🗑️ Xóa thành viên
+        Xóa thành viên
       </button>
 
       <div className="tree-context-menu-divider" />
@@ -90,7 +90,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           else if (onActionToast) onActionToast('Di chuyển');
         }}
       >
-        🔀 Di chuyển nhánh
+        Di chuyển nhánh
       </button>
 
       <button
@@ -101,7 +101,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           else if (onActionToast) onActionToast('Thêm con');
         }}
       >
-        👶 Thêm con
+        Thêm con
       </button>
 
       <button
@@ -112,7 +112,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           else if (onActionToast) onActionToast('Thêm Vợ/Chồng');
         }}
       >
-        💍 Thêm Vợ/Chồng
+        Thêm Vợ/Chồng
       </button>
 
       <button
@@ -122,13 +122,13 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           onSelectFocus(node);
         }}
       >
-        🎯 Làm người trung tâm (Focus View)
+        Làm người trung tâm
       </button>
 
       <div className="tree-context-menu-divider" />
 
       <button className="tree-context-menu-item" onClick={onClose}>
-        ✕ Thoát
+        Thoát
       </button>
     </div>
   );

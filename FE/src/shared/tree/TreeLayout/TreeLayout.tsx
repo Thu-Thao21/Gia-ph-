@@ -262,7 +262,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               onClick={() => setTreeDirection('horizontal')}
               title="Chuyển sơ đồ ngang (Từ trái sang phải)"
             >
-              ➔ Ngang
+              Ngang
             </button>
           </div>
 
@@ -397,7 +397,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>
-              🌿 Đang chọn làm trung tâm mạng lưới:
+              Đang chọn làm trung tâm mạng lưới:
             </span>
             <span style={{ fontSize: '13px', fontWeight: 800, color: '#15803d' }}>
               {allMembers.find((m) => m.id === focusMemberId)?.fullName || 'Thành viên'}
@@ -505,8 +505,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             animation: 'modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         >
-          <span>🎉</span>
-          <span>{successToastMessage}</span>
+            <span>{successToastMessage}</span>
           <button
             onClick={() => setSuccessToastMessage(null)}
             style={{

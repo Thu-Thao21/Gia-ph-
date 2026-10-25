@@ -196,7 +196,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'edit' && (
           <form onSubmit={handleEditSubmit}>
             <div className="tree-action-modal-header">
-              <h3 className="tree-action-modal-title">✏️ Chỉnh sửa thành viên</h3>
+              <h3 className="tree-action-modal-title">Chỉnh sửa thành viên</h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
@@ -290,7 +290,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'delete' && (
           <div>
             <div className="tree-action-modal-header danger">
-              <h3 className="tree-action-modal-title">🗑️ Xóa thành viên khỏi gia phả</h3>
+              <h3 className="tree-action-modal-title">Xóa thành viên khỏi gia phả</h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
@@ -299,7 +299,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
                 Bạn có chắc chắn muốn xóa thành viên <strong>{node.fullName}</strong> (Đời thứ {node.generation || 1}) khỏi hệ thống không?
               </p>
               <div className="tree-action-helper-box" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>
-                ⚠️ <strong>Cảnh báo:</strong> Thao tác này sẽ xóa vĩnh viễn nhân vật và tự động giải phóng các liên kết cha-con, vợ-chồng liên quan trong cơ sở dữ liệu Neon.
+                <strong>Cảnh báo:</strong> Thao tác này sẽ xóa vĩnh viễn nhân vật và tự động giải phóng các liên kết cha-con, vợ-chồng liên quan trong cơ sở dữ liệu Neon.
               </div>
             </div>
             <div className="tree-action-modal-footer">
@@ -315,7 +315,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'addChild' && (
           <form onSubmit={handleAddChildSubmit}>
             <div className="tree-action-modal-header">
-              <h3 className="tree-action-modal-title">👶 Thêm người con mới</h3>
+              <h3 className="tree-action-modal-title">Thêm người con mới</h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
@@ -375,7 +375,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'addSpouse' && (
           <form onSubmit={handleAddSpouseSubmit}>
             <div className="tree-action-modal-header">
-              <h3 className="tree-action-modal-title">💍 Thêm Vợ/Chồng (Hôn phối)</h3>
+              <h3 className="tree-action-modal-title">Thêm Vợ/Chồng (Hôn phối)</h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
@@ -435,7 +435,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'relocate' && (
           <form onSubmit={handleRelocateSubmit}>
             <div className="tree-action-modal-header">
-              <h3 className="tree-action-modal-title">🔀 Di chuyển nhánh / Đổi cha mẹ</h3>
+              <h3 className="tree-action-modal-title">Di chuyển nhánh / Đổi cha mẹ</h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
