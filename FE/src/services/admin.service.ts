@@ -188,7 +188,7 @@ export async function fetchClanUsers(
 export async function assignFamilyAdmin(
   clanId: string,
   userId: string,
-  permissionCodes: string[] = []
+  permissionCodes: string[] = ['PERSON_VIEW', 'PERSON_MANAGE']
 ): Promise<{ clan_id: string; user_id: string; assignment_id: string }> {
   const res = await apiClient.post(`/clans/${clanId}/admins`, {
     user_id: userId,
