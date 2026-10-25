@@ -63,13 +63,119 @@ async def create_session(
 
 
 from datetime import datetime, timezone, timedelta
+import bcrypt
+from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.security.tokens import generate_session_token, hash_session_token
-from app.models.user_access.entities import User
+from app.models.user_access.entities import User, CredentialMetadata
 from app.schemas.auth import SessionUser
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@router.post(
+    "/login",
+    status_code=200,
+    response_model=SessionCreateResponse,
+)
+async def login(
+    body: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    users: UserAccessRepository = Depends(get_user_access_repo),
+) -> SessionCreateResponse:
+    ident = body.email.strip().lower()
+    stmt = (
+        select(User, CredentialMetadata)
+        .outerjoin(CredentialMetadata, User.user_id == CredentialMetadata.user_id)
+        .where((func.lower(User.email) == ident) | (func.lower(User.username) == ident))
+    )
+    res = await db.execute(stmt)
+    row = res.first()
+    if not row:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "AUTHENTICATION_FAILED", "message": "Email hoặc tên đăng nhập không tồn tại trong hệ thống."}
+        )
+    user, cred = row
+
+    if user.status != "ACTIVE":
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "ACCOUNT_BLOCKED", "message": "Tài khoản của bạn hiện đang bị khóa hoặc chưa kích hoạt."}
+        )
+
+    # Verify password if credential_metadata has password_hash
+    if cred and cred.password_hash:
+        try:
+            valid = bcrypt.checkpw(body.password.encode("utf-8"), cred.password_hash.encode("utf-8"))
+        except Exception:
+            valid = False
+        if not valid:
+            cred.failed_login_count += 1
+            await db.commit()
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "AUTHENTICATION_FAILED", "message": "Mật khẩu không chính xác."}
+            )
+
+    # Check Clan Leader requirement:
+    # Trưởng tộc (BUSINESS_OWNER) chỉ được đăng nhập bằng tài khoản @giapha.com
+    active_roles = await users.list_active_role_grants(user.user_id)
+    is_business_owner = any(r[0] == "BUSINESS_OWNER" for r in active_roles)
+    is_sa = any(r[0] == "SYSTEM_ADMIN" for r in active_roles)
+
+    if is_business_owner and not is_sa:
+        if not user.email.lower().endswith("@giapha.com"):
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "FORBIDDEN", "message": "Tài khoản Trưởng tộc bắt buộc phải sử dụng email định danh @giapha.com do hệ thống cấp."}
+            )
+
+    now = datetime.now(timezone.utc)
+    token = generate_session_token()
+    expires_at = now + timedelta(hours=settings.SESSION_TTL_HOURS)
+    client = ClientInfo.from_request(request)
+
+    await users.add_session(
+        user_id=user.user_id,
+        token_jti_hash=hash_session_token(token),
+        created_at=now,
+        expires_at=expires_at,
+        ip_address=client.ip_address,
+        user_agent=client.user_agent,
+    )
+    user.last_login_at = now
+    if cred:
+        cred.failed_login_count = 0
+    await users.add_login_history(
+        user_id=user.user_id,
+        identifier=user.email,
+        success=True,
+        failure_reason=None,
+        ip_address=client.ip_address,
+        user_agent=client.user_agent,
+        occurred_at=now,
+    )
+    await db.commit()
+
+    return SessionCreateResponse(
+        access_token=token,
+        expires_at=expires_at,
+        user=SessionUser(
+            user_id=user.user_id,
+            display_name=user.display_name,
+            email=user.email,
+            status=user.status,
+        ),
+        requires_password_change=cred.must_change_password if cred else False,
+    )
 
 
 class DevSessionRequest(BaseModel):

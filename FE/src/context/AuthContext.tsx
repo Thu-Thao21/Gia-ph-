@@ -115,9 +115,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (payload: { emailOrPhone: string; password: string }): Promise<AccountProfile> => {
     const ident = payload.emailOrPhone.trim().toLowerCase();
 
-    // 1. Thử đăng nhập trực tiếp qua Backend session dựa trên dữ liệu thật trong DB
+    // 1. Xác thực tài khoản và mật khẩu trực tiếp qua Backend đối chiếu với Neon DB
     try {
-      const res = await apiClient.post<SessionCreateResponse>('/auth/dev-session', { email: ident });
+      const res = await apiClient.post<SessionCreateResponse>('/auth/login', {
+        email: ident,
+        password: payload.password,
+      });
       setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
       try {
         const profile = await fetchCurrentAccount();
@@ -127,10 +130,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const info = readApiError(err);
         if (info.code === 'PASSWORD_CHANGE_REQUIRED') {
           const restrictedProfile: AccountProfile = {
-            id: 'user',
-            firebase_uid: 'user',
+            id: res.data.user.user_id,
+            firebase_uid: res.data.user.user_id,
             email: ident,
-            display_name: ident,
+            display_name: res.data.user.display_name,
             email_verified: true,
             phone_verified: false,
             status: 'pending',
@@ -143,18 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         throw err;
       }
-    } catch {
-      // 2. Nếu Backend không tìm thấy tài khoản (hoặc Firebase được dùng), thử qua Firebase Authentication
-      try {
-        const profile = await loginWithEmailPassword({
-          email: payload.emailOrPhone,
-          password: payload.password,
-        });
-        setAccount(profile);
-        return profile;
-      } catch (fbErr: any) {
-        throw new Error(fbErr?.message || 'Tài khoản hoặc mật khẩu không chính xác trong hệ thống.');
-      }
+    } catch (apiErr: any) {
+      // 2. Nếu Backend trả về lỗi cụ thể (sai mật khẩu, bị khóa, sai định dạng), ném lỗi rõ ràng
+      const message =
+        apiErr?.response?.data?.detail?.message ||
+        apiErr?.response?.data?.error?.message ||
+        apiErr?.message ||
+        'Tài khoản hoặc mật khẩu không chính xác trong hệ thống.';
+      throw new Error(message);
     }
   };
 
