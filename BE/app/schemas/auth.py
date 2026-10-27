@@ -59,6 +59,8 @@ class MembershipSummary(ResponseModel):
     clan_name: str
     clan_status: ClanStatus
     membership_status: MembershipStatus
+    lineage_type: str | None = Field(default=None, description="PATERNAL | MATERNAL | None")
+    person_id: uuid.UUID | None = Field(default=None, description="Linked Person ID in this clan.")
     roles: list[str] = Field(default_factory=list, description="Role codes in this clan.")
     permissions: list[str] = Field(
         default_factory=list, description="Permission codes effective in this clan."

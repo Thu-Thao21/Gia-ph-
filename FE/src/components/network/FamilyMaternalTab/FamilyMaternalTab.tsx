@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchFamilyNetwork } from '../../../services/network.service';
 import type { FamilyNetwork } from '../../../types/network';
+import { FamilyClanCard } from '../FamilyClanCard';
 import '../Network.css';
 
 export const FamilyMaternalTab: React.FC = () => {
@@ -24,22 +25,9 @@ export const FamilyMaternalTab: React.FC = () => {
           Các dòng họ thuộc bên ngoại mẹ, gắn kết qua quan hệ hôn nhân với dòng họ Nội.
         </p>
         {families.length > 0 ? (
-          <div className="network-family-grid">
+          <div className="network-clans-list">
             {families.map((f) => (
-              <div key={f.id} className="network-family-card">
-                <div className="network-family-name">{f.name}</div>
-                <div className="network-family-founder">Thủy tổ: {f.founderName || 'Chưa cập nhật'}</div>
-                <p className="network-family-history-text">
-                  {f.history || 'Chưa có lịch sử dòng họ.'}
-                </p>
-                <div className="network-family-meta">
-                  <span className="network-meta-chip purple">{f.memberCount} thành viên</span>
-                  <span className="network-meta-chip"> {f.originPlace || 'Chưa rõ quê quán'}</span>
-                  {f.branches.map((b, i) => (
-                    <span key={i} className="network-meta-chip amber">{b}</span>
-                  ))}
-                </div>
-              </div>
+              <FamilyClanCard key={f.id} family={f} defaultExpanded={families.length === 1} />
             ))}
           </div>
         ) : (

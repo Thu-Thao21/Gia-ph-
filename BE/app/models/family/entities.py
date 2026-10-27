@@ -9,13 +9,14 @@ target table gets a model.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -408,8 +409,61 @@ class ClanMembership(Base):
         nullable=False,
         server_default=text("'ACTIVE'::character varying"),
     )
+    lineage_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     joined_at: Mapped[Optional[datetime]] = _opt_ts()
     revoked_at: Mapped[Optional[datetime]] = _opt_ts()
+
+
+class ClanJoinRequest(Base):
+    """Maps public.clan_join_requests for joining a second (or new) clan."""
+
+    __tablename__ = "clan_join_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'NEED_INFO', 'APPROVED', 'REJECTED', 'CANCELLED')",
+            name="clan_join_requests_status_check",
+        ),
+    )
+
+    request_id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        _fk("users.user_id", "clan_join_requests_user_id_fkey", "CASCADE"),
+        nullable=False,
+    )
+    clan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        _fk("clans.clan_id", "clan_join_requests_clan_id_fkey", "CASCADE"),
+        nullable=False,
+    )
+    lineage_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    birth_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    relative_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    relative_relation: Mapped[str] = mapped_column(String(100), nullable=False)
+    relation_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    verification_notes: Mapped[str] = mapped_column(Text, nullable=False)
+    consent_given: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        server_default=text("'PENDING'::character varying"),
+    )
+    reviewer_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        _fk("users.user_id", "clan_join_requests_reviewer_id_fkey", "SET NULL"),
+        nullable=True,
+    )
+    review_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = _opt_ts()
+    linked_person_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    history: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    created_at: Mapped[datetime] = _now_ts()
+    updated_at: Mapped[datetime] = _now_ts()
 
 
 class FamilyAdminAssignment(Base):

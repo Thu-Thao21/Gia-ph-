@@ -95,6 +95,7 @@ export async function buildErgoTreeFromDB(
 
       const localPrivacy = localStorage.getItem(`privacy_setting_${m.id}`);
       const isPrivate = localPrivacy ? localPrivacy === 'private' : Boolean((m as any).isPrivate || (m as any).is_private);
+      const isUnconnected = Boolean((m as any).isUnconnected || (m as any).is_unconnected);
 
       return {
         id: m.id,
@@ -111,6 +112,7 @@ export async function buildErgoTreeFromDB(
         bio: (m as any).bio,
         userId: (m as any).userId || (m as any).user_id,
         isPrivate,
+        isUnconnected,
         spouses,
         children: [],
         isFocusPerson: isCardFocus,
@@ -186,9 +188,12 @@ export async function buildErgoTreeFromDB(
     }
 
     // Build recursive children with cycle detection for full tree
+    const visitedInTree = new Set<string>();
+
     const buildChildrenRecursive = (parentId: string, visited: Set<string>): ErgoTreeNode[] => {
       if (visited.has(parentId)) return [];
       visited.add(parentId);
+      visitedInTree.add(parentId);
 
       const parentM = memberMap.get(parentId);
       if (!parentM) return [];
@@ -207,6 +212,7 @@ export async function buildErgoTreeFromDB(
       }
 
       return directChildren.map((c) => {
+        visitedInTree.add(c.id);
         const node = convertNode(c);
         node.children = buildChildrenRecursive(c.id, new Set(visited));
         return node;
@@ -257,9 +263,31 @@ export async function buildErgoTreeFromDB(
     }
 
     const rootNodes: ErgoTreeNode[] = rootMembers.map((r) => {
+      visitedInTree.add(r.id);
+      getSpouses(r).forEach((s) => visitedInTree.add(s.id));
       const node = convertNode(r);
       node.children = buildChildrenRecursive(r.id, new Set());
       return node;
+    });
+
+    // 3. Tìm tất cả các thành viên chưa được kết nối vào cây phả hệ (Unconnected Members)
+    // Bao gồm các tài khoản thành viên mới vào họ chưa được nối phả hệ hoặc những người chưa có cha/mẹ/vợ/chồng/con
+    const unconnectedMembers = allMembers.filter((m) => {
+      if (visitedInTree.has(m.id)) return false;
+      const hasParents = Boolean((m as any).fatherId || (m as any).motherId);
+      const hasSpouses = getSpouses(m).length > 0;
+      const hasChildren = allMembers.some(
+        (c) => (c as any).fatherId === m.id || (c as any).motherId === m.id
+      );
+      return !hasParents && !hasSpouses && !hasChildren;
+    });
+
+    unconnectedMembers.forEach((um) => {
+      visitedInTree.add(um.id);
+      const unNode = convertNode(um);
+      unNode.isUnconnected = true;
+      unNode.focusRole = 'Chưa nối phả hệ';
+      rootNodes.push(unNode);
     });
 
     return { rootNodes, allMembers };

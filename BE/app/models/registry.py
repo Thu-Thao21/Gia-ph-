@@ -9,6 +9,7 @@ from app.models.family.entities import (  # noqa: F401
     AccountInvitation,
     BusinessRegistration,
     Clan,
+    ClanJoinRequest,
     ClanMembership,
     ClanOwnershipHistory,
     ClanProfile,
