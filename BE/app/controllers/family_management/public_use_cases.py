@@ -105,6 +105,14 @@ async def list_service_plans(
 # ----- POST /business-registrations -----
 
 
+def _not_verified() -> AppError:
+    return AppError(
+        ErrorCode.VALIDATION_ERROR,
+        "Địa chỉ email đại diện chưa được xác thực bằng mã OTP, hoặc phiên xác thực đã hết hạn. "
+        "Vui lòng xác thực qua OTP trước khi nộp hồ sơ.",
+    )
+
+
 async def create_registration(
     *,
     db: UnitOfWork,
@@ -112,32 +120,52 @@ async def create_registration(
     family: FamilyRepository,
     body: BusinessRegistrationCreateRequest,
     client: ClientInfo,
+    otps,
     now: datetime | None = None,
 ) -> BusinessRegistrationCreateResponse:
-    from app.core.utils.otp_service import is_email_verified, consume_verified_email
+    from app.core.utils import clan_identity, gmail_registry, otp_service
 
     plan_id = body.requested_plan_id
     plan = await family.get_plan_by_id(plan_id)
     if plan is None or plan.status != "ACTIVE":
         raise _invalid_plan()  # same answer for "unknown" and "not selectable"
 
-    # Enforce OTP verification for representative email
-    if not is_email_verified(body.representative_email):
-        raise AppError(
-            ErrorCode.VALIDATION_ERROR,
-            "Địa chỉ email đại diện chưa được xác thực bằng mã OTP. Vui lòng xác thực qua OTP trước khi nộp hồ sơ.",
+    # Mốc M5-1: only with the one-time token of a verified code for THIS representative_email
+    # (read here; claimed in the transaction that creates the registration).
+    token = body.verification_token.get_secret_value() if body.verification_token else None
+    try:
+        verified = await otp_service.token_usable(
+            otps=otps, purpose=otp_service.PURPOSE_BUSINESS, email=body.representative_email, token=token
         )
+    except otp_service.OtpUnavailable:
+        raise AppError(ErrorCode.PROVIDER_UNAVAILABLE) from None
+    if not verified:
+        raise _not_verified()
+    normalized = gmail_registry.normalize_email(body.representative_email)
+    if await users.gmail_active(normalized) is not None:
+        raise AppError(ErrorCode.EMAIL_ALREADY_REGISTERED)  # Mốc M5: one Gmail registers once
 
     if await family.exists_pending_registration(
         email=body.representative_email, clan_name=body.clan_name
     ):
         raise _duplicate()
+    # Mốc M5c: each clan exists once (same normalized name + origin as a clan or a registration in
+    # progress). The answer says nothing about the other clan.
+    c_name, c_origin = clan_identity.name_key(body.clan_name), clan_identity.origin_key(body.origin_place)
+    c_key = f"{c_name}|{c_origin}"
+    if await family.clan_key_active(c_key) is not None:
+        raise AppError(ErrorCode.DUPLICATE_CLAN)
 
     created_at = now or _now()
     for _attempt in range(MAX_TRACKING_CODE_ATTEMPTS):
         tracking_code = generate_tracking_code()
         registration_id = uuid.uuid4()
         try:
+            if not await otp_service.claim_token(
+                otps=otps, purpose=otp_service.PURPOSE_BUSINESS, email=body.representative_email, token=token
+            ):
+                await db.rollback()
+                raise _not_verified()  # used meanwhile by a concurrent request
             await family.create_registration(
                 registration_id=registration_id,
                 requested_plan_id=plan_id,
@@ -149,6 +177,23 @@ async def create_registration(
                 tracking_code_hash=hash_tracking_code(tracking_code),
                 now=created_at,
             )
+            # The Gmail registry row in THIS transaction (Mốc M5): of two concurrent registrations
+            # of one Gmail only one inserts it.
+            if not await users.gmail_claim(
+                normalized_email=normalized, original_email=body.representative_email,
+                owner_type=gmail_registry.BUSINESS_REGISTRATION, user_id=None,
+                registration_id=registration_id, now=created_at,
+            ):
+                await db.rollback()
+                raise AppError(ErrorCode.EMAIL_ALREADY_REGISTERED)
+            # The clan key, same transaction (Mốc M5c): of two concurrent registrations of one
+            # clan only one inserts it (partial unique index).
+            if not await family.clan_key_claim(
+                clan_key=c_key, name_key=c_name, origin_key=c_origin, kind=clan_identity.REGISTRATION,
+                registration_id=registration_id, clan_id=None, now=created_at,
+            ):
+                await db.rollback()
+                raise AppError(ErrorCode.DUPLICATE_CLAN)
             await family.add_registration_status_history(
                 registration_id=registration_id,
                 from_status=None,
@@ -172,7 +217,6 @@ async def create_registration(
                 occurred_at=created_at,
             )
             await db.commit()
-            consume_verified_email(body.representative_email)
         except IntegrityError as exc:
             await db.rollback()
             name = constraint_name(exc)

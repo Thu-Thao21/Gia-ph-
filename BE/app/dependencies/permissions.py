@@ -353,4 +353,5 @@ def require_action(action: Action, scope: ScopeResolver = system_scope):
         await authorize(principal, action, scope(request), roles=roles, family=family)
         return principal
 
+    dependency.required_action = action.value  # read by scripts/route_inventory.py
     return dependency

@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.controllers.auth_access import router as router_module
-from app.controllers.auth_access.router import router
+from app.controllers.auth_access.router import get_audit_writer, router
 from app.core.errors import register_exception_handlers
 from app.core.integrations.firebase import ProviderUnavailable, ProviderUser, get_identity_provider
 from app.core.middleware.request_id import RequestIdMiddleware
@@ -27,10 +27,12 @@ from tests.fakes import (
     FakeDb,
     FakeFamilyRepo,
     FakeIdentityProvider,
+    FakeEmailOtpRepo,
     FakeUserAccessRepo,
     disabled_rate_limiters,
     make_user,
 )
+from app.dependencies.auth import get_email_otp_repo
 
 PASSWORD = "Mat-Khau-Cu-123"
 NEW_PASSWORD = "Mat-Khau-Moi-456"
@@ -50,6 +52,7 @@ class World:
         self.family = FakeFamilyRepo()
         self.provider = FakeIdentityProvider()
         self.db = FakeDb(repo=self.repo)
+        self.otps = FakeEmailOtpRepo()
         app = FastAPI()
         app.add_middleware(RequestIdMiddleware)
         register_exception_handlers(app)
@@ -59,6 +62,13 @@ class World:
         app.dependency_overrides[get_user_access_repo] = lambda: self.repo
         app.dependency_overrides[get_family_repo] = lambda: self.family
         app.dependency_overrides[get_identity_provider] = lambda: self.provider
+        app.dependency_overrides[get_email_otp_repo] = lambda: self.otps
+        self.after_commit_audit: list[dict] = []  # rows the after-commit Firebase sync wrote
+
+        async def audit_writer(**row):
+            self.after_commit_audit.append(row)
+
+        app.dependency_overrides[get_audit_writer] = lambda: audit_writer
         self.client = TestClient(app)
 
     def user(self, status="ACTIVE", *, password=PASSWORD, firebase=False, **cred):
@@ -264,6 +274,44 @@ def test_firebase_down_still_succeeds_db_is_the_source_of_truth(w, caplog):
     assert bcrypt.checkpw(NEW_PASSWORD.encode(), w.repo.creds[user.user_id].password_hash.encode())
     assert "firebase_sync_failed:timeout" in caplog.text
     assert NEW_PASSWORD not in caplog.text and PASSWORD not in caplog.text
+    # ...and an audit row, written after the commit, with the reason code only.
+    assert w.after_commit_audit == [{
+        "action": "auth.firebase_password_sync_failed", "user_id": user.user_id,
+        "new_data": {"reason": "timeout"},
+    }]
+
+
+def test_password_change_logs_step_timings_without_secrets(w, caplog):
+    caplog.set_level(logging.INFO, logger="mfg.auth")
+    user = w.user(firebase=True)
+    access = w.token_for(user)
+    assert change(w, access).status_code == 200
+    lines = [r.getMessage() for r in caplog.records if " timing " in r.getMessage()]
+    login_line = next(l for l in lines if l.startswith("auth.login timing"))
+    change_line = next(l for l in lines if l.startswith("auth.change_password timing"))
+    firebase_line = next(l for l in lines if l.startswith("auth.firebase_sync timing"))
+    for step in ("lookup=", "lock=", "bcrypt=", "rules=", "write=", "total="):
+        assert step in login_line, login_line
+    for step in ("user=", "lock=", "bcrypt_verify=", "bcrypt_hash=", "db_write=", "firebase=scheduled"):
+        assert step in change_line, change_line
+    assert "outcome=updated" in firebase_line
+    for secret in (PASSWORD, NEW_PASSWORD, access, user.email, user.firebase_uid):
+        assert all(secret not in l for l in lines)
+
+
+def test_firebase_sync_runs_after_the_response_is_built(w):
+    """The sync is a background job: the DB change is complete before Firebase is asked."""
+    user = w.user(firebase=True)
+    access = w.token_for(user)
+    seen_hash_when_firebase_called = []
+
+    async def hook(uid):
+        seen_hash_when_firebase_called.append(w.repo.creds[user.user_id].password_hash)
+
+    w.provider.hooks["get_user"] = hook
+    assert change(w, access).status_code == 200
+    [stored] = seen_hash_when_firebase_called
+    assert bcrypt.checkpw(NEW_PASSWORD.encode(), stored.encode()) and w.db.commits >= 2
 
 
 def test_no_firebase_account_is_fine(w):
@@ -310,16 +358,17 @@ def test_the_firebase_session_exchange_is_gone(w):
 
 @pytest.fixture
 def sent_otps(monkeypatch) -> dict[str, str]:
-    """Captures the OTP the router would e-mail (the cache only keeps its hash)."""
-    monkeypatch.setattr(otp_service, "_otp_cache", {})
-    monkeypatch.setattr(otp_service, "_verified_emails", {})
+    """Captures the OTP the route would e-mail (the database only keeps its HMAC)."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "OTP_HMAC_KEY", "test-otp-hmac-key-0123456789abcdef")
     sent: dict[str, str] = {}
 
     def fake_send(to_email: str, otp: str) -> bool:
         sent[to_email] = otp
         return True
 
-    monkeypatch.setattr(router_module, "send_otp_via_email", fake_send)
+    monkeypatch.setattr(otp_service, "send_otp_via_email", fake_send)
     return sent
 
 
@@ -339,15 +388,16 @@ def test_register_send_otp_and_verify(w, sent_otps):
     r_bad = w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": wrong})
     assert r_bad.status_code == 400
 
-    # Verify correct OTP
+    # Verify correct OTP: a one-time verification token, never the code
     r_ok = w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": otp})
     assert r_ok.status_code == 200
+    assert len(r_ok.json()["verification_token"]) >= 40 and otp not in r_ok.text
 
 
 def register(w, sent_otps, email="newmember@gmail.com", password="Password123!"):
     w.client.post("/api/v1/auth/register-send-otp", json={"email": email})
     otp = sent_otps[email]
-    w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": otp})
+    verified = w.client.post("/api/v1/auth/register-verify-otp", json={"email": email, "otp": otp})
     return w.client.post(
         "/api/v1/auth/register-public",
         json={
@@ -355,7 +405,7 @@ def register(w, sent_otps, email="newmember@gmail.com", password="Password123!")
             "password": password,
             "display_name": "Thành viên Mới",
             "username": "newmember",
-            "otp": otp,
+            "verification_token": verified.json()["verification_token"],
         },
     )
 

@@ -50,11 +50,15 @@ export type RegistrationStatus =
 export interface BusinessRegistrationCreateRequest {
   representative_name: string;
   representative_email: string;
-  representative_phone?: string;
+  /** Mốc M5c: bắt buộc, số di động Việt Nam (BE chuẩn hóa về 0XXXXXXXXX). */
+  representative_phone: string;
   clan_name: string;
-  origin_place?: string;
+  /** Mốc M5c: bắt buộc (cùng tên dòng họ tạo nên khóa nhận diện dòng họ). */
+  origin_place: string;
   /** UUID của gói (plan_id). */
   requested_plan_id: string;
+  /** Token dùng một lần do POST /business-registrations/verify-otp trả về (Mốc M5-1). */
+  verification_token?: string;
 }
 
 /** 201. tracking_code chỉ hiển thị một lần, BE chỉ lưu bản băm. */
@@ -121,11 +125,12 @@ export async function createBusinessRegistration(
   const body: BusinessRegistrationCreateRequest = {
     representative_name: payload.representative_name,
     representative_email: payload.representative_email,
+    representative_phone: payload.representative_phone,
     clan_name: payload.clan_name,
+    origin_place: payload.origin_place,
     requested_plan_id: payload.requested_plan_id,
+    verification_token: payload.verification_token,
   };
-  if (payload.representative_phone) body.representative_phone = payload.representative_phone;
-  if (payload.origin_place) body.origin_place = payload.origin_place;
   const res = await apiClient.post<BusinessRegistrationCreateResponse>('/business-registrations', body);
   return res.data;
 }
@@ -144,6 +149,9 @@ export interface SendOtpResponse {
 
 export interface VerifyOtpResponse {
   message: string;
+  verified?: boolean;
+  /** Dùng một lần, chỉ cho đúng email đại diện này: gửi kèm khi nộp hồ sơ. */
+  verification_token: string;
 }
 
 export async function sendRegistrationOtp(email: string): Promise<SendOtpResponse> {

@@ -182,8 +182,9 @@ def test_a_bad_body_is_422_and_the_plan_can_never_come_from_the_request(w, body)
 @pytest.mark.parametrize("body", ["__none__", {}, None, {"clan_code": None}])
 def test_no_body_an_empty_body_or_a_null_code_all_mean_generate_a_code(w, body):
     _sa, token = w.sa()
-    r = w.post(token, w.registration().registration_id, body=body)
-    assert r.status_code == 201 and r.json()["clan_code"].startswith("CLAN-")
+    reg = w.registration(clan_name="Dòng Họ Nguyễn Chi 1 Kim Liên")
+    r = w.post(token, reg.registration_id, body=body)
+    assert r.status_code == 201 and r.json()["clan_code"] == "nguyenchi1kimlien"  # Mốc M5c
 
 
 def test_a_registration_id_that_is_not_a_uuid_is_422(w):
@@ -271,34 +272,41 @@ def test_a_clan_code_that_is_taken_is_409_duplicate_resource_and_writes_nothing(
     assert (len(w.family.clans), len(w.idem.rows), len(w.repo.audit)) == before
 
 
-def test_a_generated_code_is_clan_dash_plus_eight_safe_characters_and_each_clan_gets_its_own(w):
-    _sa, token = w.sa()
-    codes = {w.post(token, w.registration().registration_id).json()["clan_code"] for _ in range(5)}
-    assert len(codes) == 5
+def test_a_generated_code_comes_from_the_clan_name_and_each_clan_gets_its_own(w):
+    """Mốc M5c: the clan name without its prefix and diacritics, a-z0-9 only, at most 30 characters."""
     import re
 
-    assert all(re.fullmatch(r"CLAN-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}", c) for c in codes)
+    _sa, token = w.sa()
+    codes = [w.post(token, w.registration(clan_name="Họ Trần Văn").registration_id).json()["clan_code"]
+             for _ in range(3)]
+    assert codes == ["tranvan", "tranvan-2", "tranvan-3"]
+    long = w.post(token, w.registration(clan_name="Dòng họ " + "Nguyễn " * 10).registration_id).json()["clan_code"]
+    assert long == ("nguyen" * 10)[:30] and re.fullmatch(r"[a-z0-9]{1,30}", long)
 
 
-def test_a_generated_code_that_collides_is_drawn_again(w, monkeypatch):
+def test_a_taken_code_in_any_letter_case_or_login_id_is_skipped(w):
     _sa, token = w.sa()
     taken = w.family.add_clan("ACTIVE")
-    taken.clan_code = "CLAN-AAAAAAAA"
-    draws = iter(["CLAN-AAAAAAAA", "CLAN-AAAAAAAA", "CLAN-BBBBBBBB"])
-    monkeypatch.setattr(use_cases, "generate_clan_code", lambda: next(draws))
-    r = w.post(token, w.registration().registration_id)
-    assert r.status_code == 201 and r.json()["clan_code"] == "CLAN-BBBBBBBB"
-    assert w.family.calls.count("create_clan") == 3  # two collisions, then success
-    assert "get_clan_by_code" not in w.family.calls  # a generated code is not pre-checked: the index decides
+    taken.clan_code = "TRANVAN"  # an older, upper-case code
+    owner = w.repo.add_user(make_user())
+    owner.email = "tranvan-2@giapha.com"  # the login ID of "tranvan-2" is already a user
+    r = w.post(token, w.registration(clan_name="Họ Trần Văn").registration_id)
+    assert r.status_code == 201 and r.json()["clan_code"] == "tranvan-3"
+
+
+def test_a_generated_code_lost_to_a_race_tries_the_next_one(w):
+    _sa, token = w.sa()
+    w.family.create_clan_errors = ["clans_clan_code_key", "clans_clan_code_key"]  # the index decides
+    r = w.post(token, w.registration(clan_name="Họ Lê Đình").registration_id)
+    assert r.status_code == 201 and r.json()["clan_code"] == "ledinh-3"
+    assert w.family.calls.count("create_clan") == 3
 
 
 def test_three_collisions_in_a_row_are_a_500_and_write_nothing(w, monkeypatch):
     w = BizWorld(raise_server_exceptions=False)
     monkeypatch.setattr(use_cases, "utcnow", lambda: FROZEN)
     _sa, token = w.sa()
-    taken = w.family.add_clan("ACTIVE")
-    taken.clan_code = "CLAN-AAAAAAAA"
-    monkeypatch.setattr(use_cases, "generate_clan_code", lambda: "CLAN-AAAAAAAA")
+    w.family.create_clan_errors = ["clans_clan_code_key"] * 3
     r = w.post(token, w.registration().registration_id)
     assert (r.status_code, code(r)) == (500, "INTERNAL_ERROR")
     assert w.family.calls.count("create_clan") == 3  # three attempts in all, never more

@@ -10,7 +10,9 @@ import uuid
 from decimal import Decimal
 from typing import Annotated, Literal, Optional
 
-from pydantic import Field, StringConstraints, model_validator
+import re
+
+from pydantic import AfterValidator, Field, StringConstraints, model_validator
 
 from app.schemas.auth import ClanStatus
 from app.schemas.common import (
@@ -33,6 +35,58 @@ ReviewDecision = Literal["APPROVED", "REJECTED"]
 SubscriptionStatus = Literal["PENDING", "ACTIVE", "EXPIRED", "SUSPENDED", "CANCELLED"]
 # No DB table yet: provisioning jobs need a migration (plan section 7).
 ProvisioningJobStatus = Literal["PENDING", "RUNNING", "SUCCEEDED", "FAILED_RETRYABLE", "FAILED"]
+# ----- Mốc M5c: the public registration form, checked here as strictly as (or more than) the FE -----
+# Every type below runs after Str255's cleaning (no control characters, NFC, whitespace collapsed).
+
+_PERSON_NAME = re.compile(r"^[^\W\d_]+(?:[ .'-][^\W\d_]+)*\.?$")
+_CLAN_NAME = re.compile(r"^[^\W_]+(?: [^\W_]+)*$")
+_ORIGIN = re.compile(r"^[\w ,./()'-]+$")
+_VN_MOBILE = re.compile(r"^0(?:3|5|7|8|9)\d{8}$")
+
+
+def _person_name(value: str) -> str:
+    if not 2 <= len(value) <= 100 or not _PERSON_NAME.match(value):
+        raise ValueError("letters, spaces and . ' - only, 2 to 100 characters")
+    return value
+
+
+def _gmail(value: str) -> str:
+    if not value.strip().lower().endswith("@gmail.com"):
+        raise ValueError("a @gmail.com address is required")
+    return value
+
+
+def _vn_mobile(value: str) -> str:
+    """A Vietnamese mobile number, stored as 0XXXXXXXXX. Accepts spaces, dots, dashes, brackets
+    and the +84 / 84 prefix ("+84 912 345 678", "0912.345.678")."""
+    digits = re.sub(r"[ .()\-]", "", value)
+    if digits.startswith("+84"):
+        digits = "0" + digits[3:]
+    elif digits.startswith("84") and len(digits) == 11:
+        digits = "0" + digits[2:]
+    if not _VN_MOBILE.match(digits):
+        raise ValueError("a Vietnamese mobile number (03/05/07/08/09 + 8 digits)")
+    return digits
+
+
+def _clan_name(value: str) -> str:
+    if not 5 <= len(value) <= 255 or not _CLAN_NAME.match(value):
+        raise ValueError("letters, digits and spaces only, 5 to 255 characters")
+    return value
+
+
+def _origin(value: str) -> str:
+    if not 2 <= len(value) <= 255 or not _ORIGIN.match(value) or "_" in value:
+        raise ValueError("letters, digits, spaces and , . / ( ) ' - only, 2 to 255 characters")
+    return value
+
+
+PersonName = Annotated[Str255, AfterValidator(_person_name)]
+GmailAddress = Annotated[Email, AfterValidator(_gmail)]
+VnMobile = Annotated[Str255, AfterValidator(_vn_mobile)]
+ClanName = Annotated[Str255, AfterValidator(_clan_name)]
+OriginPlace = Annotated[Str255, AfterValidator(_origin)]
+
 ClanCode = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=3, max_length=50, pattern=r"^[A-Z0-9_-]+$"),
@@ -65,12 +119,18 @@ class ServicePlanResponse(ResponseModel):
 
 
 class BusinessRegistrationCreateRequest(RequestModel):
-    representative_name: Str255
-    representative_email: Email
-    representative_phone: Optional[Phone] = None
-    clan_name: Str255
-    origin_place: Optional[Str255] = None
+    """Mốc M5c: as strict as the wizard (BE is where it is enforced): every field the wizard
+    requires is required here, a person's name, a Gmail, a Vietnamese mobile, a clan name of
+    letters / digits / spaces, an origin place."""
+
+    representative_name: PersonName
+    representative_email: GmailAddress
+    representative_phone: VnMobile
+    clan_name: ClanName
+    origin_place: OriginPlace
     requested_plan_id: uuid.UUID
+    # Mốc M5-1: the one-time token of POST /business-registrations/verify-otp for representative_email.
+    verification_token: Optional[SecretToken] = None
 
 
 class BusinessRegistrationCreateResponse(ResponseModel):
@@ -150,6 +210,21 @@ class RegistrationAttachmentItem(ResponseModel):
     uploaded_at: UtcDatetime
 
 
+class SimilarClanItem(ResponseModel):
+    """A soft warning for the System Admin (Mốc M5c): a clan or registration that looks like this
+    one. Never blocking. No representative's personal data."""
+
+    kind: Literal["clan", "registration"]
+    registration_id: Optional[uuid.UUID] = None
+    clan_id: Optional[uuid.UUID] = None
+    clan_code: Optional[str] = None
+    clan_name: str
+    origin_place: Optional[str] = None
+    status: str
+    reason: Literal["same_clan_key", "same_name_other_origin", "similar_name_shared_origin"]
+    message: str
+
+
 class BusinessRegistrationDetail(BusinessRegistrationSummary):
     """The SA sees the applicant's personal data here (e-mail, phone)."""
 
@@ -164,6 +239,9 @@ class BusinessRegistrationDetail(BusinessRegistrationSummary):
     )
     status_history: list[RegistrationStatusHistoryItem] = Field(default_factory=list)
     attachments: list[RegistrationAttachmentItem] = Field(default_factory=list)
+    similar_clans: list[SimilarClanItem] = Field(
+        default_factory=list, description="Soft warnings (Mốc M5c): look-alike clans / registrations."
+    )
 
 
 # ----- POST /admin/business-registrations/{id}/review (SA) -----

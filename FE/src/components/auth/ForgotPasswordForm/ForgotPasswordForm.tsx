@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { sendPasswordResetLink } from '../../../services/auth.service';
+import { PASSWORD_RESET_REQUESTED_MESSAGE, sendPasswordResetLink } from '../../../services/auth.service';
 import './ForgotPasswordForm.css';
 
 export interface ForgotPasswordFormProps {
@@ -26,11 +26,11 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onSwitch
     setIsSubmitting(true);
     try {
       await sendPasswordResetLink(trimmedEmail);
-      setSuccessMsg(
-        'Đã gửi liên kết đặt lại mật khẩu đến email của bạn! Vui lòng kiểm tra hộp thư (bao gồm cả thư mục Spam/Quảng cáo).'
-      );
+      // Cùng một câu cho mọi email (có hay không có tài khoản): chống dò email.
+      setSuccessMsg(PASSWORD_RESET_REQUESTED_MESSAGE);
     } catch (err: any) {
-      setError(err?.message || 'Không thể gửi liên kết đặt lại mật khẩu. Vui lòng thử lại sau.');
+      // sendPasswordResetLink chỉ ném thông báo chung (mạng / quá nhiều lần), không nói gì về tài khoản.
+      setError(err?.message || 'Không thể gửi yêu cầu đặt lại mật khẩu lúc này. Vui lòng thử lại sau.');
     } finally {
       setIsSubmitting(false);
     }

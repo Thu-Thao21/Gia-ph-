@@ -53,6 +53,11 @@ def _dummy_hash() -> bytes:
     return bcrypt.hashpw(secrets.token_bytes(32), bcrypt.gensalt(BCRYPT_ROUNDS))
 
 
+def warm_up() -> None:
+    """Build the dummy hash now (app startup), not inside the first login that needs it."""
+    _dummy_hash()
+
+
 def verify_password(raw: str, stored_hash: str | None) -> bool:
     data = raw.encode("utf-8")
     if not stored_hash:

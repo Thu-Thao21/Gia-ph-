@@ -1,14 +1,19 @@
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../config/firebase';
 import apiClient from '../api/axios';
 import { readApiError, withRequestId } from '../api/apiError';
+import {
+  emailTakenKind,
+  emailTakenMessage,
+  verificationErrorMessage,
+  type EmailTakenKind,
+} from '../api/otpErrors';
 import { clearSession, hasSession, setSession } from '../api/session';
 import type { AccountProfile, AccountRoleInfo } from '../context/AuthContext';
 import type { MeResponse, SessionCreateResponse, SessionUser } from '../types/auth';
 
 /*
  * Mốc M1: chỉ có MỘT cửa đăng nhập là POST /auth/login (mật khẩu kiểm tra trong DB).
- * Firebase KHÔNG dùng để đăng nhập; ở FE chỉ còn sendPasswordResetEmail (quên mật khẩu, Mốc M4).
+ * Firebase KHÔNG dùng để đăng nhập, và FE không còn gọi Firebase nữa: quên mật khẩu đi qua BE
+ * (POST /auth/password-reset/request và /confirm, Mốc M4b).
  * Không còn Google, Facebook, SMS OTP.
  */
 
@@ -18,7 +23,8 @@ export interface RegisterPayload {
   password: string;
   confirmPassword?: string;
   displayName?: string;
-  otp?: string;
+  /** Token dùng một lần do POST /auth/register-verify-otp trả về (Mốc M5-1), không phải mã OTP. */
+  verificationToken?: string;
 }
 
 export interface LoginPayload {
@@ -263,14 +269,28 @@ export interface RegisterOtpResponse {
   message: string;
 }
 
+export interface RegisterVerifyOtpResponse {
+  message: string;
+  /** Dùng một lần, chỉ cho đúng email này: gửi kèm khi tạo tài khoản. */
+  verification_token: string;
+}
+
 export async function sendRegisterOtp(email: string): Promise<RegisterOtpResponse> {
   const res = await apiClient.post<RegisterOtpResponse>('/auth/register-send-otp', { email });
   return res.data;
 }
 
-export async function verifyRegisterOtp(email: string, otp: string): Promise<RegisterOtpResponse> {
-  const res = await apiClient.post<RegisterOtpResponse>('/auth/register-verify-otp', { email, otp });
+export async function verifyRegisterOtp(email: string, otp: string): Promise<RegisterVerifyOtpResponse> {
+  const res = await apiClient.post<RegisterVerifyOtpResponse>('/auth/register-verify-otp', { email, otp });
   return res.data;
+}
+
+/** Lỗi đăng ký có loại, để form hiện thêm hướng dẫn (ví dụ link Đăng nhập / Quên mật khẩu). */
+export class RegisterError extends Error {
+  /** EmailTakenKind: Gmail đã có tài khoản; 'verification_required': phải xác thực Gmail lại. */
+  constructor(message: string, readonly kind: EmailTakenKind | 'verification_required') {
+    super(message);
+  }
 }
 
 /**
@@ -282,7 +302,7 @@ export async function registerWithEmailPassword(payload: RegisterPayload): Promi
   if (!email.toLowerCase().endsWith('@gmail.com')) {
     throw new Error('Email đăng ký bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com.');
   }
-  if (!payload.otp) {
+  if (!payload.verificationToken) {
     throw new Error('Vui lòng xác thực mã OTP trước khi tạo tài khoản.');
   }
 
@@ -292,7 +312,7 @@ export async function registerWithEmailPassword(payload: RegisterPayload): Promi
       password: payload.password,
       display_name: payload.displayName || payload.username || email.split('@')[0],
       username: payload.username || email.split('@')[0],
-      otp: payload.otp,
+      verification_token: payload.verificationToken,
     });
     storeSession(res.data);
     return await fetchCurrentAccount();
@@ -301,38 +321,99 @@ export async function registerWithEmailPassword(payload: RegisterPayload): Promi
     if (info.isNetworkError) {
       throw new Error('Không thể kết nối đến máy chủ Backend.');
     }
-    if (info.code === 'EMAIL_ALREADY_EXISTS') {
-      throw new Error('Địa chỉ Gmail này đã được sử dụng để đăng ký tài khoản.');
+    const taken = emailTakenKind(err);
+    if (taken) {
+      throw new RegisterError(emailTakenMessage(taken), taken);
     }
-    if (info.code === 'INVALID_OTP' || info.code === 'EMAIL_NOT_VERIFIED') {
-      throw new Error(info.message || 'Mã xác thực OTP không đúng hoặc đã hết hạn.');
+    const verification = verificationErrorMessage(err);
+    if (verification) {
+      throw new RegisterError(verification, 'verification_required');
     }
     if (info.code === 'PROVIDER_UNAVAILABLE') {
       throw new Error(withRequestId('Dịch vụ tạo tài khoản tạm thời không khả dụng. Vui lòng thử lại sau.', info));
     }
-    throw new Error(info.message || 'Đăng ký tài khoản thất bại. Vui lòng thử lại.');
+    throw new Error(withRequestId(info.message || 'Đăng ký tài khoản thất bại. Vui lòng thử lại.', info));
+  }
+}
+
+/** Câu duy nhất hiển thị sau khi gửi yêu cầu quên mật khẩu, dù email có tài khoản hay không. */
+export const PASSWORD_RESET_REQUESTED_MESSAGE =
+  'Nếu địa chỉ email này có tài khoản trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi đến hộp thư. ' +
+  'Vui lòng kiểm tra cả thư mục Spam/Quảng cáo. Liên kết chỉ dùng được một lần.';
+
+/**
+ * Quên mật khẩu, bước 1 (Mốc M4b): BE (POST /auth/password-reset/request) tự tạo liên kết
+ * {FRONTEND_BASE_URL}/reset-password?mode=resetPassword&oobCode=... và gửi email qua SMTP; không
+ * phụ thuộc mẫu email của Firebase. BE luôn trả cùng một 200 dù email có tài khoản hay không
+ * (chống dò email); chỉ lỗi mạng hoặc gửi quá nhiều lần mới báo lỗi, bằng thông báo chung.
+ */
+export async function sendPasswordResetLink(email: string): Promise<void> {
+  try {
+    await apiClient.post('/auth/password-reset/request', { email: email.trim() });
+  } catch (err) {
+    const info = readApiError(err);
+    if (info.isNetworkError) {
+      throw new Error('Không thể kết nối. Vui lòng kiểm tra mạng và thử lại.');
+    }
+    if (info.code === 'RATE_LIMITED') {
+      throw new Error('Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.');
+    }
+    if (info.code === 'VALIDATION_ERROR') {
+      throw new Error('Địa chỉ email không hợp lệ.');
+    }
+    throw new Error(withRequestId('Không thể gửi yêu cầu đặt lại mật khẩu lúc này. Vui lòng thử lại sau.', info));
+  }
+}
+
+/** Kết quả lỗi của bước 2, để trang /reset-password chọn cách hiển thị. */
+export class PasswordResetError extends Error {
+  constructor(message: string, readonly kind: 'expired' | 'invalid' | 'policy' | 'rate_limited' | 'other') {
+    super(message);
   }
 }
 
 /**
- * Gửi email đặt lại mật khẩu qua Firebase Auth (giữ lại cho Mốc M4).
+ * Quên mật khẩu, bước 2: mã oobCode từ liên kết trong email + mật khẩu mới -> BE
+ * (POST /auth/password-reset/confirm). BE đổi mật khẩu trong DB (nguồn đăng nhập), thu hồi mọi
+ * phiên, rồi đồng bộ Firebase. Thành công: 204, không có phiên mới (đăng nhập lại).
  */
-export async function sendPasswordResetLink(email: string): Promise<void> {
+export async function confirmPasswordReset(oobCode: string, newPassword: string): Promise<void> {
+  const policyError = passwordPolicyError(newPassword);
+  if (policyError) throw new PasswordResetError(policyError, 'policy');
   try {
-    await sendPasswordResetEmail(auth, email.trim());
-  } catch (err: any) {
-    console.error('Password Reset Error:', err?.code);
-    if (err.code === 'auth/user-not-found') {
-      // Don't leak user existence for security
-      return;
+    await apiClient.post('/auth/password-reset/confirm', { oob_code: oobCode, new_password: newPassword });
+  } catch (err) {
+    const info = readApiError(err);
+    if (info.isNetworkError) {
+      throw new PasswordResetError('Không thể kết nối đến máy chủ. Vui lòng thử lại.', 'other');
     }
-    throw new Error(err.message || 'Không thể gửi email đặt lại mật khẩu.');
+    switch (info.code) {
+      case 'RESET_CODE_EXPIRED':
+        throw new PasswordResetError('Liên kết đặt lại mật khẩu đã hết hạn. Vui lòng yêu cầu liên kết mới.', 'expired');
+      case 'RESET_CODE_INVALID':
+        throw new PasswordResetError(
+          'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã được sử dụng. Vui lòng yêu cầu liên kết mới.',
+          'invalid'
+        );
+      case 'VALIDATION_ERROR':
+        throw new PasswordResetError(
+          'Mật khẩu mới không đạt yêu cầu (ít nhất 8 ký tự, có chữ hoa, chữ thường và chữ số).',
+          'policy'
+        );
+      case 'RATE_LIMITED':
+        throw new PasswordResetError('Bạn đã thử quá nhiều lần. Vui lòng thử lại sau ít phút.', 'rate_limited');
+      default:
+        throw new PasswordResetError(
+          withRequestId('Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.', info),
+          'other'
+        );
+    }
   }
 }
 
 /**
  * Yêu cầu mã OTP đặt lại mật khẩu qua BE: BE mới CHƯA có endpoint (KI-05).
- * Không gọi API cũ. Firebase sendPasswordResetLink vẫn dùng được.
+ * Không gọi API cũ. Quên mật khẩu bằng liên kết email: sendPasswordResetLink.
  */
 export async function requestPasswordResetOTP(emailOrPhone: string): Promise<{ message: string }> {
   void emailOrPhone;

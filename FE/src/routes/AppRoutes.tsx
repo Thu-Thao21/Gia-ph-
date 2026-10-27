@@ -4,6 +4,7 @@ import LoginPage from '../pages/auth/Login';
 import RegisterPage from '../pages/auth/Register';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword';
 import ChangePasswordPage from '../pages/auth/ChangePassword';
+import ResetPasswordPage from '../pages/auth/ResetPassword';
 import Dashboard from '../pages/dashboard/Dashboard';
 import { PublicHomePage } from '../pages/public/Home';
 import { PublicFamilySearchPage } from '../pages/public/FamilySearch';
@@ -76,11 +77,14 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
         element={
           <RegisterPage
             onSwitchToLogin={() => navigate('/login')}
+            onSwitchToForgotPassword={() => navigate('/forgot-password')}
             onSuccess={handleAuthSuccess}
           />
         }
       />
       <Route path="/change-password" element={<ChangePasswordPage />} />
+      {/* Liên kết trong email "Quên mật khẩu" của Firebase trỏ về đây (Mốc M4). */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/forgot-password"
         element={

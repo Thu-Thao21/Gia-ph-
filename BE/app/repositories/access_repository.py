@@ -57,6 +57,19 @@ class AccessRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_active_clan_ids(self, account_id: str | uuid.UUID) -> set[uuid.UUID]:
+        """Clans the account is an ACTIVE, non-revoked member of (same rule as above)."""
+        uid = _as_uuid(account_id)
+        if not uid:
+            return set()
+        stmt = select(FamilyMembership.clan_id).where(
+            FamilyMembership.user_id == uid,
+            func.upper(FamilyMembership.status) == "ACTIVE",
+            FamilyMembership.revoked_at.is_(None),
+        )
+        result = await self.db.execute(stmt)
+        return set(result.scalars().all())
+
     async def get_granted_permission_codes(self, role_names: set[str]) -> set[str]:
         if not role_names:
             return set()

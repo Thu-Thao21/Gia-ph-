@@ -8,12 +8,15 @@ export interface LoginFormProps {
   onSwitchToRegister: () => void;
   onSwitchToForgotPassword?: () => void;
   onSuccess: (profile?: AccountProfile) => void;
+  /** Thông báo hiển thị trong thẻ, ngay trên form (vd: sau khi đặt lại mật khẩu thành công). */
+  notice?: string;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onSwitchToRegister,
   onSwitchToForgotPassword,
   onSuccess,
+  notice,
 }) => {
   const { login } = useAuth();
   const [formData, setFormData] = useState({ emailOrPhone: '', password: '' });
@@ -62,6 +65,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <h1 className="login-form-title">Chào mừng bạn trở lại!</h1>
         <p className="login-form-subtitle">Đăng nhập bằng tài khoản của bạn. Hệ thống sẽ tự xác định quyền truy cập.</p>
       </div>
+
+      {notice ? (
+        <p role="status" data-testid="login-notice" className="login-form-notice">
+          {notice}
+        </p>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="login-form-body">
         <div className="login-form-group">

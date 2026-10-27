@@ -21,3 +21,11 @@ firebase-service-account*.json
 !.env.example
 !BE/.env.example
 !FE/.env.example
+
+# ----- Tester setup (scripts/setup_tester.ps1) -----
+# "Gói bí mật" Minh gửi riêng (DATABASE_URL, Firebase service account, SMTP): KHÔNG BAO GIỜ commit.
+secrets/
+# Mọi tệp .env* (BE/.env, FE/.env, bản sao lưu BE/.env.bak-*) trừ các tệp mẫu .env.example.
+.env*
+!.env.example
+!**/.env.example

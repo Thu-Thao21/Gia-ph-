@@ -201,6 +201,13 @@ async def get_user_access_repo(
     return UserAccessRepository(db)
 
 
+async def get_email_otp_repo(db: AsyncSession = Depends(get_db)):
+    """email_otp_challenges (Mốc M5-1). Tests replace it with a fake."""
+    from app.models.user_access.otp_repository import EmailOtpRepository
+
+    return EmailOtpRepository(db)
+
+
 async def get_principal_allow_restricted(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),

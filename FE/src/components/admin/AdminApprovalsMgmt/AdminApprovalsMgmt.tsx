@@ -312,6 +312,41 @@ export const AdminApprovalsMgmt: React.FC = () => {
           )
         }
       >
+        {selectedDetail && (selectedDetail.similar_clans?.length ?? 0) > 0 && (
+          <div className="s6a-similar" role="alert" data-testid="similar-clans">
+            <strong className="s6a-similar-title">
+              ⚠️ Cảnh báo: có {selectedDetail.similar_clans!.length} dòng họ / hồ sơ trông giống hồ sơ này
+            </strong>
+            <p className="s6a-similar-note">
+              Đây chỉ là cảnh báo, không chặn việc duyệt. Vui lòng kiểm tra trước khi phê duyệt.
+            </p>
+            <ul className="s6a-similar-list">
+              {selectedDetail.similar_clans!.map((item) => (
+                <li key={`${item.kind}-${item.clan_id ?? item.registration_id}`}>
+                  <div className="s6a-similar-main">
+                    <span className="s6a-similar-name">{item.clan_name}</span>
+                    <span className="s6a-similar-meta">
+                      {item.kind === 'clan' ? `Dòng họ${item.clan_code ? ` · mã ${item.clan_code}` : ''}` : 'Hồ sơ đăng ký'}
+                      {' · '}
+                      {item.origin_place || 'không rõ quê gốc'} · {item.status}
+                    </span>
+                    <span className="s6a-similar-reason">{item.message}</span>
+                  </div>
+                  {item.registration_id && (
+                    <button
+                      type="button"
+                      className="s6a-similar-link"
+                      data-testid="btn-open-similar"
+                      onClick={() => openDetail({ registration_id: item.registration_id! } as AdminRegistrationSummary)}
+                    >
+                      Xem hồ sơ
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {selectedDetail && (
           <div className="s6a-detail-grid">
             <div>

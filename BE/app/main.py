@@ -7,7 +7,6 @@ if sys.platform.startswith("win"):
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.controllers.auth_access.router import router as auth_router
 from app.controllers.auth_access.user_admin_router import router as user_admin_router
@@ -23,17 +22,34 @@ from app.core.config import settings
 from app.core.errors.errors import UnhandledErrorMiddleware, register_exception_handlers
 from app.core.middleware.rate_limit import build_rate_limiters
 from app.core.middleware.request_id import RequestIdMiddleware
+from app.core.security import password_hash
 from app.core.security.security_headers import SecurityHeadersMiddleware
 from app.core.config.startup_checks import ConfigurationError, validate_runtime_config
-from app.db.postgres import check_db, close_db, init_db
+from app.db.postgres import close_db, init_db
 from app.dependencies.auth import API_PREFIX
 from app.controllers import health
 
 logger = logging.getLogger("mfg")
 
+
+def configure_logging() -> None:
+    """The app's loggers ("mfg.*") at settings.LOG_LEVEL (default INFO) on the console. Uvicorn's
+    log config only sets up its own "uvicorn.*" loggers, so without this an app INFO line is
+    dropped (Python's last-resort handler prints WARNING and above only). Idempotent. The logger
+    still propagates: pytest's caplog keeps seeing it, and uvicorn leaves the root without a
+    handler, so nothing is printed twice."""
+    if not any(getattr(h, "_mfg_console", False) for h in logger.handlers):
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        handler._mfg_console = True  # type: ignore[attr-defined]
+        logger.addHandler(handler)
+    logger.setLevel(settings.LOG_LEVEL.upper())
+
+
 def create_app() -> FastAPI:
     """Build the application. The module-level `app` below is the one uvicorn serves;
     tests call create_app() to get a fresh instance they can extend."""
+    configure_logging()
     application = FastAPI(title="Multi-family Genealogy API")
 
     # Middleware order: the LAST one added is the OUTERMOST. From outside in:
@@ -72,12 +88,14 @@ async def startup_event():
     except ConfigurationError as exc:
         logger.critical("%s", exc)
         raise
+    # The bcrypt dummy hash (cost 12) used by logins of unknown accounts: built here, not in the
+    # first such login (it doubled that request's bcrypt time).
+    await asyncio.to_thread(password_hash.warm_up)
     try:
         await init_db()
         logger.info("Database connectivity check passed.")
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
+        # The class only: a connection error's text and traceback can carry the database host.
         logger.error(
             "Database connectivity check failed at startup (%s). "
             "App will keep running; /api/health/ready will return 503.",
@@ -90,20 +108,7 @@ async def shutdown_event():
     await close_db()
 
 
-@app.get("/api/health/ready")
-async def readiness():
-    """Readiness: fails when SELECT 1 cannot reach the database."""
-    try:
-        await check_db()
-        return {"status": "ready"}
-    except Exception as exc:
-        logger.error("Readiness check failed (%s).", type(exc).__name__)
-        return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "detail": "database_unavailable"},
-        )
-
-
+# /api/health and /api/health/ready: app.controllers.health (Mốc M7).
 app.include_router(health.router, prefix="/api")
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(user_admin_router, prefix=API_PREFIX)

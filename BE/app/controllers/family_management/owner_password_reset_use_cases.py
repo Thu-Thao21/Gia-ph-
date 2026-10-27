@@ -71,6 +71,7 @@ class _Seen:
     display_name: str
     issued_at: datetime | None
     updated_at: datetime | None
+    contact: "base.OwnerContact"
 
 
 def _state_error(user, cred) -> AppError | None:
@@ -176,6 +177,12 @@ async def _check(*, db, users, family, clan_id) -> _Seen:
             display_name=user.display_name,
             issued_at=cred.temporary_password_issued_at,
             updated_at=cred.updated_at,
+            # Mốc M5-0: the mail goes to the registration's real Gmail, never to users.email.
+            # Mốc M5: the Owner's users.contact_email, never users.email (@giapha.com).
+            contact=base.OwnerContact(
+                email=(user.contact_email or "").strip() or None,
+                clan_name=str(clan.name),
+            ),
         )
     finally:
         await rollback_quietly(db)  # nothing was written: end the transaction, release the connection
@@ -225,13 +232,17 @@ async def _write(*, db, users, family, idempotency, principal, clan_id, seen: _S
 
 
 async def _send(sender: EmailSender, seen: _Seen, password: str, expires_at: datetime):
-    """After the commit. A failure to send never undoes the reset."""
+    """After the commit, ONCE, to the contact Gmail only (Mốc M5-0; the login identifier is shown in
+    the mail). A failure to send never undoes the reset."""
     from app.core.integrations.email_sender import EmailDeliveryResult
 
+    if not seen.contact.email:
+        logger.warning("owner.reset email_skipped reason=no_contact_email request_id=%s", get_request_id())
+        return EmailDeliveryResult(status="FAILED", error="no_contact_email")
     try:
         return await sender.send_owner_temporary_password(
-            to_email=seen.email, display_name=seen.display_name, temporary_password=password,
-            expires_at=expires_at,
+            to_email=seen.contact.email, display_name=seen.display_name, temporary_password=password,
+            expires_at=expires_at, clan_name=seen.contact.clan_name, account_email=seen.email,
         )
     except Exception:  # noqa: BLE001 - nothing about the message or the password is logged
         logger.warning("owner.reset email_failed request_id=%s", get_request_id())

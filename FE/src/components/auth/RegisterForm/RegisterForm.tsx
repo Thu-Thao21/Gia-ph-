@@ -4,17 +4,32 @@ import {
   registerWithEmailPassword,
   sendRegisterOtp,
   verifyRegisterOtp,
+  RegisterError,
 } from '../../../services/auth.service';
 import PasswordInput from '../PasswordInput/PasswordInput';
+import {
+  formatWait,
+  emailTakenKind,
+  emailTakenMessage,
+  type EmailTakenKind,
+  otpErrorMessage,
+  isOtpRateLimited,
+  otpNewCodeReason,
+  otpRetryAfterSeconds,
+  type OtpNewCodeReason,
+} from '../../../api/otpErrors';
+import OtpResendPrompt from '../OtpResendPrompt/OtpResendPrompt';
 import type { AccountProfile } from '../../../context/AuthContext';
 import './RegisterForm.css';
 
 export interface RegisterFormProps {
   onSwitchToLogin: () => void;
+  /** Mở trang Quên mật khẩu (hiện trong thông báo "Gmail đã được đăng ký"). */
+  onSwitchToForgotPassword?: () => void;
   onSuccess: (profile?: AccountProfile) => void;
 }
 
-export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onSuccess }) => {
+export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onSwitchToForgotPassword, onSuccess }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -27,9 +42,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
   const [otpCode, setOtpCode] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  // Token dùng một lần BE trả sau khi xác thực đúng mã (Mốc M5-1); chỉ giữ trong bộ nhớ.
+  const [verificationToken, setVerificationToken] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpMsg, setOtpMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [otpCountdown, setOtpCountdown] = useState(0);
+  // Khác null khi mã đang nhập không dùng được nữa (hết hạn, sai quá số lần, đã có mã mới hơn).
+  const [newCodeReason, setNewCodeReason] = useState<OtpNewCodeReason | null>(null);
+  // Lần gửi mã gần nhất bị giới hạn: khối "Gửi mã mới" chỉ giữ nút khóa + đếm ngược, không thêm câu.
+  const [otpRateLimited, setOtpRateLimited] = useState(false);
+  // Gmail đã có tài khoản (409): 'registered' -> Đăng nhập / Quên mật khẩu; 'needs_admin' -> tài
+  // khoản chưa kích hoạt, chỉ quản trị viên xử lý được (không hiện Quên mật khẩu).
+  const [emailTaken, setEmailTaken] = useState<EmailTakenKind | null>(null);
 
   useEffect(() => {
     if (otpCountdown <= 0) return;
@@ -54,16 +78,25 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
     }
     setOtpLoading(true);
     setOtpMsg(null);
+    setEmailTaken(null);
     try {
       await sendRegisterOtp(trimmed);
       setIsOtpSent(true);
+      setOtpCode('');
+      setNewCodeReason(null);
+      setOtpRateLimited(false);
       setOtpCountdown(60);
       setOtpMsg({ text: 'Mã xác thực 6 số đã được gửi tới Gmail. Vui lòng kiểm tra hộp thư.', isError: false });
     } catch (err: unknown) {
-      setOtpMsg({
-        text: err instanceof Error ? err.message : 'Không thể gửi mã xác thực. Vui lòng thử lại sau.',
-        isError: true,
-      });
+      const taken = emailTakenKind(err);
+      if (taken) {
+        setEmailTaken(taken);
+        return;
+      }
+      setOtpRateLimited(isOtpRateLimited(err));
+      const wait = otpRetryAfterSeconds(err);
+      if (wait !== null) setOtpCountdown(wait); // chờ đúng thời gian BE báo (retry_after)
+      setOtpMsg({ text: otpErrorMessage(err, 'send'), isError: true });
     } finally {
       setOtpLoading(false);
     }
@@ -78,14 +111,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
     setOtpLoading(true);
     setOtpMsg(null);
     try {
-      await verifyRegisterOtp(formData.email.trim(), trimmedCode);
+      const verified = await verifyRegisterOtp(formData.email.trim(), trimmedCode);
+      setVerificationToken(verified.verification_token);
       setIsEmailVerified(true);
       setOtpMsg({ text: 'Xác thực Gmail thành công!', isError: false });
     } catch (err: unknown) {
-      setOtpMsg({
-        text: err instanceof Error ? err.message : 'Mã xác thực không đúng hoặc đã hết hạn.',
-        isError: true,
-      });
+      const reason = otpNewCodeReason(err);
+      if (reason) {
+        // Mã đã nhập không dùng được nữa: xóa ô nhập, mời bấm "Gửi mã mới" (KHÔNG tự gửi).
+        setOtpCode('');
+        setNewCodeReason(reason);
+        setOtpRateLimited(false);
+      }
+      setOtpMsg({ text: otpErrorMessage(err, 'verify'), isError: true });
     } finally {
       setOtpLoading(false);
     }
@@ -105,7 +143,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
       return;
     }
 
-    if (!isEmailVerified) {
+    if (!isEmailVerified || !verificationToken) {
       setError('Vui lòng bấm Gửi mã OTP và xác thực Gmail trước khi hoàn tất đăng ký.');
       return;
     }
@@ -130,11 +168,23 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         displayName: formData.displayName,
-        otp: otpCode.trim(),
+        verificationToken,
       });
       onSuccess(profile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đăng ký thất bại.');
+      if (err instanceof RegisterError && err.kind === 'verification_required') {
+        // Token thiếu / hết hạn / đã dùng: quay lại bước xác thực Gmail (gửi mã mới khi người dùng bấm).
+        setIsEmailVerified(false);
+        setVerificationToken('');
+        setIsOtpSent(false);
+        setOtpCode('');
+        setNewCodeReason(null);
+        setError(err.message);
+      } else if (err instanceof RegisterError && err.kind !== 'verification_required') {
+        setEmailTaken(err.kind);
+      } else {
+        setError(err instanceof Error ? err.message : 'Đăng ký thất bại.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -177,7 +227,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
               onChange={(e) => {
                 setFormData((prev) => ({ ...prev, email: e.target.value }));
                 if (isEmailVerified) setIsEmailVerified(false);
+                setVerificationToken('');
                 if (isOtpSent) setIsOtpSent(false);
+                setNewCodeReason(null);
+                setEmailTaken(null);
                 setOtpMsg(null);
               }}
               placeholder="VD: nguyenvana@gmail.com"
@@ -192,7 +245,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
                 onClick={handleSendOtp}
                 disabled={otpLoading || otpCountdown > 0 || !isValidGmail(formData.email)}
               >
-                {otpLoading ? 'Đang gửi...' : otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : isOtpSent ? 'Gửi lại mã' : 'Gửi mã OTP'}
+                {otpLoading ? 'Đang gửi...' : otpCountdown > 0 ? `Gửi lại (${formatWait(otpCountdown)})` : isOtpSent ? 'Gửi lại mã' : 'Gửi mã OTP'}
               </button>
             )}
           </div>
@@ -215,6 +268,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
                   setIsEmailVerified(false);
                   setIsOtpSent(false);
                   setOtpCode('');
+                  setNewCodeReason(null);
                   setOtpMsg(null);
                 }}
               >
@@ -227,6 +281,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
                 <span style={{ fontSize: '11.5px', color: '#475569', fontWeight: 600 }}>
                   Nhập mã 6 số gửi đến hộp thư Gmail:
                 </span>
+                {(!newCodeReason || newCodeReason === 'superseded') && (
                 <div className="reg-otp-input-row">
                   <input
                     type="text"
@@ -245,6 +300,16 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
                     {otpLoading ? 'Đang kiểm tra...' : 'Xác nhận OTP'}
                   </button>
                 </div>
+                )}
+                {newCodeReason && (
+                  <OtpResendPrompt
+                    reason={newCodeReason}
+                    secondsLeft={otpCountdown}
+                    loading={otpLoading}
+                    onResend={handleSendOtp}
+                    rateLimited={otpRateLimited}
+                  />
+                )}
               </div>
             )
           )}
@@ -293,6 +358,22 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
             className="register-form-input"
           />
         </div>
+
+        {emailTaken ? (
+          <div className="register-form-taken" role="alert" data-testid="register-email-taken">
+            <p className="register-form-taken-text">{emailTakenMessage(emailTaken)}</p>
+            <div className="register-form-taken-actions">
+              <button type="button" onClick={onSwitchToLogin} className="register-form-taken-link">
+                Đăng nhập
+              </button>
+              {emailTaken === 'registered' && onSwitchToForgotPassword && (
+                <button type="button" onClick={onSwitchToForgotPassword} className="register-form-taken-link">
+                  Quên mật khẩu
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         {error ? <p className="register-form-error">{error}</p> : null}
 

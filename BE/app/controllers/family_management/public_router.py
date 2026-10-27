@@ -16,7 +16,7 @@ from app.controllers.family_management import public_use_cases as use_cases
 from app.core.utils.openapi_responses import BASE, error_responses
 from app.core.middleware.rate_limit import rate_limited
 from app.db.postgres import get_db
-from app.dependencies.auth import get_user_access_repo
+from app.dependencies.auth import get_email_otp_repo, get_user_access_repo
 from app.dependencies.permissions import get_family_repo
 from app.models.family.repository import FamilyRepository
 from app.models.user_access.repository import UserAccessRepository
@@ -63,10 +63,11 @@ async def create_registration(
     db=Depends(get_db),
     users: UserAccessRepository = Depends(get_user_access_repo),
     family: FamilyRepository = Depends(get_family_repo),
+    otps=Depends(get_email_otp_repo),
 ) -> BusinessRegistrationCreateResponse:
     response.headers["Cache-Control"] = NO_STORE  # the body holds the tracking code
     return await use_cases.create_registration(
-        db=db, users=users, family=family, body=body, client=ClientInfo.from_request(request)
+        db=db, users=users, family=family, body=body, client=ClientInfo.from_request(request), otps=otps
     )
 
 
@@ -119,9 +120,14 @@ class VerifyOtpRequest(BaseModel):
     otp: str
 
 
-@router.post("/business-registrations/send-otp")
-async def send_registration_otp(data: SendOtpRequest):
-    """Sends a 6-digit OTP to the user's real Gmail address."""
+@router.post("/business-registrations/send-otp", dependencies=[Depends(rate_limited("otp_send"))])
+async def send_registration_otp(
+    data: SendOtpRequest,
+    db=Depends(get_db),
+    otps=Depends(get_email_otp_repo),
+    users: UserAccessRepository = Depends(get_user_access_repo),
+):
+    """Sends a 6-digit OTP to the user's real Gmail address (Mốc M5-1: stored hashed in the DB)."""
     clean_email = data.email.strip().lower()
     if not clean_email.endswith("@gmail.com"):
         raise HTTPException(
@@ -129,21 +135,15 @@ async def send_registration_otp(data: SendOtpRequest):
             detail="Email bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com",
         )
 
-    from app.core.utils.otp_service import can_send_otp, generate_otp, send_otp_via_email
-    allowed, wait_sec = can_send_otp(clean_email)
-    if not allowed:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Vui lòng đợi {wait_sec} giây trước khi yêu cầu gửi lại mã OTP.",
-        )
+    from app.core.errors import AppError
+    from app.core.utils import gmail_registry, otp_service
 
-    otp_code = generate_otp(clean_email)
-    delivered = send_otp_via_email(clean_email, otp_code)
-    if not delivered:
-        raise HTTPException(
-            status_code=503,
-            detail="Hệ thống gửi thư tạm thời bận hoặc gặp lỗi khi chuyển tiếp mã OTP. Vui lòng thử lại sau.",
-        )
+    # Mốc M5: one Gmail registers once (a member, another registration, an Owner's contact).
+    if await users.gmail_active(gmail_registry.normalize_email(clean_email)) is not None:
+        raise AppError(ErrorCode.EMAIL_ALREADY_REGISTERED)
+    await otp_service.send_code_or_raise(
+        otps=otps, db=db, purpose=otp_service.PURPOSE_BUSINESS, email=clean_email,
+    )
 
     return {
         "success": True,
@@ -151,19 +151,18 @@ async def send_registration_otp(data: SendOtpRequest):
     }
 
 
-@router.post("/business-registrations/verify-otp")
-async def verify_registration_otp(data: VerifyOtpRequest):
-    """Verifies the 6-digit OTP sent to the user's Gmail."""
-    from app.core.utils.otp_service import verify_otp
-    is_valid = verify_otp(data.email, data.otp)
-    if not is_valid:
-        raise HTTPException(
-            status_code=400,
-            detail="Mã OTP không chính xác, đã vượt quá số lần thử hoặc đã hết hạn (5 phút).",
-        )
+@router.post("/business-registrations/verify-otp", dependencies=[Depends(rate_limited("otp_verify"))])
+async def verify_registration_otp(data: VerifyOtpRequest, db=Depends(get_db), otps=Depends(get_email_otp_repo)):
+    """Verifies the 6-digit OTP; the right code is used up and answers a one-time
+    verification_token, required by POST /business-registrations (Mốc M5-1)."""
+    from app.core.utils import otp_service
 
+    token = await otp_service.verify_code_or_raise(
+        otps=otps, db=db, purpose=otp_service.PURPOSE_BUSINESS, email=data.email, code=data.otp,
+    )
     return {
         "verified": True,
         "message": "Xác thực địa chỉ Gmail thành công!",
+        "verification_token": token,
     }
 

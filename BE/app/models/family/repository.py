@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_access.entities import User
@@ -11,6 +12,7 @@ from app.models.family.entities import (
     AccountInvitation,
     BusinessRegistration,
     Clan,
+    ClanIdentityEntry,
     ClanMembership,
     ClanOwnershipHistory,
     ClanProfile,
@@ -399,6 +401,99 @@ class FamilyRepository:
         self._session.add(row)
         await self._session.flush()
         return row
+
+    # ----- Clan identity (Mốc M5c, table clan_identity_registry, migration 0010) -----
+
+    async def clan_key_active(self, clan_key: str) -> ClanIdentityEntry | None:
+        stmt = select(ClanIdentityEntry).where(
+            ClanIdentityEntry.clan_key == clan_key, ClanIdentityEntry.status == "active"
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def clan_key_claim(
+        self, *, clan_key: str, name_key: str, origin_key: str, kind: str,
+        registration_id: uuid.UUID | None, clan_id: uuid.UUID | None, now: datetime,
+    ) -> bool:
+        """Hold the clan key, atomically, in the CALLER's transaction (INSERT ... ON CONFLICT
+        (clan_key) WHERE status = 'active' DO NOTHING): of two concurrent claims only one is True."""
+        await self._session.flush()
+        stmt = (
+            pg_insert(ClanIdentityEntry)
+            .values(
+                registry_id=uuid.uuid4(), clan_key=clan_key, name_key=name_key, origin_key=origin_key,
+                kind=kind, registration_id=registration_id, clan_id=clan_id, status="active", created_at=now,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[ClanIdentityEntry.clan_key], index_where=ClanIdentityEntry.status == "active"
+            )
+            .returning(ClanIdentityEntry.registry_id)
+        )
+        return (await self._session.execute(stmt)).first() is not None
+
+    async def clan_key_release_registration(self, registration_id: uuid.UUID, now: datetime) -> int:
+        """A rejected / cancelled registration gives its clan key back (status released)."""
+        result = await self._session.execute(
+            update(ClanIdentityEntry)
+            .where(
+                ClanIdentityEntry.registration_id == registration_id,
+                ClanIdentityEntry.kind == "registration",
+                ClanIdentityEntry.status == "active",
+            )
+            .values(status="released", released_at=now)
+        )
+        return result.rowcount or 0
+
+    async def clan_key_bind_clan(
+        self, *, registration_id: uuid.UUID | None, clan_id: uuid.UUID, clan_key: str,
+        name_key: str, origin_key: str, now: datetime,
+    ) -> str:
+        """The clan made from a registration takes over ITS row ("bound"); none (made before the
+        registry): a new row ("claimed"); the key held by another clan or registration: "conflict"."""
+        await self._session.flush()
+        if registration_id is not None:
+            result = await self._session.execute(
+                update(ClanIdentityEntry)
+                .where(ClanIdentityEntry.registration_id == registration_id, ClanIdentityEntry.status == "active")
+                .values(kind="clan", clan_id=clan_id)
+                .returning(ClanIdentityEntry.registry_id)
+            )
+            if result.first() is not None:
+                return "bound"
+        claimed = await self.clan_key_claim(
+            clan_key=clan_key, name_key=name_key, origin_key=origin_key, kind="clan",
+            registration_id=registration_id, clan_id=clan_id, now=now,
+        )
+        return "claimed" if claimed else "conflict"
+
+    async def clan_identity_lookalikes(self, name_key: str, compact_name: str) -> list[dict]:
+        """Held / duplicate rows whose name is the same, or the same without spaces, joined to what
+        the System Admin needs to look at them (never a representative's personal data)."""
+        stmt = (
+            select(
+                ClanIdentityEntry.kind, ClanIdentityEntry.status, ClanIdentityEntry.name_key,
+                ClanIdentityEntry.origin_key, ClanIdentityEntry.registration_id, ClanIdentityEntry.clan_id,
+                BusinessRegistration.clan_name.label("registration_clan_name"),
+                BusinessRegistration.origin_place.label("registration_origin"),
+                BusinessRegistration.status.label("registration_status"),
+                Clan.name.label("clan_name"), Clan.clan_code, Clan.status.label("clan_status"),
+            )
+            .outerjoin(BusinessRegistration, BusinessRegistration.registration_id == ClanIdentityEntry.registration_id)
+            .outerjoin(Clan, Clan.clan_id == ClanIdentityEntry.clan_id)
+            .where(
+                ClanIdentityEntry.status.in_(("active", "duplicate")),
+                or_(
+                    ClanIdentityEntry.name_key == name_key,
+                    func.replace(ClanIdentityEntry.name_key, " ", "") == compact_name,
+                ),
+            )
+            .limit(50)
+        )
+        return [dict(r) for r in (await self._session.execute(stmt)).mappings().all()]
+
+    async def clan_code_taken(self, clan_code: str) -> bool:
+        """Any letter case: the Owner login ID built from the code is lower case."""
+        stmt = select(Clan.clan_id).where(func.lower(Clan.clan_code) == clan_code.lower())
+        return (await self._session.execute(stmt)).first() is not None
 
     async def get_clan_by_code(self, clan_code: str) -> Clan | None:
         stmt = select(Clan).where(Clan.clan_code == clan_code)

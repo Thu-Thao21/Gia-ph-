@@ -1,11 +1,26 @@
 """In-memory sliding-window rate limiter for the public endpoints (Mốc E step E3, Mốc H2).
 
-Three limiters, each per caller address (settings RATE_LIMIT_<NAME>_MAX / _WINDOW_SECONDS):
+Eight limiters, each per caller address (settings RATE_LIMIT_<NAME>_MAX / _WINDOW_SECONDS):
   * "registration": POST /business-registrations (default 5 per hour);
   * "track": POST /business-registrations/track (default 20 per 10 minutes);
   * "login": POST /auth/login, the only login (default 10 per 10 minutes, KI-06, Moc M1). It runs
     before the user lookup and bcrypt, so refused calls cost nothing. The per-account lockout
     (5 wrong passwords) lives in the use case, not here.
+  * "otp_send": POST /auth/register-send-otp and POST /business-registrations/send-otp, ONE
+    shared counter (default 5 per 10 minutes, Mốc M2b). The per-e-mail cooldown of otp_service
+    stops repeats to one address; this stops one caller mailing many addresses.
+  * "otp_verify": POST /auth/register-verify-otp and POST /business-registrations/verify-otp,
+    one shared counter (default 10 per 10 minutes): guessing codes across many addresses.
+  * "register_public": POST /auth/register-public (default 5 per hour, Mốc M2c).
+  * "password_reset": POST /auth/password-reset/confirm, every call (default 10 per 10 minutes).
+  * "password_reset_failures": the same route, only calls whose reset code was WRONG or EXPIRED
+    (default 5 per 15 minutes). Checked with peek() before the call and recorded with record()
+    after a failure, so a caller with a valid code is never slowed down by it.
+  * "password_reset_request": POST /auth/password-reset/request, per caller address (default 5 per
+    15 minutes; Mốc M4b). Over it: 429.
+  * "password_reset_request_email": the same route, per TARGET e-mail (key: SHA-256 of the lower-cased
+    address; default 3 per hour). Over it: the SAME generic 200, nothing is sent (a 429 here would tell
+    that the address was asked for). Checked in the route with check_key(), not as a dependency.
 They count separately: using up one never affects the others. An unknown name is an error
 (ValueError), never "no limit".
 
@@ -27,7 +42,7 @@ Memory is bounded:
 
 Safe for threads (a lock) and for the event loop (check() never awaits).
 
-LIMITS (docs/known_issues.md KI-17), for all three limiters: the counters live in ONE process.
+LIMITS (docs/known_issues.md KI-17), for all limiters: the counters live in ONE process.
 N workers allow N times the limit, a restart resets everything, and behind a reverse proxy
 without TRUST_PROXY_HEADERS all clients share one address (one busy client can then lock
 everyone out of the login). Callers behind one NAT, or one IPv6 /64, share a bucket too. It slows
@@ -54,7 +69,11 @@ from app.schemas.errors import ErrorCode
 
 UNKNOWN_CLIENT = "unknown"
 DEFAULT_SWEEP_INTERVAL_SECONDS = 60.0
-LIMITER_NAMES = ("registration", "track", "login")
+LIMITER_NAMES = (
+    "registration", "track", "login", "otp_send", "otp_verify",
+    "register_public", "password_reset", "password_reset_failures",
+    "password_reset_request", "password_reset_request_email",
+)
 
 
 def limiter_key(ip: str | None) -> str:
@@ -122,6 +141,18 @@ class SlidingWindowLimiter:
             hits.append(now)
             return Decision(True)
 
+    def peek(self, key: str) -> Decision:
+        """Like check() but records nothing: is `key` already at the limit?"""
+        with self._lock:
+            now = self._clock()
+            hits = self._hits.get(key)
+            if hits is None:
+                return Decision(True)
+            self._drop_expired(hits, now)
+            if len(hits) >= self.limit:
+                return Decision(False, max(1, math.ceil(hits[0] + self.window - now)))
+            return Decision(True)
+
     def _drop_expired(self, hits: deque[float], now: float) -> None:
         horizon = now - self.window
         while hits and hits[0] <= horizon:
@@ -146,6 +177,13 @@ class RateLimiters:
         registration: SlidingWindowLimiter,
         track: SlidingWindowLimiter,
         login: SlidingWindowLimiter,
+        otp_send: SlidingWindowLimiter,
+        otp_verify: SlidingWindowLimiter,
+        register_public: SlidingWindowLimiter,
+        password_reset: SlidingWindowLimiter,
+        password_reset_failures: SlidingWindowLimiter,
+        password_reset_request: SlidingWindowLimiter,
+        password_reset_request_email: SlidingWindowLimiter,
         trust_proxy_headers: bool = False,
         trusted_proxy_count: int = 1,
     ) -> None:
@@ -153,6 +191,13 @@ class RateLimiters:
         self.registration = registration
         self.track = track
         self.login = login
+        self.otp_send = otp_send
+        self.otp_verify = otp_verify
+        self.register_public = register_public
+        self.password_reset = password_reset
+        self.password_reset_failures = password_reset_failures
+        self.password_reset_request = password_reset_request
+        self.password_reset_request_email = password_reset_request_email
         self.trust_proxy_headers = trust_proxy_headers
         self.trusted_proxy_count = trusted_proxy_count
 
@@ -169,18 +214,43 @@ class RateLimiters:
         limiter = self.limiter(which)
         if not self.enabled:
             return
-        ip = client_ip(
-            request,
-            trust_proxy_headers=self.trust_proxy_headers,
-            trusted_proxy_count=self.trusted_proxy_count,
-        )
-        decision = limiter.check(limiter_key(ip))
-        if not decision.allowed:
-            raise AppError(
-                ErrorCode.RATE_LIMITED,
-                "Too many requests. Try again later.",
-                headers={"Retry-After": str(decision.retry_after)},
+        _raise_if_refused(limiter.check(self.key_for(request)))
+
+    def key_for(self, request: Request) -> str:
+        return limiter_key(
+            client_ip(
+                request,
+                trust_proxy_headers=self.trust_proxy_headers,
+                trusted_proxy_count=self.trusted_proxy_count,
             )
+        )
+
+    def peek(self, which: str, request: Request) -> None:
+        """429 when the caller is already at the limit; records nothing (failure-only limiters)."""
+        limiter = self.limiter(which)
+        if self.enabled:
+            _raise_if_refused(limiter.peek(self.key_for(request)))
+
+    def allow_key(self, which: str, key: str) -> bool:
+        """Count one call under an explicit key (not the caller address); False when over the
+        limit. Always True while rate limiting is disabled."""
+        limiter = self.limiter(which)
+        return True if not self.enabled else limiter.check(key).allowed
+
+    def record(self, which: str, request: Request) -> None:
+        """Count one event (e.g. a failed attempt) without refusing anything now."""
+        limiter = self.limiter(which)
+        if self.enabled:
+            limiter.check(self.key_for(request))
+
+
+def _raise_if_refused(decision: Decision) -> None:
+    if not decision.allowed:
+        raise AppError(
+            ErrorCode.RATE_LIMITED,
+            "Too many requests. Try again later.",
+            headers={"Retry-After": str(decision.retry_after)},
+        )
 
 
 def build_rate_limiters(settings, clock: Callable[[], float] = time.monotonic) -> RateLimiters:
@@ -204,6 +274,48 @@ def build_rate_limiters(settings, clock: Callable[[], float] = time.monotonic) -
             max_keys=settings.RATE_LIMIT_MAX_KEYS,
             clock=clock,
         ),
+        otp_send=SlidingWindowLimiter(
+            settings.RATE_LIMIT_OTP_SEND_MAX,
+            settings.RATE_LIMIT_OTP_SEND_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
+        otp_verify=SlidingWindowLimiter(
+            settings.RATE_LIMIT_OTP_VERIFY_MAX,
+            settings.RATE_LIMIT_OTP_VERIFY_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
+        register_public=SlidingWindowLimiter(
+            settings.RATE_LIMIT_REGISTER_PUBLIC_MAX,
+            settings.RATE_LIMIT_REGISTER_PUBLIC_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
+        password_reset=SlidingWindowLimiter(
+            settings.RATE_LIMIT_PASSWORD_RESET_MAX,
+            settings.RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
+        password_reset_failures=SlidingWindowLimiter(
+            settings.RATE_LIMIT_PASSWORD_RESET_FAILURES_MAX,
+            settings.RATE_LIMIT_PASSWORD_RESET_FAILURES_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
+        password_reset_request=SlidingWindowLimiter(
+            settings.RATE_LIMIT_PASSWORD_RESET_REQUEST_MAX,
+            settings.RATE_LIMIT_PASSWORD_RESET_REQUEST_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
+        password_reset_request_email=SlidingWindowLimiter(
+            settings.RATE_LIMIT_PASSWORD_RESET_REQUEST_EMAIL_MAX,
+            settings.RATE_LIMIT_PASSWORD_RESET_REQUEST_EMAIL_WINDOW_SECONDS,
+            max_keys=settings.RATE_LIMIT_MAX_KEYS,
+            clock=clock,
+        ),
         trust_proxy_headers=settings.TRUST_PROXY_HEADERS,
         trusted_proxy_count=settings.TRUSTED_PROXY_COUNT,
     )
@@ -222,4 +334,5 @@ def rate_limited(which: str):
             raise RuntimeError("app.state.rate_limiters is not configured")
         limiters.enforce(which, request)
 
+    dependency.rate_limiter = which  # read by scripts/route_inventory.py
     return dependency

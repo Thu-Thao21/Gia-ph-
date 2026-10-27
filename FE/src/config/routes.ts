@@ -2,8 +2,20 @@
  * Centralized Route Constants & Host Configuration for Frontend
  */
 
+/** Tiền tố của mọi API nghiệp vụ trên BE (Mốc M2, N-3): FE chỉ gọi dạng /api/v1/... */
+export const API_PREFIX = '/api/v1';
+
+/**
+ * Gốc API = VITE_API_BASE_URL + /api/v1. Chấp nhận cả giá trị đã có sẵn /api/v1
+ * (http://localhost:8001 và http://localhost:8001/api/v1 cho cùng kết quả), không có / cuối.
+ */
+function apiBaseUrl(raw: string): string {
+  const origin = raw.trim().replace(/\/+$/, '');
+  return origin.endsWith(API_PREFIX) ? origin : `${origin}${API_PREFIX}`;
+}
+
 export const API_HOST_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8001',
+  BASE_URL: apiBaseUrl(import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:8001'),
   AUTH: '/auth',
   USERS: '/users',
   FAMILIES: '/families',

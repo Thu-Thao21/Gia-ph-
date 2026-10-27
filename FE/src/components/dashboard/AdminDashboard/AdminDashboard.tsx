@@ -1,7 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './AdminDashboard.css';
 import { RecentActivitiesWidget } from '../RecentActivitiesWidget';
 import apiClient from '../../../api/axios';
+import { readApiError, withRequestId } from '../../../api/apiError';
+
+/** GET /admin/stats (System Admin). Không có số liệu mặc định: chưa tải xong thì hiện "…". */
+interface AdminStats {
+  total_users: number;
+  active_users: number;
+  total_clans: number;
+  active_clans: number;
+  total_persons: number;
+  pending_registrations: number;
+  total_packages: number;
+  total_documents: number;
+  system_status: string;
+}
+
+function statsErrorMessage(err: unknown): string {
+  const info = readApiError(err);
+  if (info.isNetworkError) return 'Không thể kết nối đến máy chủ để lấy chỉ số hệ thống. Vui lòng thử lại.';
+  if (info.status === 401) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+  if (info.status === 403) return 'Bạn không có quyền xem chỉ số hệ thống.';
+  return withRequestId('Không tải được chỉ số hệ thống. Vui lòng thử lại sau.', info);
+}
+
+const fmt = (value: number | undefined) => (value === undefined ? '…' : value.toLocaleString('vi-VN'));
 
 export interface AdminDashboardProps {
   userName: string;
@@ -12,32 +36,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   userName,
   onNavigateTab,
 }) => {
-  const [stats, setStats] = useState({
-    total_users: 26,
-    active_users: 11,
-    total_clans: 19,
-    active_clans: 18,
-    total_persons: 1040,
-    pending_registrations: 0,
-    total_packages: 12,
-    total_documents: 0,
-    system_status: '100%',
-  });
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const loadStats = useCallback((isMounted: () => boolean = () => true) => {
+    setStatsLoading(true);
+    setStatsError(null);
+    apiClient
+      .get<AdminStats>('/admin/stats')
+      .then((res) => {
+        if (isMounted()) setStats(res.data);
+      })
+      .catch((err) => {
+        // Không nuốt lỗi và không hiện số giả: báo lỗi rõ ràng, cho thử lại.
+        const info = readApiError(err);
+        console.warn('GET /admin/stats thất bại:', info.status, info.code, info.requestId);
+        if (isMounted()) setStatsError(statsErrorMessage(err));
+      })
+      .finally(() => {
+        if (isMounted()) setStatsLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
-    apiClient
-      .get('/admin/stats')
-      .then((res) => {
-        if (mounted && res.data) {
-          setStats((prev) => ({ ...prev, ...res.data }));
-        }
-      })
-      .catch(() => undefined);
+    loadStats(() => mounted);
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [loadStats]);
+
+  const s: Partial<AdminStats> = stats ?? {};
 
   const services = [
     { name: 'Dịch vụ Hệ thống Xử lý Dữ liệu Lõi', status: 'Hoạt động mượt mà', sub: 'Thời gian phản hồi thời gian thực' },
@@ -49,49 +79,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const metricCards = [
     {
       title: 'Tổng số tài khoản',
-      value: stats.total_users.toLocaleString('vi-VN'),
-      subtext: `${stats.active_users} tài khoản đang hoạt động`,
+      value: fmt(s.total_users),
+      subtext: s.active_users === undefined ? 'Đang tải…' : `${s.active_users} tài khoản đang hoạt động`,
       tag: 'Hệ thống',
     },
     {
       title: 'Tổng số dòng họ',
-      value: stats.total_clans.toLocaleString('vi-VN'),
-      subtext: `${stats.active_clans} dòng họ đã xác minh`,
+      value: fmt(s.total_clans),
+      subtext: s.active_clans === undefined ? 'Đang tải…' : `${s.active_clans} dòng họ đã xác minh`,
       tag: 'Họ tộc',
     },
     {
       title: 'Yêu cầu cần duyệt',
-      value: String(stats.pending_registrations),
-      subtext: stats.pending_registrations > 0 ? `${stats.pending_registrations} đơn chờ phê duyệt` : 'Tất cả đơn đã được xử lý',
+      value: fmt(s.pending_registrations),
+      subtext:
+        s.pending_registrations === undefined
+          ? 'Đang tải…'
+          : s.pending_registrations > 0
+            ? `${s.pending_registrations} đơn chờ phê duyệt`
+            : 'Tất cả đơn đã được xử lý',
       tag: 'Phê duyệt',
     },
     {
       title: 'Trạng thái hệ thống',
-      value: stats.system_status || '100%',
+      value: s.system_status ?? '…',
       subtext: 'Tất cả dịch vụ vận hành an toàn',
       tag: 'Bảo mật',
     },
     {
       title: 'Thành viên gia phả',
-      value: stats.total_persons.toLocaleString('vi-VN'),
+      value: fmt(s.total_persons),
       subtext: 'Hồ sơ nhân khẩu trong hệ thống',
       tag: 'Dữ liệu',
     },
     {
       title: 'Người dùng hoạt động',
-      value: stats.active_users.toLocaleString('vi-VN'),
-      subtext: `${Math.round((stats.active_users / (stats.total_users || 1)) * 100)}% tổng tài khoản`,
+      value: fmt(s.active_users),
+      subtext:
+        s.active_users === undefined || s.total_users === undefined
+          ? 'Đang tải…'
+          : `${Math.round((s.active_users / (s.total_users || 1)) * 100)}% tổng tài khoản`,
       tag: 'Tương tác',
     },
     {
       title: 'Gói dịch vụ',
-      value: stats.total_packages.toLocaleString('vi-VN'),
+      value: fmt(s.total_packages),
       subtext: 'Gói dịch vụ đang kích hoạt',
       tag: 'Thanh toán',
     },
     {
       title: 'Tư liệu số',
-      value: stats.total_documents.toLocaleString('vi-VN'),
+      value: fmt(s.total_documents),
       subtext: 'Tư liệu lưu trữ trong hệ thống',
       tag: 'Lưu trữ',
     },
@@ -134,9 +172,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }}
         >
           <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-          Dữ liệu thời gian thực
+          {statsLoading ? 'Đang tải dữ liệu…' : statsError ? 'Không có dữ liệu' : 'Dữ liệu thời gian thực'}
         </span>
       </div>
+      {statsError ? (
+        <div
+          role="alert"
+          data-testid="admin-stats-error"
+          style={{
+            background: '#fef2f2',
+            color: '#991b1b',
+            border: '1px solid #fecaca',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: '13px',
+          }}
+        >
+          <span>{statsError}</span>
+          <button type="button" onClick={() => loadStats()} disabled={statsLoading}>
+            Thử lại
+          </button>
+        </div>
+      ) : null}
       <div className="admin-stats-grid">
         {metricCards.map((card, index) => (
           <div key={index} className="admin-stat-card">

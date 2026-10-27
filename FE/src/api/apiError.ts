@@ -15,6 +15,8 @@ export interface ApiErrorInfo {
   requestId: string | null;
   /** Số giây đọc từ header Retry-After (thường đi kèm 429), null nếu không có. */
   retryAfterSeconds: number | null;
+  /** error.details của BE (chỉ có ở một số lỗi, ví dụ OTP: số lượt còn lại, số giây chờ). */
+  details?: Record<string, unknown> | null;
   /** true khi request không nhận được response nào. */
   isNetworkError: boolean;
 }
@@ -37,7 +39,14 @@ export function readApiError(err: unknown): ApiErrorInfo {
   if (!response) {
     return { status: null, code: null, message: null, requestId: null, retryAfterSeconds: null, isNetworkError: true };
   }
-  const body = response.data as { error?: { code?: unknown; request_id?: unknown; message?: unknown }; detail?: unknown } | undefined;
+  const body = response.data as
+    | { error?: { code?: unknown; request_id?: unknown; message?: unknown; details?: unknown }; detail?: unknown }
+    | undefined;
+  const rawDetails = body?.error?.details;
+  const details =
+    rawDetails && typeof rawDetails === 'object' && !Array.isArray(rawDetails)
+      ? (rawDetails as Record<string, unknown>)
+      : null;
   const code = typeof body?.error?.code === 'string' ? body.error.code : null;
   const message =
     typeof body?.detail === 'string'
@@ -58,6 +67,7 @@ export function readApiError(err: unknown): ApiErrorInfo {
     message,
     requestId,
     retryAfterSeconds: parseRetryAfter(response.headers?.['retry-after']),
+    details,
     isNetworkError: false,
   };
 }

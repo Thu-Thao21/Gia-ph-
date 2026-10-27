@@ -152,3 +152,27 @@ async def test_lock_or_create_credential_inserts_on_conflict_then_locks():
     assert "ON CONFLICT (user_id) DO NOTHING" in insert
     assert "password_hash" not in insert  # a created row never carries a hash
     assert lock.startswith("SELECT") and lock.endswith("FOR NO KEY UPDATE")
+
+
+async def test_login_lookup_is_one_statement_and_prefers_the_email():
+    """Mốc M2: e-mail OR username in ONE round trip; the e-mail match sorts first."""
+
+    class Result:
+        def scalars(self):
+            return type("S", (), {"first": lambda self: None})()
+
+    class RecordingSession:
+        def __init__(self):
+            self.statements = []
+
+        async def execute(self, stmt):
+            self.statements.append(str(stmt.compile(dialect=postgresql.dialect())))
+            return Result()
+
+    session = RecordingSession()
+    await UserAccessRepository(session).get_user_by_login_identifier("Some.One@Example.test")
+    [sql] = session.statements
+    assert "lower(users.email)" in sql and "lower(users.username)" in sql and " OR " in sql
+    order_by = sql.split("ORDER BY", 1)[1]
+    assert order_by.strip().startswith("lower(users.email)") and "DESC" in order_by
+    assert "LIMIT" in sql

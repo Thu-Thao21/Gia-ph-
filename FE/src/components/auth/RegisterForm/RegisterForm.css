@@ -334,3 +334,40 @@
   color: #dc2626;
 }
 
+
+/* Gmail đã có tài khoản (409 EMAIL_ALREADY_REGISTERED, Mốc M5-3). */
+.register-form-taken {
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+}
+
+.register-form-taken-text {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: #92400e;
+  line-height: 1.45;
+}
+
+.register-form-taken-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.register-form-taken-link {
+  padding: 6px 12px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.register-form-taken-link:hover {
+  background: #2563eb;
+  color: #ffffff;
+}

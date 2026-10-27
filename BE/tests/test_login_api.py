@@ -27,7 +27,9 @@ from tests.fakes import FakeDb, FakeFamilyRepo, FakeUserAccessRepo, disabled_rat
 
 PASSWORD = "Dung-Mat-Khau-123"
 GENERIC_MESSAGE = "Email/tên đăng nhập hoặc mật khẩu không đúng."
-T0 = datetime(2026, 10, 25, 8, 0, tzinfo=timezone.utc)
+# The fake clock starts NOW: sessions it creates must still be valid for the real-clock checks
+# of /auth/me (a fixed date made the suite fail once that day was over).
+T0 = datetime.now(timezone.utc).replace(microsecond=0)
 
 
 def quick_hash(password: str = PASSWORD) -> str:

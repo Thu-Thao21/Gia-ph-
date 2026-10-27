@@ -108,6 +108,21 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+/* Thông báo (vd: đặt lại mật khẩu thành công): nằm trong thẻ, rộng bằng form. */
+.login-form-notice {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .login-form-error {
   margin: 0;
   color: #dc2626;
