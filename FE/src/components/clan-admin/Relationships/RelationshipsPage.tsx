@@ -23,7 +23,7 @@ export const RelationshipsPage: React.FC = () => {
       const fams = Array.isArray(famsRes.data) ? famsRes.data : [];
       if (fams.length > 0) {
         const familyId = fams[0].id || fams[0].clan_id;
-        apiClient.get<any>(`/api/v1/families/${familyId}/tree-data`).then((res) => {
+        apiClient.get<any>(`/families/${familyId}/tree-data`).then((res) => {
           const edges = Array.isArray(res.data?.edges) ? res.data.edges : [];
           const nodes = Array.isArray(res.data?.nodes) ? res.data.nodes : [];
           const nodeMap = new Map<string, string>();

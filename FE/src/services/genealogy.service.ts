@@ -109,7 +109,7 @@ export interface PublicClanItem {
   activated_at?: string;
 }
 
-/** GET /api/v1/families/{family_id}/persons */
+/** GET /families/{family_id}/persons */
 export async function fetchFamilyPersons(
   familyId: string,
   params: {
@@ -121,7 +121,7 @@ export async function fetchFamilyPersons(
     offset?: number;
   } = {}
 ): Promise<PersonItem[]> {
-  const res = await apiClient.get<PersonItem[]>(`/api/v1/families/${familyId}/persons`, {
+  const res = await apiClient.get<PersonItem[]>(`/families/${familyId}/persons`, {
     params: {
       search: params.search || undefined,
       gender: params.gender || undefined,
@@ -134,74 +134,74 @@ export async function fetchFamilyPersons(
   return res.data;
 }
 
-/** POST /api/v1/families/{family_id}/persons */
+/** POST /families/{family_id}/persons */
 export async function createFamilyPerson(
   familyId: string,
   payload: PersonCreatePayload
 ): Promise<PersonItem> {
-  const res = await apiClient.post<PersonItem>(`/api/v1/families/${familyId}/persons`, payload);
+  const res = await apiClient.post<PersonItem>(`/families/${familyId}/persons`, payload);
   return res.data;
 }
 
-/** GET /api/v1/families/{family_id}/persons/{person_id} */
+/** GET /families/{family_id}/persons/{person_id} */
 export async function getFamilyPerson(
   familyId: string,
   personId: string
 ): Promise<PersonItem> {
-  const res = await apiClient.get<PersonItem>(`/api/v1/families/${familyId}/persons/${personId}`);
+  const res = await apiClient.get<PersonItem>(`/families/${familyId}/persons/${personId}`);
   return res.data;
 }
 
-/** PATCH /api/v1/families/{family_id}/persons/{person_id} */
+/** PATCH /families/{family_id}/persons/{person_id} */
 export async function updateFamilyPerson(
   familyId: string,
   personId: string,
   payload: PersonUpdatePayload
 ): Promise<PersonItem> {
-  const res = await apiClient.patch<PersonItem>(`/api/v1/families/${familyId}/persons/${personId}`, payload);
+  const res = await apiClient.patch<PersonItem>(`/families/${familyId}/persons/${personId}`, payload);
   return res.data;
 }
 
-/** POST /api/v1/families/{family_id}/relationships */
+/** POST /families/{family_id}/relationships */
 export async function createFamilyRelationship(
   familyId: string,
   payload: RelationshipCreatePayload
 ): Promise<RelationshipItem> {
-  const res = await apiClient.post<RelationshipItem>(`/api/v1/families/${familyId}/relationships`, payload);
+  const res = await apiClient.post<RelationshipItem>(`/families/${familyId}/relationships`, payload);
   return res.data;
 }
 
-/** DELETE /api/v1/families/{family_id}/relationships/{relationship_id} */
+/** DELETE /families/{family_id}/relationships/{relationship_id} */
 export async function deleteFamilyRelationship(
   familyId: string,
   relationshipId: string
 ): Promise<void> {
-  await apiClient.delete(`/api/v1/families/${familyId}/relationships/${relationshipId}`);
+  await apiClient.delete(`/families/${familyId}/relationships/${relationshipId}`);
 }
 
-/** GET /api/v1/families/{family_id}/persons/{person_id}/ancestors */
+/** GET /families/{family_id}/persons/{person_id}/ancestors */
 export async function fetchPersonAncestors(
   familyId: string,
   personId: string
 ): Promise<AncestorDescendantItem[]> {
   const res = await apiClient.get<AncestorDescendantItem[]>(
-    `/api/v1/families/${familyId}/persons/${personId}/ancestors`
+    `/families/${familyId}/persons/${personId}/ancestors`
   );
   return res.data;
 }
 
-/** GET /api/v1/families/{family_id}/persons/{person_id}/descendants */
+/** GET /families/{family_id}/persons/{person_id}/descendants */
 export async function fetchPersonDescendants(
   familyId: string,
   personId: string
 ): Promise<AncestorDescendantItem[]> {
   const res = await apiClient.get<AncestorDescendantItem[]>(
-    `/api/v1/families/${familyId}/persons/${personId}/descendants`
+    `/families/${familyId}/persons/${personId}/descendants`
   );
   return res.data;
 }
 
-/** GET /api/v1/families/{family_id}/tree-data */
+/** GET /families/{family_id}/tree-data */
 export async function fetchFamilyTreeData(
   familyId: string,
   params?: {
@@ -210,7 +210,7 @@ export async function fetchFamilyTreeData(
     maxGeneration?: number;
   }
 ): Promise<TreeDataResponse> {
-  const res = await apiClient.get<TreeDataResponse>(`/api/v1/families/${familyId}/tree-data`, {
+  const res = await apiClient.get<TreeDataResponse>(`/families/${familyId}/tree-data`, {
     params: {
       branchId: params?.branchId || undefined,
       generation: params?.generation,
@@ -220,27 +220,27 @@ export async function fetchFamilyTreeData(
   return res.data;
 }
 
-/** GET /api/v1/families/{family_id}/persons/{person_id}/focus-view */
+/** GET /families/{family_id}/persons/{person_id}/focus-view */
 export async function fetchFocusView(
   familyId: string,
   personId: string,
   depth: number = 2
 ): Promise<FocusViewResponse> {
   const res = await apiClient.get<FocusViewResponse>(
-    `/api/v1/families/${familyId}/persons/${personId}/focus-view`,
+    `/families/${familyId}/persons/${personId}/focus-view`,
     { params: { depth } }
   );
   return res.data;
 }
 
-/** GET /api/v1/families/{family_id}/relationship-path */
+/** GET /families/{family_id}/relationship-path */
 export async function fetchRelationshipCalculation(
   familyId: string,
   fromPersonId: string,
   toPersonId: string
 ): Promise<RelationshipCalculationResponse> {
   const res = await apiClient.get<RelationshipCalculationResponse>(
-    `/api/v1/families/${familyId}/relationship-path`,
+    `/families/${familyId}/relationship-path`,
     {
       params: {
         source_person_id: fromPersonId,
@@ -260,8 +260,8 @@ export async function fetchPublicClans(search?: string): Promise<PublicClanItem[
   return res.data;
 }
 
-/** GET /api/v1/families/{family_id}/public-tree (Cây công khai có che giấu dữ liệu riêng tư) */
+/** GET /families/{family_id}/public-tree (Cây công khai có che giấu dữ liệu riêng tư) */
 export async function fetchPublicClanTree(familyId: string): Promise<TreeDataResponse> {
-  const res = await apiClient.get<TreeDataResponse>(`/api/v1/families/${familyId}/public-tree`);
+  const res = await apiClient.get<TreeDataResponse>(`/families/${familyId}/public-tree`);
   return res.data;
 }

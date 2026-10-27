@@ -1,6 +1,25 @@
 import React, { useState } from 'react';
 import apiClient from '../../../api/axios';
+import { readApiError, withRequestId } from '../../../api/apiError';
 import { useToast } from '../../../shared/common/Toast';
+
+/**
+ * Thông báo tiếng Việt cho lỗi của /networks (Mốc M2b/M2c): không bao giờ hiện lỗi thô của BE.
+ * 422 thiếu clan nguồn: tài khoản Quản trị hệ thống không thuộc dòng họ nào, nên BE không biết
+ * yêu cầu được gửi TỪ dòng họ nào (BE không tự chọn hộ như trước).
+ */
+function linkErrorMessage(err: unknown, fallback: string): string {
+  const info = readApiError(err);
+  if (info.isNetworkError) return 'Không thể kết nối đến máy chủ. Vui lòng thử lại.';
+  if (info.status === 422 && (info.message || '').includes('sourceFamilyId')) {
+    return 'Chưa xác định được dòng họ gửi yêu cầu. Tài khoản Quản trị hệ thống không thuộc dòng họ nào, nên không thể gửi yêu cầu kết nối thay cho một dòng họ. Vui lòng đăng nhập bằng tài khoản quản trị của dòng họ muốn gửi yêu cầu.';
+  }
+  if (info.status === 422) return 'Thông tin yêu cầu chưa hợp lệ. Vui lòng kiểm tra lại dòng họ đích.';
+  if (info.status === 404) return 'Không tìm thấy dòng họ hoặc yêu cầu liên kết (có thể đã bị xóa).';
+  if (info.status === 403) return 'Bạn không có quyền thực hiện thao tác này với dòng họ đã chọn.';
+  if (info.status === 400) return 'Yêu cầu này đã được xử lý trước đó.';
+  return withRequestId(fallback, info);
+}
 import './AdminFamilyLinksMgmt.css';
 
 export interface LinkRequestItem {
@@ -61,7 +80,7 @@ export const AdminFamilyLinksMgmt: React.FC = () => {
         toast.error('Từ chối liên kết', 'Yêu cầu kết nối dòng họ đã bị từ chối.');
       }
     } catch (err: any) {
-      toast.error('Lỗi thao tác', err?.response?.data?.detail || 'Không thể xử lý yêu cầu liên kết.');
+      toast.error('Lỗi thao tác', linkErrorMessage(err, 'Không thể xử lý yêu cầu liên kết.'));
     }
   };
 
@@ -75,7 +94,7 @@ export const AdminFamilyLinksMgmt: React.FC = () => {
         await fetchLinkRequests();
         toast.warning('Đã hủy liên kết', 'Liên kết giữa 2 dòng họ đã bị hủy bỏ.');
       } catch (err: any) {
-        toast.error('Lỗi', err?.response?.data?.detail || 'Hủy liên kết thất bại.');
+        toast.error('Lỗi', linkErrorMessage(err, 'Hủy liên kết thất bại.'));
       }
     }
   };
@@ -96,7 +115,7 @@ export const AdminFamilyLinksMgmt: React.FC = () => {
       setSendNotes('');
       toast.success('Gửi yêu cầu thành công!', `Yêu cầu kết nối đã được gửi tới Neon DB.`);
     } catch (err: any) {
-      toast.error('Gửi yêu cầu thất bại', err?.response?.data?.detail || 'Vui lòng kiểm tra lại ID dòng họ.');
+      toast.error('Gửi yêu cầu thất bại', linkErrorMessage(err, 'Không gửi được yêu cầu kết nối. Vui lòng thử lại.'));
     }
   };
 

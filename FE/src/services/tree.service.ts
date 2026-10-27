@@ -251,7 +251,7 @@ export interface FamilyTreeDataResponse {
 
 export async function fetchFamilyTreeData(familyId: string): Promise<FamilyTreeDataResponse | null> {
   try {
-    const res = await apiClient.get<FamilyTreeDataResponse>(`/api/v1/families/${familyId}/tree-data`);
+    const res = await apiClient.get<FamilyTreeDataResponse>(`/families/${familyId}/tree-data`);
     return res.data;
   } catch (err) {
     console.error(`API fetchFamilyTreeData error for familyId ${familyId}:`, err);
