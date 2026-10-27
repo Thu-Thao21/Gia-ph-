@@ -3,6 +3,7 @@ import './MemberDashboard.css';
 import { PersonalizedOverview } from '../../dashboard/PersonalizedOverview';
 import { UpcomingEventsWidget } from '../../dashboard/UpcomingEventsWidget';
 import { RecentActivitiesWidget } from '../../dashboard/RecentActivitiesWidget';
+import { ClanLeaderDashboardSection } from '../../dashboard/ClanLeaderDashboardSection';
 import { useAuth } from '../../../context/AuthContext';
 import { fetchMembers } from '../../../services/member.service';
 
@@ -18,15 +19,16 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   onNavigateTab,
 }) => {
   const { account } = useAuth();
-  const isFamilyOwner = userRole === 'Chủ dòng họ';
+  const isFamilyOwner = userRole === 'Chủ dòng họ' || userRole === 'Trưởng tộc' || userRole === 'Clan Admin';
 
-  const clanName = account?.clan_name || account?.memberships?.[0]?.clan_name || 'Dòng họ';
+  const clanName = account?.clan_name || account?.memberships?.[0]?.clan_name || 'Mai Thế Tộc';
   const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id;
 
   const [familyBranch, setFamilyBranch] = useState<string>(clanName);
   const [generationLevel, setGenerationLevel] = useState<string>('--');
   const [totalMembers, setTotalMembers] = useState<number>(0);
   const [linkedFamiliesCount, setLinkedFamiliesCount] = useState<number>(0);
+  const [membersList, setMembersList] = useState<any[]>([]);
 
   useEffect(() => {
     if (clanName) {
@@ -36,6 +38,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       fetchMembers({ familyId: clanId, limit: 100 })
         .then((res) => {
           if (res?.items && res.items.length > 0) {
+            setMembersList(res.items);
             setTotalMembers(res.items.length);
             const myName = (account?.display_name || userName || '').trim().toLowerCase();
             const meInClan = res.items.find(
@@ -61,50 +64,14 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         linkedFamiliesCount={linkedFamiliesCount}
       />
 
+      {/* Khối Thống Kê & Sơ Đồ Cột Chuyên Sâu Cho Trưởng Tộc */}
       {isFamilyOwner && (
-        <div className="member-dash-head-section">
-          <div className="member-dash-head-header">
-            <div className="member-dash-head-title-row">
-              <span className="member-dash-head-icon"></span>
-              <h3 className="member-dash-head-title">
-                Khu Vực Quản Lý Dòng Họ
-              </h3>
-            </div>
-            <span className="member-dash-head-badge">
-              CHỦ DÒNG HỌ
-            </span>
-          </div>
-          <p className="member-dash-head-desc">
-            Bạn đang có quyền quản trị dòng họ phụ trách: Quản lý thành viên, Chi/Nhánh, duyệt đề xuất chỉnh sửa và xuất nhập dữ liệu Excel.
-          </p>
-
-          <div className="member-dash-head-grid">
-            <button
-              onClick={() => onNavigateTab && onNavigateTab('family-members')}
-              className="member-dash-head-btn"
-            >
-               Quản lý thành viên
-            </button>
-            <button
-              onClick={() => onNavigateTab && onNavigateTab('family-branches')}
-              className="member-dash-head-btn"
-            >
-               Quản lý Chi & Nhánh
-            </button>
-            <button
-              onClick={() => onNavigateTab && onNavigateTab('family-approvals')}
-              className="member-dash-head-btn"
-            >
-               Phê duyệt đề xuất
-            </button>
-            <button
-              onClick={() => onNavigateTab && onNavigateTab('family-import-export')}
-              className="member-dash-head-btn"
-            >
-               Xuất nhập dữ liệu
-            </button>
-          </div>
-        </div>
+        <ClanLeaderDashboardSection
+          clanName={familyBranch}
+          totalMembers={totalMembers}
+          membersList={membersList}
+          onNavigateTab={onNavigateTab}
+        />
       )}
 
       <div>

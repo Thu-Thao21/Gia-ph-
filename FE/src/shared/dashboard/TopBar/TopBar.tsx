@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '../../common/Toast';
-import logoImage from '../../../assets/logo.jpg';
+import logoImage from '../../../assets/logo/logo_circular_emblem.png';
 import './TopBar.css';
 
 export interface TopBarProps {

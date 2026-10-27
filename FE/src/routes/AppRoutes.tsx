@@ -14,6 +14,7 @@ import { FamilyAdminPreviewPage } from '../features/familyAdmin/FamilyAdminPrevi
 import { ProtectedRoute, RoleGuard } from './RouteGuards';
 import type { AccountProfile } from '../context/AuthContext';
 
+
 export type AuthView = 'login' | 'register' | 'forgot-password' | 'dashboard';
 
 interface AppRoutesProps {
@@ -98,6 +99,7 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
           </ProtectedRoute>
         }
       />
+
 
       {/* Protected Admin Dashboard Routes */}
       <Route

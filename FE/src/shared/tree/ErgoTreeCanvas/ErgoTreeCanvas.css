@@ -50,186 +50,27 @@
 }
 
 .tree-canvas-inner {
-  display: flex;
-  justify-content: center;
-  gap: 80px;
-  padding: 60px 60px 120px 60px;
-  min-width: max-content;
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
   transform-origin: top center;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Children Row */
-.ergo-tree-children-row {
-  display: flex;
-  justify-content: center;
-  gap: 0 !important; /* Zero gap so horizontal line segments meet seamlessly */
-  position: relative;
-  padding-top: 36px;
-  transition: all 0.3s ease;
-}
-
-/* Vertical stem line going DOWN from parent to the horizontal branch line */
-.ergo-tree-children-row::before {
-  content: '';
+.tree-layout-unit-wrapper {
   position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: 18px;
-  background: #3b82f6;
-  z-index: 2;
-}
-
-/* For single child: a single continuous 36px line drops straight down from parent to child */
-.ergo-tree-children-row.single-child-row::before {
-  height: 36px;
-}
-
-.ergo-tree-children-row.is-collapsed {
-  display: none !important;
-}
-
-/* Node Wrapper Column - Centered for 100% Symmetry */
-.ergo-tree-node-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center !important;
-  position: relative;
-  padding: 0 16px;
-}
-
-/* Vertical stem line going down into top center of child (50%) from the horizontal bar */
-.ergo-tree-node-wrapper:not(.is-root)::before {
-  content: '';
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: 18px;
-  background: #3b82f6;
-  z-index: 2;
-}
-
-/* Hide child vertical line if single child (parent's continuous line handles it) */
-.ergo-tree-children-row.single-child-row > .ergo-tree-node-wrapper:not(.is-root)::before {
-  display: none !important;
-}
-
-/* Precision Horizontal Branch Line (Zero Overhang) at top: -18px */
-.ergo-tree-node-wrapper:not(.is-root)::after {
-  content: '';
-  position: absolute;
-  top: -18px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #3b82f6;
-  z-index: 1;
-}
-
-/* First child: horizontal line starts at 50% (top center of child 1) and goes right */
-.ergo-tree-node-wrapper:not(.is-root):first-child::after {
-  left: 50% !important;
-  right: 0 !important;
-}
-
-/* Last child: horizontal line starts at left (0) and ends at 50% (top center of child N) */
-.ergo-tree-node-wrapper:not(.is-root):last-child::after {
-  left: 0 !important;
-  right: 50% !important;
-}
-
-/* Single child: no horizontal branch line at all */
-.ergo-tree-node-wrapper:not(.is-root):only-child::after {
-  display: none !important;
-}
-
-/* Horizontal Layout Mode (Từ trái sang phải) */
-.tree-canvas-inner.direction-horizontal {
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper {
-  flex-direction: row;
-  align-items: center !important;
-  padding: 12px 0;
-}
-
-.tree-canvas-inner.direction-horizontal .ergo-tree-children-row {
-  flex-direction: column;
-  align-items: flex-start;
-  padding-top: 0;
-  padding-left: 48px;
-}
-
-/* Stem line coming from right edge of parent to children vertical bar */
-.tree-canvas-inner.direction-horizontal .ergo-tree-children-row::before {
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 2px;
-}
-
-.tree-canvas-inner.direction-horizontal .ergo-tree-children-row.single-child-row::before {
-  width: 48px;
-}
-
-/* Horizontal line into left-center of child */
-.tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root)::before {
-  top: 50% !important;
-  left: -24px !important;
-  transform: translateY(-50%) !important;
-  width: 24px !important;
-  height: 2px !important;
-}
-
-.tree-canvas-inner.direction-horizontal .ergo-tree-children-row.single-child-row > .ergo-tree-node-wrapper:not(.is-root)::before {
-  display: none !important;
-}
-
-/* Vertical branch bar connecting children */
-.tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root)::after {
-  top: 0 !important;
-  bottom: 0 !important;
-  left: -24px !important;
-  width: 2px !important;
-  height: auto !important;
-  right: auto !important;
-}
-
-.tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root):first-child::after {
-  top: 50% !important;
-  bottom: 0 !important;
-  left: -24px !important;
-}
-
-.tree-canvas-inner.direction-horizontal .ergo-tree-node-wrapper:not(.is-root):last-child::after {
-  top: 0 !important;
-  bottom: 50% !important;
-  left: -24px !important;
-}
-
-/* Staggered sequential pop-in animation for each child */
-.ergo-tree-node-wrapper.staggered-appear {
+  box-sizing: border-box;
   animation: personStaggerPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @keyframes personStaggerPop {
   0% {
     opacity: 0;
-    transform: scale(0.7) translateY(-16px);
-  }
-  70% {
-    opacity: 0.95;
-    transform: scale(1.04) translateY(2px);
+    transform: scale(0.92) translateY(-8px);
   }
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
+

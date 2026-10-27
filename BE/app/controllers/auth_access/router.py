@@ -105,11 +105,16 @@ async def login(
         )
     user, cred = row
 
+    requires_password_change = bool(user.first_login_required) or bool(cred and cred.must_change_password)
+
     if user.status != "ACTIVE":
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "ACCOUNT_BLOCKED", "message": "Tài khoản của bạn hiện đang bị khóa hoặc chưa kích hoạt."}
-        )
+        if user.status == "PENDING" and requires_password_change:
+            pass  # Cho phép phiên tạm thời để đổi mật khẩu lần đầu
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "ACCOUNT_BLOCKED", "message": "Tài khoản của bạn hiện đang bị khóa hoặc chưa kích hoạt."}
+            )
 
     # Verify password if credential_metadata has password_hash
     if cred and cred.password_hash:
@@ -124,18 +129,34 @@ async def login(
                 status_code=401,
                 detail={"code": "AUTHENTICATION_FAILED", "message": "Mật khẩu không chính xác."}
             )
-
-    # Check Clan Leader requirement:
-    # Trưởng tộc (BUSINESS_OWNER) chỉ được đăng nhập bằng tài khoản @giapha.com
-    active_roles = await users.list_active_role_grants(user.user_id)
-    is_business_owner = any(r[0] == "BUSINESS_OWNER" for r in active_roles)
-    is_sa = any(r[0] == "SYSTEM_ADMIN" for r in active_roles)
-
-    if is_business_owner and not is_sa:
-        if not user.email.lower().endswith("@giapha.com"):
+    else:
+        # Nếu chưa có password_hash trong PostgreSQL (tài khoản được cấp qua Firebase Auth):
+        # Xác thực với Firebase Identity Toolkit API
+        import httpx
+        api_key = settings.FIREBASE_API_KEY
+        authenticated = False
+        if api_key:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as http_client:
+                    fb_res = await http_client.post(
+                        f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}",
+                        json={
+                            "email": user.email,
+                            "password": body.password,
+                            "returnSecureToken": True,
+                        },
+                    )
+                    if fb_res.status_code == 200:
+                        authenticated = True
+                        if cred:
+                            hashed = bcrypt.hashpw(body.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                            cred.password_hash = hashed
+            except Exception as e:
+                logger.error("Firebase auth check error: %s", e)
+        if not authenticated:
             raise HTTPException(
-                status_code=403,
-                detail={"code": "FORBIDDEN", "message": "Tài khoản Trưởng tộc bắt buộc phải sử dụng email định danh @giapha.com do hệ thống cấp."}
+                status_code=401,
+                detail={"code": "AUTHENTICATION_FAILED", "message": "Mật khẩu không chính xác."}
             )
 
     now = datetime.now(timezone.utc)

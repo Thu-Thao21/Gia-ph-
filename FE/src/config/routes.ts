@@ -43,6 +43,7 @@ export const ROUTES = {
     MEMBERS: '/user/members',
     MEMBER_PROFILE: '/user/members/profile',
     MY_PROFILE: '/user/profile',
+    CLAN_PROFILE: '/user/clan-profile',
     RELATIONSHIP: '/user/relationship',
     ANNIVERSARIES: '/user/anniversaries',
     EVENTS: '/user/events',

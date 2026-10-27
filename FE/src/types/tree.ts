@@ -19,11 +19,15 @@ export interface ErgoTreeNode {
   otherName?: string;
   gender: string;
   birthDate?: string;
+  deathDate?: string;
   avatarUrl?: string;
   isAlive: boolean;
   generation: number;
   branch?: string;
   occupation?: string;
+  bio?: string;
+  userId?: string;
+  isPrivate?: boolean;
   fatherId?: string;
   motherId?: string;
   spouses: SpouseNode[];

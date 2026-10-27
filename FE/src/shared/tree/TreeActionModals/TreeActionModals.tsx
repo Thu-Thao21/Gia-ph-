@@ -11,6 +11,8 @@ interface TreeActionModalsProps {
   node: ErgoTreeNode | null;
   familyId?: string;
   allMembers?: Member[];
+  canManageTree?: boolean;
+  isSelf?: boolean;
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }
@@ -20,6 +22,8 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   node,
   familyId,
   allMembers = [],
+  canManageTree = false,
+  isSelf = false,
   onClose,
   onSuccess,
 }) => {
@@ -74,6 +78,10 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   // 1. Submit Edit
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageTree && !isSelf) {
+      setError('Bạn chỉ có quyền chỉnh sửa thông tin của chính mình.');
+      return;
+    }
     if (!fullName.trim()) {
       setError('Họ và tên không được để trống');
       return;
@@ -100,6 +108,10 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
 
   // 2. Submit Delete
   const handleDeleteSubmit = async () => {
+    if (!canManageTree) {
+      setError('Chức năng xóa chỉ dành cho Ban quản trị dòng họ.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -116,6 +128,10 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   // 3. Submit Add Child
   const handleAddChildSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageTree) {
+      setError('Chức năng thêm con chỉ dành cho Ban quản trị dòng họ.');
+      return;
+    }
     if (!fullName.trim()) {
       setError('Họ và tên con không được để trống');
       return;
@@ -143,6 +159,10 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   // 4. Submit Add Spouse
   const handleAddSpouseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageTree) {
+      setError('Chức năng thêm vợ/chồng chỉ dành cho Ban quản trị dòng họ.');
+      return;
+    }
     if (!fullName.trim()) {
       setError('Họ và tên Vợ/Chồng không được để trống');
       return;
@@ -170,6 +190,10 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   // 5. Submit Relocate
   const handleRelocateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageTree) {
+      setError('Chức năng di chuyển nhánh chỉ dành cho Ban quản trị dòng họ.');
+      return;
+    }
     if (!selectedParentId) {
       setError('Vui lòng chọn cha/mẹ mới để chuyển nhánh');
       return;
@@ -196,7 +220,9 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'edit' && (
           <form onSubmit={handleEditSubmit}>
             <div className="tree-action-modal-header">
-              <h3 className="tree-action-modal-title">Chỉnh sửa thành viên</h3>
+              <h3 className="tree-action-modal-title">
+                {isSelf ? 'Chỉnh sửa thông tin cá nhân của bạn' : 'Chỉnh sửa thành viên'}
+              </h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">

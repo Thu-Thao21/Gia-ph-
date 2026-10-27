@@ -14,7 +14,11 @@ export interface FamilyItem {
   status?: string;
 }
 
-export const AdminFamiliesMgmt: React.FC = () => {
+export interface AdminFamiliesMgmtProps {
+  onViewTree?: (familyId: string) => void;
+}
+
+export const AdminFamiliesMgmt: React.FC<AdminFamiliesMgmtProps> = ({ onViewTree }) => {
   const [families, setFamilies] = useState<FamilyItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -195,6 +199,16 @@ export const AdminFamiliesMgmt: React.FC = () => {
               <div className="family-card-footer">
                 <span className="admin-fam-id">Mã dòng họ: #{fam.id}</span>
                 <div className="action-btn-row">
+                  {onViewTree && (
+                    <button
+                      className="btn-icon-action"
+                      style={{ color: '#0d9488', borderColor: '#0d9488' }}
+                      onClick={() => onViewTree(fam.id)}
+                      title="Xem cây gia phả dòng họ này"
+                    >
+                      Xem Cây
+                    </button>
+                  )}
                   <button className="btn-icon-action" onClick={() => handleOpenEditModal(fam)}>Sửa</button>
                   <button className="btn-icon-action lock" onClick={() => handleDeleteFamily(fam)}>Xóa</button>
                 </div>

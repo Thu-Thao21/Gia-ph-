@@ -58,11 +58,12 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
 
   return (
     <div
-      className={`tree-couple-container ${node.isFocusPerson ? 'is-focus-group' : ''}`}
+      className={`tree-couple-container ${node.isFocusPerson ? 'is-focus-group' : ''} ${hasChildren ? 'has-children' : ''}`}
     >
       {/* Primary Person Card (Blood Child / Direct Lineage) */}
       <div
         className={`tree-person-card ${node.gender} ${node.isFocusPerson ? 'is-focus-card' : ''}`}
+        data-person-card-id={node.id}
         onClick={(e) => {
           e.stopPropagation();
           onCardClick(e, node);
@@ -105,7 +106,7 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
       {/* Spouse Card with Explicit Gradient Connecting Line */}
       {primarySpouse && (
         <>
-          <div className="tree-spouse-connector">
+          <div className="tree-spouse-connector" data-spouse-bridge-id={node.id}>
             <div className="tree-spouse-line" />
             <span className="tree-spouse-badge">
               {primarySpouse.focusRole || (primarySpouse.gender === 'female' ? 'Vợ' : 'Chồng')}
@@ -114,6 +115,7 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
 
           <div
             className={`tree-person-card ${primarySpouse.gender} ${node.isFocusPerson ? 'is-focus-spouse' : ''}`}
+            data-person-card-id={primarySpouse.id}
             onClick={(e) => {
               e.stopPropagation();
               onCardClick(e, {
@@ -173,6 +175,7 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
       {hasChildren && onToggleExpand && (
         <button
           className={`tree-node-toggle-btn ${!isExpanded ? 'collapsed' : ''}`}
+          data-toggle-btn-id={node.id}
           onClick={(e) => {
             e.stopPropagation();
             onToggleExpand(e, node);

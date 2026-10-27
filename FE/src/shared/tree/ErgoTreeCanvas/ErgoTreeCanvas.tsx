@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ErgoTreeNode } from '../../../types/tree';
 import { TreeNodeCard } from '../TreeNodeCard';
+import { calculateTreeLayout, type TreeDirection } from '../treeLayoutAlgorithm';
 import './ErgoTreeCanvas.css';
 
 export interface ErgoTreeCanvasProps {
@@ -8,7 +9,7 @@ export interface ErgoTreeCanvasProps {
   onCardClick: (e: React.MouseEvent, node: ErgoTreeNode) => void;
   onContextMenu: (e: React.MouseEvent, node: ErgoTreeNode) => void;
   zoomScale: number;
-  direction?: 'vertical' | 'horizontal';
+  direction?: TreeDirection;
 }
 
 export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
@@ -18,7 +19,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   zoomScale,
   direction = 'vertical',
 }) => {
-  // Set of explicitly expanded node IDs (root nodes expanded by default)
+  // Set of explicitly expanded node IDs (all expanded by default)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Canvas viewport drag-to-pan state
@@ -57,7 +58,12 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     });
   };
 
-  // Tự động căn giữa màn hình (Auto-center viewport) người làm trung tâm (Ego)
+  // Tính toán bố cục toán học 2D tuyệt đối (Dual-Direction Engine: Dọc / Ngang)
+  const layout = useMemo(() => {
+    return calculateTreeLayout(nodes, expandedIds, direction);
+  }, [nodes, expandedIds, direction]);
+
+  // Tự động căn giữa màn hình (Auto-center viewport) người làm trung tâm (Ego) hoặc gốc cây
   useEffect(() => {
     if (!viewportRef.current) return;
 
@@ -68,18 +74,33 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
       const focusCard = viewport.querySelector('.tree-person-card.is-focus-card') as HTMLElement;
       if (focusCard) {
         focusCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        const viewportRect = viewport.getBoundingClientRect();
-        const cardRect = focusCard.getBoundingClientRect();
-        const deltaX = (cardRect.left + cardRect.width / 2) - (viewportRect.left + viewportRect.width / 2);
-        const deltaY = (cardRect.top + cardRect.height / 2) - (viewportRect.top + viewportRect.height / 2);
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-          viewport.scrollBy({ left: deltaX, top: deltaY, behavior: 'smooth' });
+      } else {
+        if (direction === 'horizontal') {
+          // In horizontal mode: start from left (Gen 1) and center vertically
+          viewport.scrollLeft = 0;
+          const contentHeight = layout.totalHeight * zoomScale;
+          const viewportHeight = viewport.clientHeight;
+          if (contentHeight > viewportHeight) {
+            viewport.scrollTop = (contentHeight - viewportHeight) / 2;
+          } else {
+            viewport.scrollTop = 0;
+          }
+        } else {
+          // In vertical mode: center horizontally and start from top (Gen 1)
+          const contentWidth = layout.totalWidth * zoomScale;
+          const viewportWidth = viewport.clientWidth;
+          if (contentWidth > viewportWidth) {
+            viewport.scrollLeft = (contentWidth - viewportWidth) / 2;
+          } else {
+            viewport.scrollLeft = 0;
+          }
+          viewport.scrollTop = 0;
         }
       }
     }, 120);
 
     return () => clearTimeout(timer);
-  }, [nodes, zoomScale]);
+  }, [nodes, zoomScale, layout.totalWidth, layout.totalHeight, direction]);
 
   const handleNodeClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
     onCardClick(e, node);
@@ -121,35 +142,6 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     viewportRef.current.scrollTop = scrollTop - walkY;
   };
 
-  const renderTreeRecursive = (node: ErgoTreeNode, index: number = 0, isRoot: boolean = false) => {
-    const hasChildren = node.children && node.children.length > 0;
-    const isExpanded = expandedIds.has(node.id);
-    const isSingleChild = node.children && node.children.length === 1;
-
-    return (
-      <div
-        key={node.id}
-        className={`ergo-tree-node-wrapper ${isRoot ? 'is-root' : 'staggered-appear'}`}
-        style={!isRoot ? { animationDelay: `${index * 0.08}s` } : undefined}
-      >
-        <TreeNodeCard
-          node={node}
-          onCardClick={handleNodeClick}
-          onContextMenu={onContextMenu}
-          hasChildren={hasChildren}
-          isExpanded={isExpanded}
-          onToggleExpand={(_e, targetNode) => toggleNodeExpansion(targetNode.id)}
-        />
-
-        {hasChildren && (
-          <div className={`ergo-tree-children-row ${isExpanded ? 'is-expanded' : 'is-collapsed'} ${isSingleChild ? 'single-child-row' : ''}`}>
-            {node.children.map((child, idx) => renderTreeRecursive(child, idx, false))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div
       ref={viewportRef}
@@ -161,9 +153,141 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     >
       <div
         className={`tree-canvas-inner direction-${direction}`}
-        style={{ transform: `scale(${zoomScale})` }}
+        style={{
+          position: 'relative',
+          width: `${layout.totalWidth}px`,
+          height: `${layout.totalHeight}px`,
+          transform: `scale(${zoomScale})`,
+          transformOrigin: 'top center',
+        }}
       >
-        {nodes.map((rootNode, rIdx) => renderTreeRecursive(rootNode, rIdx, true))}
+        {/* Dynamic High-Precision SVG Connector Layer */}
+        <svg
+          className="tree-svg-connector-canvas"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: `${layout.totalWidth}px`,
+            height: `${layout.totalHeight}px`,
+            pointerEvents: 'none',
+            zIndex: 1,
+            overflow: 'visible',
+          }}
+        >
+          {layout.busGroups.map((bus) => (
+            <g key={bus.id} className="tree-bus-group">
+              {/* 1. Trunk Line: Xuất phát từ cha mẹ */}
+              {bus.trunkPath && (
+                <>
+                  <path
+                    d={bus.trunkPath}
+                    stroke="#ffffff"
+                    strokeWidth="5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d={bus.trunkPath}
+                    stroke="#2563eb"
+                    strokeWidth="2.5"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </>
+              )}
+
+              {/* 2. Bus Bar: Thanh phân nhánh */}
+              {bus.busBarPath && (
+                <>
+                  <path
+                    d={bus.busBarPath}
+                    stroke="#ffffff"
+                    strokeWidth="5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={bus.busBarPath}
+                    stroke="#2563eb"
+                    strokeWidth="2.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  {/* Điểm ngã ba giao cắt trunk với bus bar */}
+                  <circle
+                    cx={bus.trunkJunction.x}
+                    cy={bus.trunkJunction.y}
+                    r="4"
+                    fill="#2563eb"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                  />
+                </>
+              )}
+
+              {/* 3. Drop Lines: Rẽ trực tiếp đến mép từng ô con */}
+              {bus.dropPaths.map((dp, dpIdx) => (
+                <React.Fragment key={dpIdx}>
+                  <path
+                    d={dp}
+                    stroke="#ffffff"
+                    strokeWidth="5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={dp}
+                    stroke="#2563eb"
+                    strokeWidth="2.5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </React.Fragment>
+              ))}
+
+              {/* 4. Drop Junction Dots: Điểm rẽ tại các nhánh con */}
+              {bus.dropJunctions.map((dj, djIdx) => (
+                <circle
+                  key={djIdx}
+                  cx={dj.x}
+                  cy={dj.y}
+                  r="3.5"
+                  fill="#2563eb"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                />
+              ))}
+            </g>
+          ))}
+        </svg>
+
+        {/* Flat Layout Units Positioned at Exact Mathematical Coordinates */}
+        {layout.flatUnits.map((unit) => (
+          <div
+            key={unit.id}
+            className="tree-layout-unit-wrapper"
+            style={{
+              position: 'absolute',
+              left: `${unit.x}px`,
+              top: `${unit.y}px`,
+              width: `${unit.width}px`,
+              height: `${unit.height}px`,
+              zIndex: 2,
+            }}
+          >
+            <TreeNodeCard
+              node={unit.node}
+              onCardClick={handleNodeClick}
+              onContextMenu={onContextMenu}
+              hasChildren={unit.hasChildren}
+              isExpanded={unit.isExpanded}
+              onToggleExpand={(_e, targetNode) => toggleNodeExpansion(targetNode.id)}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -122,6 +122,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: payload.password,
       });
       setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
+      if (res.data.requires_password_change) {
+        const restrictedProfile: AccountProfile = {
+          id: res.data.user.user_id,
+          firebase_uid: res.data.user.user_id,
+          email: ident,
+          display_name: res.data.user.display_name,
+          email_verified: true,
+          phone_verified: false,
+          status: 'pending',
+          roles: [],
+          primary_role: 'clan_admin',
+          requires_password_change: true,
+        };
+        setAccount(restrictedProfile);
+        return restrictedProfile;
+      }
       try {
         const profile = await fetchCurrentAccount();
         setAccount(profile);
@@ -138,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             phone_verified: false,
             status: 'pending',
             roles: [],
-            primary_role: 'member',
+            primary_role: 'clan_admin',
             requires_password_change: true,
           };
           setAccount(restrictedProfile);

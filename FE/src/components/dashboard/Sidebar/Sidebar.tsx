@@ -108,6 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </svg>
       ),
       items: [
+        { id: 'clan-profile', label: 'Hồ sơ gia tộc' },
         { id: 'my-profile', label: 'Hồ sơ của tôi' },
         { id: 'my-proposals', label: 'Đề xuất của tôi' },
       ],
@@ -180,25 +181,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục', icon: 'backup' },
   ];
 
-  const isFamilyHead = ['chủ dòng họ', 'family admin'].includes((userRole || '').toLowerCase());
-  const familyManagementGroup = {
+  const roleLower = (userRole || '').toLowerCase();
+  const isClanAdmin = ['trưởng tộc', 'chủ dòng họ', 'clan admin', 'clan_admin', 'family_head'].includes(roleLower);
+  const isFamilyAdmin = ['family admin', 'family_admin', 'manager'].includes(roleLower);
+
+  // Nhóm chức năng Quản lý dòng họ được phân quyền chi tiết
+  const clanAdminManagementItems = [
+    { id: 'family-members', label: 'Quản lý thành viên' },
+    { id: 'family-relations', label: 'Quan hệ gia phả' },
+    { id: 'family-tree', label: 'Cây theo quan hệ' },
+    { id: 'family-search', label: 'Tìm đường quan hệ' },
+    { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
+    { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
+    { id: 'family-accounts', label: 'Phân quyền & Tài khoản' },
+    { id: 'family-links', label: 'Yêu cầu liên họ' },
+    { id: 'family-privacy', label: 'Quyền riêng tư dòng tộc' },
+    { id: 'family-import-export', label: 'Nhập xuất dữ liệu' },
+    { id: 'family-statistics', label: 'Thống kê dân số & thế hệ' },
+    { id: 'family-logs', label: 'Nhật ký hoạt động' },
+  ];
+
+  const familyAdminManagementItems = [
+    { id: 'family-members', label: 'Quản lý thành viên' },
+    { id: 'family-relations', label: 'Quan hệ gia phả' },
+    { id: 'family-tree', label: 'Cây theo quan hệ' },
+    { id: 'family-search', label: 'Tìm đường quan hệ' },
+    { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
+    { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
+    { id: 'family-links', label: 'Yêu cầu liên họ' },
+    { id: 'family-import-export', label: 'Nhập xuất dữ liệu' },
+    { id: 'family-logs', label: 'Nhật ký thao tác' },
+  ];
+
+  const currentManagementItems = isClanAdmin
+    ? clanAdminManagementItems
+    : isFamilyAdmin
+    ? familyAdminManagementItems
+    : [];
+
+  const familyManagementGroup = currentManagementItems.length > 0 ? {
     id: 'family_management',
     label: 'QUẢN LÝ DÒNG HỌ',
     icon: <AdminNavIcon name="branch" />,
-    items: [
-      { id: 'family-members', label: 'Quản lý thành viên' },
-      { id: 'family-relations', label: 'Quan hệ gia phả' },
-      { id: 'family-tree', label: 'Cây theo quan hệ' },
-      { id: 'family-search', label: 'Tìm đường quan hệ' },
-      { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
-      { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
-      { id: 'family-accounts', label: 'Tài khoản thành viên' },
-      { id: 'family-links', label: 'Yêu cầu liên họ' },
-      { id: 'family-import-export', label: 'Nhập xuất dữ liệu' },
-      { id: 'family-logs', label: 'Nhật ký bản xem trước' },
-    ],
-  };
-  const visibleMemberGroups = isFamilyHead
+    items: currentManagementItems,
+  } : null;
+
+  const visibleMemberGroups = familyManagementGroup
     ? memberGroups.flatMap((group) => group.id === 'network' ? [group, familyManagementGroup] : [group])
     : memberGroups;
 

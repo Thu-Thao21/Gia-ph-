@@ -1,5 +1,5 @@
 import React from 'react';
-import logoImage from '../../../assets/logo.jpg';
+import logoImage from '../../../assets/logo/logo_circular_emblem.png';
 import './AdminDashboard.css';
 import BusinessRegistrationsChart from './BusinessRegistrationsChart';
 

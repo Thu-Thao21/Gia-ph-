@@ -109,6 +109,12 @@ export const TopBar: React.FC<TopBarProps> = ({
     else navigate(ROUTES.USER.MY_PROFILE);
   };
 
+  const handleNavToClanProfile = () => {
+    setShowProfileMenu(false);
+    if (onNavigateTab) onNavigateTab('clan-profile');
+    else navigate(ROUTES.USER.CLAN_PROFILE);
+  };
+
   const handleNavToSettings = () => {
     setShowProfileMenu(false);
     if (userRole === 'Admin') {
@@ -242,7 +248,11 @@ export const TopBar: React.FC<TopBarProps> = ({
               </div>
 
               <button className="topbar-menu-item" onClick={handleNavToProfile}>
-                Hồ sơ cá nhân gia tộc
+                Hồ sơ của tôi
+              </button>
+
+              <button className="topbar-menu-item" onClick={handleNavToClanProfile}>
+                Hồ sơ gia tộc
               </button>
 
               <button className="topbar-menu-item" onClick={handleNavToSettings}>

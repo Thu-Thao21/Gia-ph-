@@ -42,11 +42,32 @@ export async function fetchMemberDetail(memberId: string): Promise<MemberDetail 
 
 export async function fetchFamilies(): Promise<Family[]> {
   try {
-    const res = await apiClient.get('/api/v1/families');
+    const res = await apiClient.get('/families');
     const fams = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.items) ? res.data.items : [];
-    return fams;
+    if (fams.length > 0) return fams;
+    const fallbackRes = await apiClient.get('/api/v1/families');
+    return Array.isArray(fallbackRes.data) ? fallbackRes.data : Array.isArray(fallbackRes.data?.items) ? fallbackRes.data.items : [];
   } catch {
-    // Graceful fallback to prevent red console 404 errors when unauthenticated or during route initialization
-    return [];
+    try {
+      const fallbackRes = await apiClient.get('/api/v1/families');
+      return Array.isArray(fallbackRes.data) ? fallbackRes.data : Array.isArray(fallbackRes.data?.items) ? fallbackRes.data.items : [];
+    } catch {
+      return [];
+    }
   }
+}
+
+export async function fetchClanProfile(familyId: string): Promise<any> {
+  try {
+    const res = await apiClient.get(`/families/${familyId}/profile`);
+    return res.data;
+  } catch (err) {
+    console.error(`API fetchClanProfile error for ${familyId}:`, err);
+    return null;
+  }
+}
+
+export async function updateClanProfile(familyId: string, data: any): Promise<any> {
+  const res = await apiClient.put(`/families/${familyId}/profile`, data);
+  return res.data;
 }

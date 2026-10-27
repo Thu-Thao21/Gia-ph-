@@ -5,10 +5,10 @@
   z-index: 99999;
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(15, 23, 42, 0.08);
   padding: 6px 0;
-  min-width: 190px;
+  min-width: 210px;
   animation: cmPop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
 }
@@ -18,14 +18,51 @@
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+.tree-context-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 6px;
+  gap: 8px;
+}
+
+.tree-context-menu-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.tree-context-menu-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.tree-context-menu-badge.self {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.tree-context-menu-badge.read-only {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
 .tree-context-menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 18px;
+  padding: 8px 16px;
   font-size: 13px;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 600;
+  color: #334155;
   cursor: pointer;
   transition: all 0.15s ease;
   border: none;
@@ -35,9 +72,27 @@
 }
 
 .tree-context-menu-item:hover {
-  background: #eff6ff;
-  color: #2563eb;
-  padding-left: 22px;
+  background: #f8fafc;
+  color: #1e40af;
+  padding-left: 20px;
+}
+
+.tree-context-menu-item.privacy {
+  color: #0284c7;
+}
+
+.tree-context-menu-item.privacy:hover {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.tree-context-menu-item.propose {
+  color: #d97706;
+}
+
+.tree-context-menu-item.propose:hover {
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .tree-context-menu-item.danger {
@@ -47,7 +102,7 @@
 .tree-context-menu-item.danger:hover {
   background: #fef2f2;
   color: #dc2626;
-  padding-left: 22px;
+  padding-left: 20px;
 }
 
 .tree-context-menu-divider {
