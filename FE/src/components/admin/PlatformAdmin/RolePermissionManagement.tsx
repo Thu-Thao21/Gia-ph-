@@ -15,7 +15,7 @@ import {
   AdminToast,
   useAdminToast,
 } from './shared';
-import './Sprint6Admin.css';
+import './PlatformAdmin.css';
 
 const permissionColumns: Array<{ key: PermissionAction; label: string; description: string }> = [
   { key: 'view', label: 'Xem', description: 'Truy cập và xem dữ liệu' },

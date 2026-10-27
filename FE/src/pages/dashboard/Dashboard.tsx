@@ -39,7 +39,7 @@ import {
   PaymentTransactionManagement,
   ModerationManagement,
   RolePermissionManagement
-} from '../../components/admin/Sprint6Admin';
+} from '../../components/admin/PlatformAdmin';
 
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../config/routes';
@@ -253,7 +253,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     const isFamilyHead = primaryRole === 'family_head';
     const canManageFamily = isFamilyHead || isFamilyManager;
 
-    if (activeTab === 'notifications') return <NotificationCenterModule />;
+    if (activeTab === 'notifications') {
+      return (
+        <NotificationCenterModule
+          canManage={canManageFamily}
+          clanName={account?.clan_name || 'Dòng Họ Võ Đại Tộc'}
+          userRole={userRole}
+        />
+      );
+    }
     if (activeTab === 'relationship-finder') return canManageFamily ? <FamilyAdminModule view="search" /> : <RelationshipFinder />;
     if (activeTab === 'my-proposals') return <MyProposalsModule />;
     if (activeTab === 'anniversaries') return <AnniversariesModule />;
@@ -266,7 +274,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     if (activeTab === 'ancestral-library') return <AncestralLibraryModule initialAncestorId={selectedAncestorId} onOpenWorship={(ancestorId) => { setSelectedAncestorId(ancestorId); handleSelectTab('ancestral-hall'); }} />;
     if (activeTab === 'privacy-settings' || activeTab === 'privacy-preview') return <PrivacySettingsTab />;
     if (activeTab.startsWith('family-') && !canManageFamily) {
-      return <section className="dashboard-permission-page"><div className="dashboard-permission-icon">🔒</div><span>QUYỀN TRUY CẬP DỮ LIỆU</span><h1>Chức năng dành cho Quản trị viên dòng họ</h1><p>Tài khoản Thành viên có thể xem dữ liệu được chia sẻ nhưng không thể mở khu vực quản lý, phê duyệt hoặc xuất nhập dữ liệu.</p><button type="button" onClick={() => handleSelectTab('dashboard')}>Quay lại Trang chủ</button></section>;
+      return <section className="dashboard-permission-page"><div className="dashboard-permission-icon">!</div><span>QUYỀN TRUY CẬP DỮ LIỆU</span><h1>Chức năng dành cho Quản trị viên dòng họ</h1><p>Tài khoản Thành viên có thể xem dữ liệu được chia sẻ nhưng không thể mở khu vực quản lý, phê duyệt hoặc xuất nhập dữ liệu.</p><button type="button" onClick={() => handleSelectTab('dashboard')}>Quay lại Trang chủ</button></section>;
     }
     const familyViews: Record<string, FamilyAdminView> = {
       'family-members': 'members', 'family-relations': 'relations', 'family-tree': 'tree',

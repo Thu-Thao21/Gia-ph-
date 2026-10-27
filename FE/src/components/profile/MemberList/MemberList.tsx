@@ -58,7 +58,7 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
           <input
             type="text"
             className="member-search-input"
-            placeholder="🔍 Tìm tên, nghề nghiệp..."
+            placeholder="Tìm tên, nghề nghiệp..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

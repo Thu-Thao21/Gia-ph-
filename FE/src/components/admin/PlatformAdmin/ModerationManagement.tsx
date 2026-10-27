@@ -17,7 +17,7 @@ import {
   formatAdminDate,
   useAdminToast,
 } from './shared';
-import './Sprint6Admin.css';
+import './PlatformAdmin.css';
 
 const PAGE_SIZE = 4;
 

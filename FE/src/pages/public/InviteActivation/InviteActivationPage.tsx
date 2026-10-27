@@ -83,7 +83,7 @@ export const InviteActivationPage: React.FC = () => {
 
         {isSuccess ? (
           <div className="act-card success">
-            <div className="act-icon">🎉</div>
+            <div className="act-icon">✓</div>
             <h2>Kích Hoạt Tài Khoản Thành Công!</h2>
             <p>
               Tài khoản của bạn đã được liên kết chính thức với hồ sơ <strong>{validatedData?.memberName}</strong> thuộc <strong>{validatedData?.familyName}</strong>.
@@ -117,9 +117,9 @@ export const InviteActivationPage: React.FC = () => {
 
                 {validatedData && !validatedData.valid && (
                   <div className="act-error-alert">
-                    {validatedData.errorState === 'invalid' && '❌ Mã kích hoạt không hợp lệ hoặc không tồn tại.'}
+                    {validatedData.errorState === 'invalid' && 'Mã kích hoạt không hợp lệ hoặc không tồn tại.'}
                     {validatedData.errorState === 'expired' && '⌛ Mã lời mời đã hết hạn sử dụng. Vui lòng xin mã mới từ Trưởng tộc.'}
-                    {validatedData.errorState === 'used' && '⚠️ Mã kích hoạt này đã được sử dụng trước đó.'}
+                    {validatedData.errorState === 'used' && 'Mã kích hoạt này đã được sử dụng trước đó.'}
                   </div>
                 )}
 

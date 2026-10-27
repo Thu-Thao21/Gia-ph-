@@ -353,7 +353,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>
-              🌿 Đang chọn làm trung tâm mạng lưới:
+              Đang chọn làm trung tâm mạng lưới:
             </span>
             <span style={{ fontSize: '13px', fontWeight: 800, color: '#15803d' }}>
               {allMembers.find((m) => m.id === focusMemberId)?.fullName || 'Thành viên'}

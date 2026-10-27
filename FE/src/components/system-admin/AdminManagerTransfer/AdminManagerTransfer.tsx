@@ -154,7 +154,7 @@ export const AdminManagerTransfer: React.FC = () => {
                   <div className="transfer-reason-text">{item.reason}</div>
                 </td>
                 <td>
-                  <span className="doc-link-pill">📄 {item.evidence_doc}</span>
+                  <span className="doc-link-pill">{item.evidence_doc}</span>
                 </td>
                 <td>{item.processed_by}</td>
                 <td>{item.processed_at}</td>
@@ -261,7 +261,7 @@ export const AdminManagerTransfer: React.FC = () => {
                   <p className="admin-step-desc">Đính kèm biên bản xác minh làm căn cứ pháp lý để lưu vết Audit.</p>
 
                   <div className="admin-upload-evidence-card">
-                    <div className="upload-icon">📁</div>
+                    <div className="upload-icon">Tải lên</div>
                     <div className="upload-meta">
                       <strong>Tài liệu biên bản đã tiếp nhận:</strong>
                       <span className="file-name">{formData.evidenceFileName || 'Bien-ban-hop-Hoi-dong-gia-toc-thua-ke.pdf'}</span>

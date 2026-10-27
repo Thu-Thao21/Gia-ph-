@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  initialServicePackages,
-  type ServicePackage,
-  type ServicePackageStatus,
-} from './mockData';
-import {
   AdminConfirmDialog,
   AdminModal,
   AdminPageHeader,
@@ -16,7 +11,8 @@ import {
   formatVnd,
   useAdminToast,
 } from './shared';
-import './Sprint6Admin.css';
+import { ServicePackage, ServicePackageStatus } from './types';
+import './PlatformAdmin.css';
 
 const PAGE_SIZE = 4;
 
@@ -67,7 +63,8 @@ export const ServicePackageManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | ServicePackageStatus>('all');
   const [page, setPage] = useState(1);
   const [detailPackage, setDetailPackage] = useState<ServicePackage | null>(null);
-  const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null);
+  const [modalTab, setModalTab] = useState<'detail' | 'edit'>('detail');
+  const [editorMode, setEditorMode] = useState<'create' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PackageFormState>(emptyPackageForm);
   const [formError, setFormError] = useState('');
@@ -124,18 +121,35 @@ export const ServicePackageManagement: React.FC = () => {
     .reduce((sum, item) => sum + item.subscriberCount, 0);
 
   const openCreate = () => {
+    setDetailPackage(null);
     setEditingId(null);
     setForm({ ...emptyPackageForm });
     setFormError('');
     setEditorMode('create');
   };
 
-  const openEdit = (item: ServicePackage) => {
+  const openDetail = (item: ServicePackage) => {
+    setDetailPackage(item);
     setEditingId(item.id);
     setForm(packageToForm(item));
     setFormError('');
-    setEditorMode('edit');
+    setModalTab('detail');
+    setEditorMode(null);
+  };
+
+  const openEdit = (item: ServicePackage) => {
+    setDetailPackage(item);
+    setEditingId(item.id);
+    setForm(packageToForm(item));
+    setFormError('');
+    setModalTab('edit');
+    setEditorMode(null);
+  };
+
+  const closeDetailModal = () => {
     setDetailPackage(null);
+    setEditingId(null);
+    setFormError('');
   };
 
   const closeEditor = () => {
@@ -190,13 +204,30 @@ export const ServicePackageManagement: React.FC = () => {
     try {
       if (editingId && !editingId.startsWith('pkg-')) {
         await apiClient.put(`/admin/service-plans/${editingId}`, payload);
-        showToast(`Đã cập nhật gói “${form.name}” lên cơ sở dữ liệu.`);
+        showToast(`Đã cập nhật gói “${form.name}”.`);
       } else {
         await apiClient.post('/admin/service-plans', payload);
-        showToast(`Đã tạo gói “${form.name}” thành công trên cơ sở dữ liệu.`);
+        showToast(`Đã tạo gói “${form.name}” thành công.`);
       }
       loadPackages();
-      closeEditor();
+      if (detailPackage) {
+        setDetailPackage((prev) => prev ? {
+          ...prev,
+          code,
+          name: form.name.trim(),
+          description: form.description.trim(),
+          monthlyPrice: price,
+          durationMonths: duration || 12,
+          memberLimit,
+          storageGb: storage,
+          features,
+          status: form.status,
+        } : null);
+        setModalTab('detail');
+      }
+      if (editorMode === 'create') {
+        closeEditor();
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi khi lưu gói dịch vụ.';
       setFormError(msg);
@@ -255,7 +286,7 @@ export const ServicePackageManagement: React.FC = () => {
         <div className="s6a-card-heading">
           <div>
             <h2>Danh sách gói</h2>
-            <p>Quản lý giá, thời hạn, giới hạn và trạng thái đăng ký.</p>
+            <p>Bấm vào bất kỳ dòng nào để xem chi tiết và chỉnh sửa gói dịch vụ.</p>
           </div>
           <span className="s6a-count-pill">{filteredPackages.length} kết quả</span>
         </div>
@@ -279,11 +310,6 @@ export const ServicePackageManagement: React.FC = () => {
               <option value="disabled">Đã tắt</option>
             </select>
           </label>
-          {(searchQuery || statusFilter !== 'all') && (
-            <button type="button" className="s6a-button ghost" onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}>
-              Xóa bộ lọc
-            </button>
-          )}
         </div>
 
         {loading ? (
@@ -301,17 +327,22 @@ export const ServicePackageManagement: React.FC = () => {
               <table className="s6a-table">
                 <thead>
                   <tr>
-                    <th>Gói dịch vụ</th>
-                    <th>Giá / thời hạn</th>
-                    <th>Giới hạn</th>
-                    <th>Thuê bao</th>
-                    <th>Trạng thái</th>
-                    <th className="s6a-actions-column">Thao tác</th>
+                    <th style={{ width: '28%' }}>Gói dịch vụ</th>
+                    <th style={{ width: '18%' }}>Giá / Thời hạn</th>
+                    <th style={{ width: '18%' }}>Giới hạn</th>
+                    <th style={{ width: '10%' }}>Thuê bao</th>
+                    <th style={{ width: '12%' }}>Trạng thái</th>
+                    <th style={{ width: '14%', textAlign: 'right' }} className="s6a-actions-column">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visiblePackages.map((item) => (
-                    <tr key={item.id}>
+                    <tr
+                      key={item.id}
+                      className="s6a-row-clickable"
+                      onClick={() => openDetail(item)}
+                      title="Bấm để xem chi tiết & chỉnh sửa gói dịch vụ"
+                    >
                       <td>
                         <div className="s6a-primary-cell">
                           <strong>{item.name}</strong>
@@ -324,12 +355,17 @@ export const ServicePackageManagement: React.FC = () => {
                           <span>{item.durationMonths} tháng</span>
                         </div>
                       </td>
-                      <td>{item.memberLimit.toLocaleString('vi-VN')} thành viên<br /><span className="s6a-muted">{item.storageGb} GB</span></td>
+                      <td>
+                        <div>
+                          <span>{item.memberLimit.toLocaleString('vi-VN')} thành viên</span>
+                          <div className="s6a-muted">{item.storageGb} GB</div>
+                        </div>
+                      </td>
                       <td><strong>{item.subscriberCount.toLocaleString('vi-VN')}</strong></td>
                       <td><AdminStatusBadge status={item.status} /></td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <div className="s6a-row-actions">
-                          <button type="button" className="s6a-link-button" onClick={() => setDetailPackage(item)}>Chi tiết</button>
+                          <button type="button" className="s6a-link-button" onClick={() => openDetail(item)}>Chi tiết</button>
                           <button type="button" className="s6a-link-button" onClick={() => openEdit(item)}>Sửa</button>
                           <button
                             type="button"
@@ -350,71 +386,144 @@ export const ServicePackageManagement: React.FC = () => {
         )}
       </div>
 
-      <AdminModal
-        open={Boolean(detailPackage)}
-        title={detailPackage?.name || 'Chi tiết gói dịch vụ'}
-        description={detailPackage ? `Mã gói ${detailPackage.code}` : undefined}
-        onClose={() => setDetailPackage(null)}
-        size="lg"
-        footer={detailPackage && (
-          <>
-            <button type="button" className="s6a-button secondary" onClick={() => setDetailPackage(null)}>Đóng</button>
-            <button type="button" className="s6a-button primary" onClick={() => openEdit(detailPackage)}>Chỉnh sửa gói</button>
-          </>
-        )}
-      >
-        {detailPackage && (
-          <div className="s6a-detail-layout">
-            <div className="s6a-detail-grid">
-              <div><span>Trạng thái</span><AdminStatusBadge status={detailPackage.status} /></div>
-              <div><span>Giá hàng tháng</span><strong>{detailPackage.monthlyPrice === 0 ? 'Miễn phí' : formatVnd(detailPackage.monthlyPrice)}</strong></div>
-              <div><span>Thời hạn</span><strong>{detailPackage.durationMonths} tháng</strong></div>
-              <div><span>Số thuê bao</span><strong>{detailPackage.subscriberCount.toLocaleString('vi-VN')}</strong></div>
-              <div><span>Giới hạn thành viên</span><strong>{detailPackage.memberLimit.toLocaleString('vi-VN')}</strong></div>
-              <div><span>Dung lượng</span><strong>{detailPackage.storageGb} GB</strong></div>
-            </div>
-            <div className="s6a-detail-section">
-              <h3>Mô tả</h3>
-              <p>{detailPackage.description}</p>
-            </div>
-            <div className="s6a-detail-section">
-              <h3>Tính năng bao gồm</h3>
-              <ul className="s6a-feature-list">{detailPackage.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-            </div>
-          </div>
-        )}
-      </AdminModal>
-
-      <AdminModal
-        open={Boolean(editorMode)}
-        title={editorMode === 'edit' ? 'Chỉnh sửa Gói Dịch vụ' : 'Tạo Gói Dịch vụ'}
-        description="Các trường có dấu * là bắt buộc. Thay đổi chỉ được mô phỏng ở giao diện."
-        onClose={closeEditor}
-        size="lg"
-        footer={
-          <>
-            <button type="button" className="s6a-button secondary" onClick={closeEditor}>Hủy</button>
-            <button type="submit" form="s6a-package-form" className="s6a-button primary" disabled={!form.name.trim() || !form.code.trim()}>
-              {editorMode === 'edit' ? 'Lưu thay đổi' : 'Tạo gói'}
+      {/* Package Detail & Edit Modal */}
+      {detailPackage && (
+        <AdminModal
+          open={Boolean(detailPackage)}
+          title={modalTab === 'detail' ? detailPackage.name : `Chỉnh sửa: ${detailPackage.name}`}
+          description={detailPackage ? `Mã gói: ${detailPackage.code} · Cập nhật: ${formatAdminDate(detailPackage.updatedAt)}` : undefined}
+          onClose={closeDetailModal}
+          size="lg"
+          footer={
+            modalTab === 'detail' ? (
+              <>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className={`s6a-button ${detailPackage.status === 'active' ? 'danger' : 'secondary'}`}
+                    onClick={() => {
+                      const pkg = detailPackage;
+                      setDetailPackage(null);
+                      setConfirmPackage(pkg);
+                    }}
+                  >
+                    {detailPackage.status === 'active' ? 'Tắt gói dịch vụ' : 'Kích hoạt gói dịch vụ'}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="s6a-button secondary" onClick={closeDetailModal}>Đóng</button>
+                  <button type="button" className="s6a-button primary" onClick={() => setModalTab('edit')}>Chỉnh sửa gói</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button type="button" className="s6a-button secondary" onClick={() => setModalTab('detail')}>Xem chi tiết</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="s6a-button secondary" onClick={closeDetailModal}>Hủy</button>
+                  <button type="submit" form="s6a-package-form-inline" className="s6a-button primary" disabled={!form.name.trim() || !form.code.trim()}>
+                    Lưu thay đổi
+                  </button>
+                </div>
+              </>
+            )
+          }
+        >
+          {/* Modal Navigation Tabs (Clean pure text, NO icons) */}
+          <div className="s6a-modal-nav-tabs">
+            <button
+              type="button"
+              className={`s6a-modal-tab ${modalTab === 'detail' ? 'active' : ''}`}
+              onClick={() => setModalTab('detail')}
+            >
+              Thông tin chi tiết
             </button>
-          </>
-        }
-      >
-        <form id="s6a-package-form" className="s6a-form" onSubmit={handleSave}>
-          {formError && <div className="s6a-inline-alert error" role="alert">{formError}</div>}
-          <div className="s6a-form-grid two">
-            <label><span>Tên gói <b>*</b></span><input value={form.name} onChange={(event) => updateForm('name', event.target.value)} placeholder="Ví dụ: Dòng họ Tiêu chuẩn" /></label>
-            <label><span>Mã gói <b>*</b></span><input value={form.code} onChange={(event) => updateForm('code', event.target.value)} placeholder="STANDARD" /></label>
-            <label><span>Giá mỗi tháng (VNĐ)</span><input type="number" min="0" value={form.monthlyPrice} onChange={(event) => updateForm('monthlyPrice', event.target.value)} /></label>
-            <label><span>Thời hạn (tháng)</span><input type="number" min="1" value={form.durationMonths} onChange={(event) => updateForm('durationMonths', event.target.value)} /></label>
-            <label><span>Giới hạn thành viên</span><input type="number" min="1" value={form.memberLimit} onChange={(event) => updateForm('memberLimit', event.target.value)} /></label>
-            <label><span>Dung lượng lưu trữ (GB)</span><input type="number" min="1" value={form.storageGb} onChange={(event) => updateForm('storageGb', event.target.value)} /></label>
-            <label className="span-two"><span>Trạng thái</span><select value={form.status} onChange={(event) => updateForm('status', event.target.value as ServicePackageStatus)}><option value="draft">Bản nháp</option><option value="active">Đang hoạt động</option><option value="disabled">Đã tắt</option></select></label>
-            <label className="span-two"><span>Mô tả <b>*</b></span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Mục đích và đối tượng sử dụng gói..." /></label>
-            <label className="span-two"><span>Tính năng — mỗi dòng một mục <b>*</b></span><textarea rows={5} value={form.features} onChange={(event) => updateForm('features', event.target.value)} placeholder={'Cây gia phả đa chế độ\nKho tư liệu số\nNhắc lịch tự động'} /></label>
+            <button
+              type="button"
+              className={`s6a-modal-tab ${modalTab === 'edit' ? 'active' : ''}`}
+              onClick={() => {
+                if (detailPackage) {
+                  setForm(packageToForm(detailPackage));
+                }
+                setModalTab('edit');
+              }}
+            >
+              Chỉnh sửa cấu hình
+            </button>
           </div>
-        </form>
-      </AdminModal>
+
+          {modalTab === 'detail' ? (
+            <div className="s6a-detail-layout">
+              <div className="s6a-detail-grid">
+                <div><span>Trạng thái</span><AdminStatusBadge status={detailPackage.status} /></div>
+                <div><span>Giá mỗi tháng</span><strong>{detailPackage.monthlyPrice === 0 ? 'Miễn phí' : formatVnd(detailPackage.monthlyPrice)}</strong></div>
+                <div><span>Thời hạn thanh toán</span><strong>{detailPackage.durationMonths} tháng</strong></div>
+                <div><span>Số lượng thuê bao</span><strong>{detailPackage.subscriberCount.toLocaleString('vi-VN')}</strong></div>
+                <div><span>Giới hạn thành viên</span><strong>{detailPackage.memberLimit.toLocaleString('vi-VN')} thành viên</strong></div>
+                <div><span>Dung lượng lưu trữ</span><strong>{detailPackage.storageGb} GB</strong></div>
+              </div>
+              <div className="s6a-detail-section">
+                <h3>Mô tả gói dịch vụ</h3>
+                <p>{detailPackage.description || 'Chưa có mô tả cho gói dịch vụ này.'}</p>
+              </div>
+              <div className="s6a-detail-section">
+                <h3>Tính năng bao gồm ({detailPackage.features.length})</h3>
+                <ul className="s6a-feature-list">
+                  {detailPackage.features.map((feature) => <li key={feature}>{feature}</li>)}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <form id="s6a-package-form-inline" className="s6a-form" onSubmit={handleSave}>
+              {formError && <div className="s6a-inline-alert error" role="alert">{formError}</div>}
+              <div className="s6a-form-grid two">
+                <label><span>Tên gói <b>*</b></span><input value={form.name} onChange={(event) => updateForm('name', event.target.value)} placeholder="Ví dụ: Dòng họ Tiêu chuẩn" /></label>
+                <label><span>Mã gói <b>*</b></span><input value={form.code} onChange={(event) => updateForm('code', event.target.value)} placeholder="STANDARD" /></label>
+                <label><span>Giá mỗi tháng (VNĐ)</span><input type="number" min="0" value={form.monthlyPrice} onChange={(event) => updateForm('monthlyPrice', event.target.value)} /></label>
+                <label><span>Thời hạn (tháng)</span><input type="number" min="1" value={form.durationMonths} onChange={(event) => updateForm('durationMonths', event.target.value)} /></label>
+                <label><span>Giới hạn thành viên</span><input type="number" min="1" value={form.memberLimit} onChange={(event) => updateForm('memberLimit', event.target.value)} /></label>
+                <label><span>Dung lượng lưu trữ (GB)</span><input type="number" min="1" value={form.storageGb} onChange={(event) => updateForm('storageGb', event.target.value)} /></label>
+                <label className="span-two"><span>Trạng thái</span><select value={form.status} onChange={(event) => updateForm('status', event.target.value as ServicePackageStatus)}><option value="draft">Bản nháp</option><option value="active">Đang hoạt động</option><option value="disabled">Đã tắt</option></select></label>
+                <label className="span-two"><span>Mô tả <b>*</b></span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Mục đích và đối tượng sử dụng gói..." /></label>
+                <label className="span-two"><span>Tính năng — mỗi dòng một mục <b>*</b></span><textarea rows={5} value={form.features} onChange={(event) => updateForm('features', event.target.value)} placeholder={'Cây gia phả đa chế độ\nKho tư liệu số\nNhắc lịch tự động'} /></label>
+              </div>
+            </form>
+          )}
+        </AdminModal>
+      )}
+
+      {/* Package Create Modal */}
+      {editorMode === 'create' && (
+        <AdminModal
+          open={true}
+          title="Tạo Gói Dịch vụ Mới"
+          description="Các trường có dấu * là bắt buộc."
+          onClose={closeEditor}
+          size="lg"
+          footer={
+            <>
+              <button type="button" className="s6a-button secondary" onClick={closeEditor}>Hủy</button>
+              <button type="submit" form="s6a-package-form-create" className="s6a-button primary" disabled={!form.name.trim() || !form.code.trim()}>
+                Tạo gói
+              </button>
+            </>
+          }
+        >
+          <form id="s6a-package-form-create" className="s6a-form" onSubmit={handleSave}>
+            {formError && <div className="s6a-inline-alert error" role="alert">{formError}</div>}
+            <div className="s6a-form-grid two">
+              <label><span>Tên gói <b>*</b></span><input value={form.name} onChange={(event) => updateForm('name', event.target.value)} placeholder="Ví dụ: Dòng họ Tiêu chuẩn" /></label>
+              <label><span>Mã gói <b>*</b></span><input value={form.code} onChange={(event) => updateForm('code', event.target.value)} placeholder="STANDARD" /></label>
+              <label><span>Giá mỗi tháng (VNĐ)</span><input type="number" min="0" value={form.monthlyPrice} onChange={(event) => updateForm('monthlyPrice', event.target.value)} /></label>
+              <label><span>Thời hạn (tháng)</span><input type="number" min="1" value={form.durationMonths} onChange={(event) => updateForm('durationMonths', event.target.value)} /></label>
+              <label><span>Giới hạn thành viên</span><input type="number" min="1" value={form.memberLimit} onChange={(event) => updateForm('memberLimit', event.target.value)} /></label>
+              <label><span>Dung lượng lưu trữ (GB)</span><input type="number" min="1" value={form.storageGb} onChange={(event) => updateForm('storageGb', event.target.value)} /></label>
+              <label className="span-two"><span>Trạng thái</span><select value={form.status} onChange={(event) => updateForm('status', event.target.value as ServicePackageStatus)}><option value="draft">Bản nháp</option><option value="active">Đang hoạt động</option><option value="disabled">Đã tắt</option></select></label>
+              <label className="span-two"><span>Mô tả <b>*</b></span><textarea rows={3} value={form.description} onChange={(event) => updateForm('description', event.target.value)} placeholder="Mục đích và đối tượng sử dụng gói..." /></label>
+              <label className="span-two"><span>Tính năng — mỗi dòng một mục <b>*</b></span><textarea rows={5} value={form.features} onChange={(event) => updateForm('features', event.target.value)} placeholder={'Cây gia phả đa chế độ\nKho tư liệu số\nNhắc lịch tự động'} /></label>
+            </div>
+          </form>
+        </AdminModal>
+      )}
 
       <AdminConfirmDialog
         open={Boolean(confirmPackage)}

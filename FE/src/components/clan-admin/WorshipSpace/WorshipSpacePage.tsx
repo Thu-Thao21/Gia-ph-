@@ -84,19 +84,19 @@ export const WorshipSpacePage: React.FC = () => {
                       <div className="worship-incense-stick-2"></div>
                       <div className="worship-incense-stick-1"></div>
                       {/* Khói */}
-                      <div className="worship-incense-smoke absolute -top-12 -left-4 text-white/50 text-4xl animate-bounce">🌫️</div>
+                      {/* Smoke animation */}
                     </div>
                   )}
                 </div>
 
                 {/* Trái cây */}
                 <div className="worship-fruit-tray">
-                  {activeAction === 'fruit' && <span className="absolute -top-8 text-3xl animate-bounce">🍎🍊🍌</span>}
+                  {activeAction === 'fruit' && <span className="absolute -top-8 text-sm font-bold text-amber-300 animate-bounce">[Dâng Lễ Vật]</span>}
                 </div>
 
                 {/* Hoa */}
                 <div className="worship-flower-vase">
-                  {activeAction === 'flower' && <span className="absolute -top-12 text-4xl animate-bounce">💐</span>}
+                  {activeAction === 'flower' && <span className="absolute -top-12 text-sm font-bold text-rose-300 animate-bounce">[Dâng Hoa]</span>}
                 </div>
 
                 {/* Đèn cầy */}
@@ -126,21 +126,21 @@ export const WorshipSpacePage: React.FC = () => {
               className={`worship-toolbar-btn ${activeAction === 'incense' ? 'worship-toolbar-btn-active' : 'worship-toolbar-btn-inactive'}`}
               onClick={() => handleAction('incense')}
             >
-              <span className="text-2xl">🥢</span>
+              <span className="text-sm font-semibold">Thắp Hương</span>
               <span className="text-xs font-medium">Thắp hương</span>
             </button>
             <button 
               className={`worship-toolbar-btn ${activeAction === 'flower' ? 'worship-toolbar-btn-active' : 'worship-toolbar-btn-inactive'}`}
               onClick={() => handleAction('flower')}
             >
-              <span className="text-2xl">💐</span>
+              <span className="text-sm font-semibold">Dâng Hoa</span>
               <span className="text-xs font-medium">Dâng hoa</span>
             </button>
             <button 
               className={`worship-toolbar-btn ${activeAction === 'fruit' ? 'worship-toolbar-btn-active' : 'worship-toolbar-btn-inactive'}`}
               onClick={() => handleAction('fruit')}
             >
-              <span className="text-2xl">🍎</span>
+              <span className="text-sm font-semibold">Dâng Quả</span>
               <span className="text-xs font-medium">Dâng quả</span>
             </button>
             <div className="worship-toolbar-divider"></div>
@@ -148,7 +148,7 @@ export const WorshipSpacePage: React.FC = () => {
               className={`worship-toolbar-btn ${activeAction === 'pray' ? 'worship-toolbar-btn-active' : 'worship-toolbar-btn-inactive'}`}
               onClick={() => handleAction('pray')}
             >
-              <span className="text-white0">🙏</span>
+              <span className="text-sm font-semibold">Lễ Bái</span>
               <span className="text-white1">Khấn vái</span>
             </button>
           </div>

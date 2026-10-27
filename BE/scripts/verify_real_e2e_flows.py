@@ -28,7 +28,7 @@ RESULTS: dict[str, dict] = {}
 
 def run_e2e_tests():
     print("=" * 80)
-    print("🚀 BẮT ĐẦU KIỂM THỬ THỰC TẾ E2E TRÊN CƠ SỞ DỮ LIỆU NEON POSTGRESQL")
+    print("BẮT ĐẦU KIỂM THỬ THỰC TẾ E2E TRÊN CƠ SỞ DỮ LIỆU NEON POSTGRESQL")
     print("=" * 80)
 
     with TestClient(app) as client:
@@ -103,7 +103,7 @@ def run_e2e_tests():
                 "details": f"Đăng ký email={real_gmail} -> Duyệt ClanID={new_clan_id} -> Cấp tài khoản={owner_email} -> Trưởng tộc đăng nhập có quyền BUSINESS_OWNER. EmailStatus={email_status}",
             }
         except Exception as e:
-            print(f"  ❌ LỖI FLOW 1: {e}")
+            print(f"  [LỖI] LỖI FLOW 1: {e}")
             RESULTS["FLOW_1"] = {"status": "FAILED", "error": str(e)}
 
         # ----------------------------------------------------------------------
@@ -173,7 +173,7 @@ def run_e2e_tests():
                 "details": f"Tạo gói {plan_code} -> Khách hàng thấy -> Sửa giá -> Khách hàng thấy cập nhật -> Tắt gói -> Gói ẩn khỏi catalog công khai",
             }
         except Exception as e:
-            print(f"  ❌ LỖI FLOW 2: {e}")
+            print(f"  [LỖI] LỖI FLOW 2: {e}")
             RESULTS["FLOW_2"] = {"status": "FAILED", "error": str(e)}
 
         # ----------------------------------------------------------------------
@@ -246,7 +246,7 @@ def run_e2e_tests():
                 "details": f"Trưởng tộc nâng quyền cho {candidate['email']} -> Cấp role FAMILY_ADMIN -> User thấy vai trò -> Thu hồi -> Mất quyền ngay lập tức",
             }
         except Exception as e:
-            print(f"  ❌ LỖI FLOW 3: {e}")
+            print(f"  [LỖI] LỖI FLOW 3: {e}")
             RESULTS["FLOW_3"] = {"status": "FAILED", "error": str(e)}
 
         # ----------------------------------------------------------------------
@@ -292,7 +292,7 @@ def run_e2e_tests():
                 "details": "Trưởng tộc Họ Mai bị chặn 403/404 khi can thiệp vào Họ Võ (list users, assign admin, delete admin). Xuất dữ liệu thiếu family_id bị chặn 400.",
             }
         except Exception as e:
-            print(f"  ❌ LỖI FLOW 4: {e}")
+            print(f"  [LỖI] LỖI FLOW 4: {e}")
             RESULTS["FLOW_4"] = {"status": "FAILED", "error": str(e)}
 
         # ----------------------------------------------------------------------
@@ -365,7 +365,7 @@ def run_e2e_tests():
                 "details": f"Focus view trên Võ Văn Thắng chuẩn 3 thế hệ (độ sâu {depths}). Thêm thành viên, gán quan hệ cha con -> cây phả hệ cập nhật thời gian thực -> Xóa quan hệ -> cây phả hệ đồng bộ chính xác.",
             }
         except Exception as e:
-            print(f"  ❌ LỖI FLOW 5: {e}")
+            print(f"  [LỖI] LỖI FLOW 5: {e}")
             RESULTS["FLOW_5"] = {"status": "FAILED", "error": str(e)}
 
         # ----------------------------------------------------------------------
@@ -420,11 +420,11 @@ def run_e2e_tests():
                 "details": f"Hoàn thành kiểm thử liên thông giữa cả 5 Actor: {', '.join(actors_tested)}",
             }
         except Exception as e:
-            print(f"  ❌ LỖI FLOW 6: {e}")
+            print(f"  [LỖI] LỖI FLOW 6: {e}")
             RESULTS["FLOW_6"] = {"status": "FAILED", "error": str(e)}
 
     print("\n" + "=" * 80)
-    print("🏁 BÁO CÁO KẾT QUẢ TEST E2E THỰC TẾ:")
+    print("BÁO CÁO KẾT QUẢ TEST E2E THỰC TẾ:")
     for flow, res in RESULTS.items():
         print(f" - {flow}: {res['status']} | {res.get('details', res.get('error'))}")
     print("=" * 80)

@@ -185,8 +185,8 @@ export const AdminAccountMgmt: React.FC = () => {
       header: 'Thông Tin Khôi Phục',
       render: (item) => (
         <div style={{fontSize: '0.85rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '4px'}}>
-          <span>📧 {item.recovery_email}</span>
-          <span>📱 {item.recovery_phone}</span>
+          <span>{item.recovery_email}</span>
+          <span>{item.recovery_phone}</span>
         </div>
       )
     },

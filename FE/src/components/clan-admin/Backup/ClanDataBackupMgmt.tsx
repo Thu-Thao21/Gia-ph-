@@ -69,7 +69,7 @@ export const ClanDataBackupMgmt: React.FC = () => {
     { key: 'actions', header: 'Thao tác', render: () => (
       <div className="backup-actions">
         <button className="backup-btn-download" title="Tải xuống">⬇️ Tải về</button>
-        <button className="backup-btn-restore" title="Khôi phục">🔄 Phục hồi</button>
+        <button className="backup-btn-restore" title="Khôi phục">Phục hồi</button>
       </div>
     )},
   ];

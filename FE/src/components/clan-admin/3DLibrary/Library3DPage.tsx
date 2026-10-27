@@ -46,8 +46,8 @@ export const Library3DPage: React.FC = () => {
               <div className="library-card-info border border-slate-200 rounded-xl overflow-hidden group hover:shadow-lg transition bg-white flex flex-col">
                 <h3 className="library-card-title border border-slate-200 rounded-xl overflow-hidden group hover:shadow-lg transition bg-white flex flex-col">{item.title}</h3>
                 <div className="library-card-meta border border-slate-200 rounded-xl overflow-hidden group hover:shadow-lg transition bg-white flex flex-col">
-                  <span>📅 {item.date}</span>
-                  <span>👁️ {item.views} lượt xem</span>
+                  <span>{item.date}</span>
+                  <span>{item.views} lượt xem</span>
                 </div>
               </div>
             </div>

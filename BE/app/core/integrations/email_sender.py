@@ -111,7 +111,7 @@ class SmtpEmailSender:
             try:
                 msg = MIMEMultipart("alternative")
                 family_str = f" cho {clan_name}" if clan_name else ""
-                msg["Subject"] = f"🏛️ [Gia Phả Liên Họ] Thông tin tài khoản Quản trị dòng họ{family_str}"
+                msg["Subject"] = f"[Gia Phả Liên Họ] Thông tin tài khoản Quản trị dòng họ{family_str}"
                 msg["From"] = f"Hệ thống Gia Phả Liên Họ <{smtp_user}>"
                 msg["To"] = to_email
 
@@ -156,7 +156,7 @@ class SmtpEmailSender:
                     </div>
 
                     <div style="background-color: #eff6ff; border-radius: 6px; padding: 12px 16px; margin-bottom: 25px; font-size: 13px; color: #1e40af;">
-                        ⚠️ <strong>Lưu ý bảo mật:</strong> Đây là mật khẩu tạm thời. Hệ thống sẽ yêu cầu bạn <strong>đổi mật khẩu mới</strong> ngay ở lần đăng nhập đầu tiên.
+                        <strong>Lưu ý bảo mật:</strong> Đây là mật khẩu tạm thời. Hệ thống sẽ yêu cầu bạn <strong>đổi mật khẩu mới</strong> ngay ở lần đăng nhập đầu tiên.
                     </div>
 
                     <div style="text-align: center; margin-bottom: 30px;">

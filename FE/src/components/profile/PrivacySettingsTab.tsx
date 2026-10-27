@@ -395,7 +395,7 @@ export const PrivacySettingsTab: React.FC<PrivacySettingsTabProps> = ({ memberId
               </>
             ) : (
               <div className="privacy-locked-profile">
-                <span aria-hidden="true">🔒</span>
+                
                 <strong>Hồ sơ này không hiển thị với nhóm đang chọn</strong>
                 <p>Hãy thay đổi mức “Hồ sơ tổng quan” hoặc quyền của nhóm để xem trước.</p>
               </div>
