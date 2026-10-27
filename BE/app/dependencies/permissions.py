@@ -167,12 +167,12 @@ async def is_active_owner(
     roles: RoleRepository,
     family: ClanAccessRepository,
 ) -> bool:
-    """Role BUSINESS_OWNER in this clan + the active ownership row is the user's.
+    """Role BUSINESS_OWNER in this clan or active ownership row in clan_ownership_history.
 
     Membership and clan status are checked by the caller (authorize does it first).
     """
-    if not await roles.has_active_role(user_id, BUSINESS_OWNER_ROLE, clan_id=clan_id):
-        return False
+    if await roles.has_active_role(user_id, BUSINESS_OWNER_ROLE, clan_id=clan_id):
+        return True
     owner = await family.get_active_owner(clan_id)
     return owner is not None and owner.ended_at is None and owner.user_id == user_id
 

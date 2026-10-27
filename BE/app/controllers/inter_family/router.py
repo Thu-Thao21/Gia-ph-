@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres import get_db
 from app.dependencies.auth import get_current_account
-from app.models.family.entities import Clan
-from app.models.genealogy.entities import Person, Relationship
+from app.models.family.entities import Clan, ClanMembership, ClanProfile
+from app.models.genealogy.entities import Branch, Person, Relationship
 from app.models.inter_family import (
     InterClanLink,
     InterClanRequest,
@@ -84,26 +84,180 @@ async def get_network_families(
     db: AsyncSession = Depends(get_db),
     account: Account = Depends(get_current_account),
 ):
-    """Returns linked families or discovered clans for the network tab."""
-    # Find all active links
+    """Returns linked families or discovered clans for the network tab with member details."""
+    # Find active clan memberships of the current account
+    user_memberships_res = await db.execute(
+        select(ClanMembership).where(
+            ClanMembership.user_id == account.user_id,
+            ClanMembership.status == "ACTIVE",
+        )
+    )
+    user_memberships = list(user_memberships_res.scalars().all())
+    user_clan_ids = {m.clan_id for m in user_memberships}
+    maternal_clan_ids = {
+        m.clan_id
+        for m in user_memberships
+        if (m.lineage_type or "").upper() == "MATERNAL"
+    }
+    paternal_clan_ids = user_clan_ids - maternal_clan_ids
+
+    # Find active inter-clan links
     stmt = select(InterClanLink).where(InterClanLink.status == "ACTIVE")
     res = await db.execute(stmt)
     links = list(res.scalars().all())
 
-    # Fetch clans to build network responses
+    # Fetch active clans
     clans_res = await db.execute(select(Clan).where(Clan.status == "ACTIVE"))
-    clans = {str(c.clan_id): c for c in clans_res.scalars().all()}
+    all_clans = list(clans_res.scalars().all())
+
+    cat_filter = category.lower().strip()
+    selected_clans = []
+
+    for clan in all_clans:
+        c_id = clan.clan_id
+        is_user_maternal = c_id in maternal_clan_ids
+        is_user_paternal = c_id in paternal_clan_ids
+
+        # Check if connected via link to user's paternal clan
+        is_linked_to_user_paternal = any(
+            (l.clan_a_id in paternal_clan_ids and l.clan_b_id == c_id)
+            or (l.clan_b_id in paternal_clan_ids and l.clan_a_id == c_id)
+            for l in links
+        )
+
+        if is_user_maternal or is_linked_to_user_paternal:
+            clan_cat = "ngoai"
+        elif is_user_paternal:
+            clan_cat = "noi"
+        else:
+            clan_cat = "noi"
+
+        if cat_filter == "noi":
+            if clan_cat == "noi":
+                # For paternal tab: include user's paternal clan(s), or clans connected to user
+                if is_user_paternal or (c_id in user_clan_ids) or len(user_clan_ids) == 0:
+                    selected_clans.append((clan, "noi", 0 if is_user_paternal else 1))
+        elif cat_filter == "ngoai":
+            if clan_cat == "ngoai":
+                selected_clans.append((clan, "ngoai", 0 if is_user_maternal else 1))
+        else:
+            selected_clans.append((clan, clan_cat, 0 if (is_user_paternal or is_user_maternal) else 1))
+
+    # Sort so user's direct clans appear first
+    selected_clans.sort(key=lambda x: (x[2], x[0].name))
+
+    if not selected_clans:
+        return []
+
+    target_clan_ids = [c[0].clan_id for c in selected_clans]
+
+    # Batch query profiles
+    profiles_res = await db.execute(
+        select(ClanProfile).where(ClanProfile.clan_id.in_(target_clan_ids))
+    )
+    profiles_map = {p.clan_id: p for p in profiles_res.scalars().all()}
+
+    # Batch query branches
+    branches_res = await db.execute(
+        select(Branch).where(Branch.family_id.in_(target_clan_ids))
+    )
+    branch_map = {}
+    clan_branches_map = defaultdict(list)
+    for b in branches_res.scalars().all():
+        branch_map[b.id] = b.name
+        clan_branches_map[b.family_id].append(b.name)
+
+    # Batch query active persons ordered by generation, birth_date, name
+    persons_res = await db.execute(
+        select(Person).where(
+            Person.family_id.in_(target_clan_ids),
+            Person.status == "ACTIVE",
+        ).order_by(
+            Person.family_id,
+            Person.generation.asc(),
+            Person.birth_date.asc(),
+            Person.full_name.asc(),
+        )
+    )
+    persons_by_clan = defaultdict(list)
+    for p in persons_res.scalars().all():
+        persons_by_clan[p.family_id].append(p)
 
     items = []
-    for c_id, clan in clans.items():
+    for clan, cat, _ in selected_clans:
+        c_id = clan.clan_id
+        profile = profiles_map.get(c_id)
+        clan_persons = persons_by_clan.get(c_id, [])
+        branches = clan_branches_map.get(c_id, [])
+        if not branches:
+            branches = ["Nhánh chính"]
+
+        founder_name = None
+        if profile and profile.founder_person_id:
+            for p in clan_persons:
+                if p.id == profile.founder_person_id:
+                    founder_name = p.full_name
+                    break
+        if not founder_name and clan_persons:
+            gen1_persons = [p for p in clan_persons if (p.generation or 1) == 1]
+            if gen1_persons:
+                male_gen1 = [p for p in gen1_persons if (p.gender or "").upper() == "MALE"]
+                founder_name = male_gen1[0].full_name if male_gen1 else gen1_persons[0].full_name
+            else:
+                founder_name = clan_persons[0].full_name
+
+        origin_place = (
+            profile.origin_place
+            if profile and profile.origin_place
+            else "Chưa rõ quê quán"
+        )
+        history = (
+            profile.history
+            if profile and profile.history
+            else (
+                profile.public_description
+                if profile and profile.public_description
+                else "Chưa có lịch sử dòng họ."
+            )
+        )
+
+        members_data = []
+        for p in clan_persons:
+            gender_label = (
+                "Nam"
+                if (p.gender or "").upper() == "MALE"
+                else ("Nữ" if (p.gender or "").upper() == "FEMALE" else "Khác")
+            )
+            members_data.append({
+                "id": str(p.id),
+                "fullName": p.full_name,
+                "gender": gender_label,
+                "generation": p.generation or 1,
+                "birthDate": p.birth_date.strftime("%d/%m/%Y") if p.birth_date else None,
+                "deathDate": p.death_date.strftime("%d/%m/%Y") if p.death_date else None,
+                "isAlive": p.is_alive if p.is_alive is not None else True,
+                "branch": branch_map.get(p.branch_id, "Nhánh chính") if p.branch_id else "Nhánh chính",
+                "bio": p.bio or "",
+            })
+
+        is_connected = c_id in user_clan_ids or any(
+            str(l.clan_a_id) == str(c_id) or str(l.clan_b_id) == str(c_id) for l in links
+        )
+
         items.append({
-            "id": c_id,
+            "id": str(c_id),
             "name": clan.name,
             "code": clan.clan_code,
-            "category": "thong_gia",
-            "relationshipCount": 1,
-            "branches": ["Nhánh chính"],
-            "status": "connected" if any(str(l.clan_a_id) == c_id or str(l.clan_b_id) == c_id for l in links) else "available",
+            "category": cat,
+            "founderName": founder_name,
+            "originPlace": origin_place,
+            "history": history,
+            "ancestralHouseAddress": profile.ancestral_house_address if profile else "",
+            "branches": branches,
+            "memberCount": len(clan_persons),
+            "status": "connected" if is_connected else "available",
+            "relationshipCount": 1 if is_connected else 0,
+            "members": members_data,
         })
 
     return items

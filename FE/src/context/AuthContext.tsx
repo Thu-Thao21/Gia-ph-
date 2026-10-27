@@ -69,10 +69,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * (ví dụ vừa tải lại trang), đổi ID token lấy phiên qua POST /auth/session trước.
    */
   const fetchAccount = async (): Promise<AccountProfile | null> => {
+    // 1. Nếu đã có session BE (từ direct login /auth/login)
+    if (hasSession()) {
+      try {
+        const profile = await fetchCurrentAccount();
+        setAccount(profile);
+        return profile;
+      } catch (error) {
+        const info = readApiError(error);
+        if (info.status === 401 || info.status === 403) {
+          clearSession();
+          setAccount(null);
+          return null;
+        }
+      }
+    }
+
+    // 2. Nếu đăng nhập qua Firebase Auth
     const user = auth.currentUser;
     if (!user) {
-      clearSession();
-      setAccount(null);
+      if (!hasSession()) {
+        clearSession();
+        setAccount(null);
+      }
       return null;
     }
     try {
@@ -102,8 +121,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return restrictedProfile;
       }
       console.warn('Không lấy được phiên hoặc tài khoản từ Backend:', info.status, info.code, info.requestId);
-      clearSession();
-      setAccount(null);
+      if (!hasSession()) {
+        clearSession();
+        setAccount(null);
+      }
       // Token không đổi được phiên (chưa được cấp, bị khóa, mật khẩu tạm hết hạn): đăng xuất Firebase.
       if (info.status === 401 || info.status === 403) {
         await signOut(auth).catch(() => undefined);
@@ -174,16 +195,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    // 1. Khôi phục phiên nếu đã đăng nhập trực tiếp (sessionStorage)
+    if (hasSession()) {
+      fetchCurrentAccount()
+        .then((profile) => {
+          setAccount(profile);
+          setLoading(false);
+        })
+        .catch(() => {
+          clearSession();
+          setAccount(null);
+          setLoading(false);
+        });
+    }
+
+    // 2. Lắng nghe trạng thái từ Firebase
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
       if (user) {
         // Firebase đã đăng nhập: tạo phiên BE (nếu chưa có) rồi lấy tài khoản từ /auth/me
         await fetchAccount();
-      } else {
+        setLoading(false);
+      } else if (!hasSession()) {
         clearSession();
         setAccount(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);

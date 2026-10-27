@@ -320,4 +320,44 @@
   box-shadow: 0 6px 18px rgba(236, 72, 153, 0.15) !important;
 }
 
+/* Unconnected Member Card Styles */
+.tree-person-card.is-unconnected-card {
+  border: 2px dashed #f59e0b !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%) !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tree-person-card.is-unconnected-card:hover {
+  border-color: #d97706 !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.28) !important;
+  transform: translateY(-4px);
+}
+
+.tree-person-gen-badge.is-unconnected-badge {
+  background: #d97706 !important;
+  color: #ffffff !important;
+  font-size: 8.5px;
+  border: 1px solid #fde68a;
+  gap: 4px;
+}
+
+.tree-role-tag.role-unconnected {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tree-unconnected-indicator {
+  margin-top: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px dashed #fcd34d;
+  text-align: center;
+  white-space: nowrap;
+}
+
+
 

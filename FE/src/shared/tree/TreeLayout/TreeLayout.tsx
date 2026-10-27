@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useClanContext } from '../../../context/ClanContext';
 import { fetchFamilies } from '../../../services/member.service';
 import { buildErgoTreeFromDB } from '../../../services/tree.service';
 import type { Family, Member } from '../../../types/member';
@@ -23,26 +24,21 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   familyId,
 }) => {
   const { account } = useAuth();
+  const { activeClanId, activeClanName, activeMembership, availableClans, selectClan } = useClanContext();
   const roleLower = (account?.primary_role || '').toLowerCase();
-  const activeRoles = (account?.roles || [])
-    .filter((r) => r.status === 'active')
-    .map((r) => r.role.toLowerCase());
+  const isAdmin = roleLower === 'admin';
 
-  const isClanAdmin = [
-    'trưởng tộc', 'chủ dòng họ', 'clan admin', 'clan_admin', 'family_head', 'business_owner'
-  ].includes(roleLower) || activeRoles.some((r) => ['clan_admin', 'family_head', 'business_owner'].includes(r));
+  const effectiveFamilyId = familyId || activeClanId || account?.clan_id || account?.memberships?.[0]?.clan_id;
 
-  const isFamilyAdmin = [
-    'family admin', 'family_admin', 'manager'
-  ].includes(roleLower) || activeRoles.some((r) => ['family_admin', 'manager'].includes(r));
+  // Xác định quyền quản lý cây DỰA TRÊN CHÍNH DÒNG HỌ ĐANG XEM, không dùng vai trò của dòng họ khác:
+  const currentMembership = availableClans.find((c) => c.clan_id === (effectiveFamilyId)) 
+    || (activeClanId === effectiveFamilyId ? activeMembership : null);
+  const clanRoles = currentMembership?.roles || [];
+  const isClanAdmin = clanRoles.includes('BUSINESS_OWNER');
+  const isFamilyAdmin = clanRoles.includes('FAMILY_ADMIN');
+  const canManageTree = isAdmin || isClanAdmin || isFamilyAdmin;
 
-  const isAdmin = roleLower === 'admin' || activeRoles.includes('admin');
-
-  // Trưởng tộc, Family Admin và Hệ thống Admin có toàn quyền quản trị cây gia phả:
-  const canManageTree = isClanAdmin || isFamilyAdmin || isAdmin;
-  const effectiveFamilyId = familyId || account?.clan_id || account?.memberships?.[0]?.clan_id;
-
-  const [families, setFamilies] = useState<Family[]>([]);
+  const [families, setFamilies] = useState<(Family & { lineageType?: string | null })[]>([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>(effectiveFamilyId || '');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [treeNodes, setTreeNodes] = useState<ErgoTreeNode[]>([]);
@@ -94,21 +90,54 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   useEffect(() => {
     fetchFamilies().then((fams) => {
-      const allowedFams = isAdmin
-        ? fams
-        : effectiveFamilyId
-        ? fams.filter((f) => f.id === effectiveFamilyId)
-        : fams;
+      let allowedFams: (Family & { lineageType?: string | null })[] = [];
+      if (isAdmin) {
+        allowedFams = fams;
+      } else if (availableClans && availableClans.length > 0) {
+        // Cho phép người dùng chọn tất cả các dòng họ mà họ tham gia (nội / ngoại)
+        const hasMaternal = availableClans.some((c) => c.lineage_type === 'MATERNAL');
+        allowedFams = availableClans.map((c) => {
+          const matched = fams.find((f) => String(f.id).toLowerCase() === String(c.clan_id).toLowerCase());
+          let inferredLineage = c.lineage_type;
+          // Nếu người dùng có dòng họ ngoại, dòng họ còn lại (nếu chưa gán nhãn) là bên nội
+          if (!inferredLineage && hasMaternal && availableClans.length > 1) {
+            inferredLineage = 'PATERNAL';
+          }
+          return {
+            id: c.clan_id,
+            name: c.clan_name,
+            code: matched?.code,
+            status: c.clan_status || 'ACTIVE',
+            memberCount: matched?.memberCount ?? 0,
+            lineageType: inferredLineage,
+          };
+        });
+      } else if (effectiveFamilyId) {
+        allowedFams = fams.filter((f) => String(f.id).toLowerCase() === String(effectiveFamilyId).toLowerCase());
+      } else {
+        allowedFams = fams;
+      }
+
       setFamilies(allowedFams.length > 0 ? allowedFams : fams);
-      if (effectiveFamilyId && fams.some((f) => f.id === effectiveFamilyId)) {
-        setSelectedFamilyId(effectiveFamilyId);
-      } else if (fams.length > 0) {
-        // Tự động chọn gia tộc đầu tiên đã có thành viên để người dùng xem ngay
-        const famWithMembers = fams.find((f) => (f.memberCount || 0) > 0);
-        setSelectedFamilyId(famWithMembers ? famWithMembers.id : fams[0].id);
+
+      const targetId = effectiveFamilyId || selectedFamilyId;
+      if (targetId && allowedFams.some((f) => String(f.id).toLowerCase() === String(targetId).toLowerCase())) {
+        setSelectedFamilyId(targetId);
+      } else if (allowedFams.length > 0) {
+        setSelectedFamilyId(allowedFams[0].id);
       }
     });
-  }, [effectiveFamilyId, isAdmin]);
+  }, [effectiveFamilyId, isAdmin, availableClans]);
+
+  // Đồng bộ selectedFamilyId và reset state khi người dùng đổi cây trên TopBar
+  useEffect(() => {
+    if (effectiveFamilyId && effectiveFamilyId !== selectedFamilyId) {
+      setSelectedFamilyId(effectiveFamilyId);
+      setFocusMemberId(undefined);
+      setContextMenu({ isOpen: false, x: 0, y: 0, member: null });
+      setActionModal({ type: null, node: null });
+    }
+  }, [effectiveFamilyId]);
 
   const requestCounterRef = React.useRef<number>(0);
   const allMembersCacheRef = React.useRef<Member[]>([]);
@@ -384,7 +413,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
           {/* Family Dropdown */}
           <select
-            className="tree-control-select"
+            className="tree-control-select tree-clan-select"
             value={selectedFamilyId}
             onChange={(e) => {
               const newFamId = e.target.value;
@@ -394,17 +423,37 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               setSelectedBranch(undefined);
               setSelectedGeneration(undefined);
               setLoading(true);
+              if (selectClan) {
+                selectClan(newFamId);
+              }
             }}
+            title="Chọn dòng tộc hiển thị cây gia phả"
           >
-            {families.map((f) => {
+            {families.map((f: any) => {
               const count = f.memberCount !== undefined
                 ? f.memberCount
                 : f.id === selectedFamilyId
                 ? allMembers.length
                 : 0;
+
+              const mClan = availableClans.find(
+                (c) => String(c.clan_id).toLowerCase() === String(f.id).toLowerCase()
+              );
+              const hasMaternal = availableClans.some((c) => c.lineage_type === 'MATERNAL');
+              let lineage = f.lineageType || mClan?.lineage_type;
+              if (!lineage && hasMaternal && availableClans.length > 1) {
+                lineage = 'PATERNAL';
+              }
+
+              const lineageTag = lineage === 'PATERNAL'
+                ? ' [Bên nội]'
+                : lineage === 'MATERNAL'
+                ? ' [Bên ngoại]'
+                : '';
+
               return (
                 <option key={f.id} value={f.id}>
-                  {f.name} ({count} thành viên)
+                  {f.name}{lineageTag} ({count} thành viên)
                 </option>
               );
             })}
@@ -587,6 +636,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             type={actionModal.type}
             node={actionModal.node}
             familyId={selectedFamilyId}
+            familyName={activeClanName || undefined}
             allMembers={allMembers}
             canManageTree={canManageTree}
             isSelf={isActionModalSelf}

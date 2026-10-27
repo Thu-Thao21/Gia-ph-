@@ -136,10 +136,10 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
             onClick={() => {
               onClose();
               if (onRelocate) onRelocate(node);
-              else if (onActionToast) onActionToast('Di chuyển');
+              else if (onActionToast) onActionToast('Nối phả hệ');
             }}
           >
-            Di chuyển nhánh
+            {node.isUnconnected ? '🔗 Xác nhận quan hệ (Nối phả hệ)' : 'Di chuyển nhánh'}
           </button>
 
           <button
@@ -170,6 +170,20 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           {isSelf ? (
             /* Member clicking on themselves */
             <>
+              {node.isUnconnected && (
+                <button
+                  className="tree-context-menu-item"
+                  style={{ color: '#d97706', fontWeight: 600 }}
+                  onClick={() => {
+                    onClose();
+                    if (onRelocate) onRelocate(node);
+                    else if (onActionToast) onActionToast('Nối phả hệ');
+                  }}
+                >
+                  🔗 Xác nhận quan hệ (Nối phả hệ)
+                </button>
+              )}
+
               <button
                 className="tree-context-menu-item"
                 onClick={() => {

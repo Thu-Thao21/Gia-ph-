@@ -11,12 +11,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+  gap: 16px;
 }
 
 .topbar-left-group {
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-shrink: 0;
 }
 
 .topbar-toggle-btn {
@@ -68,9 +70,10 @@
 }
 
 .topbar-search-container {
-  flex: 1;
-  max-width: 480px;
-  margin: 0 24px;
+  flex: 1 1 200px;
+  min-width: 160px;
+  max-width: 440px;
+  margin: 0;
   position: relative;
 }
 
@@ -109,6 +112,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-shrink: 0;
 }
 
 .topbar-notif-btn {

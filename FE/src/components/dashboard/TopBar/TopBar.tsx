@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../config/routes';
 import circularEmblemLogo from '../../../assets/logo/logo_circular_emblem.png';
+import { ClanSelector } from './ClanSelector';
 import './TopBar.css';
 
 export interface TopBarProps {
@@ -109,6 +110,12 @@ export const TopBar: React.FC<TopBarProps> = ({
     else navigate(ROUTES.USER.MY_PROFILE);
   };
 
+  const handleNavToMyClans = () => {
+    setShowProfileMenu(false);
+    if (onNavigateTab) onNavigateTab('my-clans');
+    else navigate(ROUTES.USER.MY_PROFILE);
+  };
+
   const handleNavToClanProfile = () => {
     setShowProfileMenu(false);
     if (onNavigateTab) onNavigateTab('clan-profile');
@@ -149,6 +156,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         </div>
       </div>
+
+      <ClanSelector isAdmin={userRole === 'Admin'} />
 
       <form className="topbar-search-container" onSubmit={handleSearchSubmit}>
         <input
@@ -249,6 +258,10 @@ export const TopBar: React.FC<TopBarProps> = ({
 
               <button className="topbar-menu-item" onClick={handleNavToProfile}>
                 Hồ sơ của tôi
+              </button>
+
+              <button className="topbar-menu-item" onClick={handleNavToMyClans}>
+                Dòng tộc của tôi
               </button>
 
               <button className="topbar-menu-item" onClick={handleNavToClanProfile}>
