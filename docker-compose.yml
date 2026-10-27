@@ -1,54 +1,48 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: mfg-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: multi_family_db
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./BE/scripts/init_database.sql:/docker-entrypoint-initdb.d/init_database.sql:ro
-    ports:
-      - "5433:5432"
-
   backend:
     build:
       context: ./BE
+      dockerfile: Dockerfile
     container_name: mfg-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/multi_family_db
-      SECRET_KEY: supersecretkey123
-    depends_on:
-      - postgres
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://neondb_owner:npg_XkwBJVU8WF4e@ep-green-mode-b4ugmgu4-pooler.c-6.us-east-2.aws.neon.tech/mfgms_ai?sslmode=require&channel_binding=require}
+      SECRET_KEY: ${SECRET_KEY:-supersecretkey123_mfgms_genealogy_2026}
+      SESSION_TTL_HOURS: 8
+      FRONTEND_ORIGINS: "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
+      DEBUG: "false"
     ports:
-      - "8000:8000"
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: mfg-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: thuthaor120608@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
+      - "8001:8001"
 
   frontend:
     build:
       context: ./FE
+      dockerfile: Dockerfile
     container_name: mfg-frontend
     restart: unless-stopped
     ports:
-      - "3000:80" # serve nginx on container:80, expose on host 3000 to match dev origin
+      - "5173:80"
+      - "3000:80"
     depends_on:
       - backend
+
+  # Dịch vụ Postgres cục bộ dự phòng (chỉ dùng nếu muốn chạy offline hoàn toàn)
+  postgres:
+    image: postgres:16-alpine
+    container_name: mfg-postgres
+    restart: unless-stopped
+    profiles: ["offline"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: multi_family_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./BE/database/seed_neon_real_data.sql:/docker-entrypoint-initdb.d/init_database.sql:ro
+    ports:
+      - "5433:5432"
 
 volumes:
   postgres-data:

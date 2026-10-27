@@ -369,11 +369,7 @@ export async function registerWithEmailPassword(payload: RegisterPayload): Promi
 export async function loginWithEmailPassword(payload: LoginPayload): Promise<AccountProfile> {
   const email = payload.email.trim();
   if (!email.includes('@')) {
-    throw new Error('Vui lòng đăng nhập bằng địa chỉ email hợp lệ (@gmail.com hoặc @giapha.com).');
-  }
-  const emailLower = email.toLowerCase();
-  if (!emailLower.endsWith('@gmail.com') && !emailLower.endsWith('@giapha.com')) {
-    throw new Error('Hệ thống chỉ hỗ trợ đăng nhập bằng tài khoản Gmail (@gmail.com) hoặc tài khoản Trưởng tộc (@giapha.com).');
+    throw new Error('Vui lòng nhập địa chỉ email hợp lệ.');
   }
   let user: FirebaseUser;
   try {

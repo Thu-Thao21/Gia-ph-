@@ -6,6 +6,7 @@ import type { Family, Member } from '../../../types/member';
 import type { ErgoTreeNode, TreeContextMenuState } from '../../../types/tree';
 import { ErgoTreeCanvas } from '../ErgoTreeCanvas';
 import { TreeContextMenu } from '../TreeContextMenu';
+import TreeActionModals, { type ModalType } from '../TreeActionModals/TreeActionModals';
 import { NotificationModal } from '../../common/NotificationModal';
 import '../Tree.css';
 import './TreeLayout.css';
@@ -47,6 +48,13 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   // Toast state for action feedback
   const [isToastOpen, setIsToastOpen] = useState(false);
 
+  // Tree Action Modals State (Edit, Delete, Add Child, Add Spouse, Relocate)
+  const [actionModal, setActionModal] = useState<{
+    type: ModalType;
+    node: ErgoTreeNode | null;
+  }>({ type: null, node: null });
+  const [successToastMessage, setSuccessToastMessage] = useState<string | null>(null);
+
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
   const [selectedGeneration, setSelectedGeneration] = useState<number | undefined>(undefined);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -78,19 +86,23 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   }, [effectiveFamilyId, isAdmin]);
 
   const requestCounterRef = React.useRef<number>(0);
+  const allMembersCacheRef = React.useRef<Member[]>([]);
 
   useEffect(() => {
     if (!selectedFamilyId) return;
     const currentReqId = ++requestCounterRef.current;
 
-    // Chỉ bật loading ở lần đầu tải dữ liệu (tránh chớp tắt / nháy màn khi chuyển người trung tâm)
-    if (allMembers.length === 0) {
+    // Dùng cache members nếu có để chuyển đổi tức thì (0ms) giữa cây bình thường và người trung tâm
+    const cached = allMembersCacheRef.current.length > 0 ? allMembersCacheRef.current : undefined;
+    if (!cached) {
       setLoading(true);
     }
-    buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
+
+    buildErgoTreeFromDB(selectedFamilyId, focusMemberId, cached)
       .then(({ rootNodes, allMembers: mems }) => {
         // Chống race condition: Chỉ áp dụng kết quả của request mới nhất
         if (currentReqId === requestCounterRef.current) {
+          allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
           setLoading(false);
@@ -107,9 +119,23 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
     e.stopPropagation();
     console.log('[TreeLayout] handleCardClick on:', node.id, node.fullName);
-    // Tự động phóng to lên 1.15x để làm nổi bật người trung tâm và sơ đồ 3 đời
-    setZoomScale(1.15);
-    setFocusMemberId(node.id);
+
+    const isCurrentlyFocused = Boolean(
+      node.isFocusPerson ||
+      (focusMemberId && (
+        focusMemberId === node.id ||
+        (node.spouses && node.spouses.some((s) => s.id === focusMemberId))
+      ))
+    );
+
+    // Ấn lần đầu là chọn làm người trung tâm, ấn lần 2 thì thoát khỏi người trung tâm
+    if (isCurrentlyFocused) {
+      setFocusMemberId(undefined);
+      setZoomScale(1.0);
+    } else {
+      setZoomScale(1.15);
+      setFocusMemberId(node.id);
+    }
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
   };
 
@@ -124,8 +150,22 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   };
 
   const handleSelectFocus = (node: ErgoTreeNode) => {
-    setZoomScale(1.15);
-    setFocusMemberId(node.id);
+    const isCurrentlyFocused = Boolean(
+      node.isFocusPerson ||
+      (focusMemberId && (
+        focusMemberId === node.id ||
+        (node.spouses && node.spouses.some((s) => s.id === focusMemberId))
+      ))
+    );
+
+    // Ấn lần đầu là chọn làm người trung tâm, ấn lần 2 thì thoát khỏi người trung tâm
+    if (isCurrentlyFocused) {
+      setFocusMemberId(undefined);
+      setZoomScale(1.0);
+    } else {
+      setZoomScale(1.15);
+      setFocusMemberId(node.id);
+    }
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
   };
 
@@ -139,6 +179,44 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const handleActionToast = () => {
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
     setIsToastOpen(true);
+  };
+
+  const reloadTree = React.useCallback(() => {
+    if (!selectedFamilyId) return;
+    const currentReqId = ++requestCounterRef.current;
+    allMembersCacheRef.current = [];
+    buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
+      .then(({ rootNodes, allMembers: mems }) => {
+        if (currentReqId === requestCounterRef.current) {
+          allMembersCacheRef.current = mems;
+          setTreeNodes(rootNodes);
+          setAllMembers(mems);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[TreeLayout] Reload error:', err);
+      });
+  }, [selectedFamilyId, focusMemberId]);
+
+  const handleEdit = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'edit', node });
+  };
+
+  const handleDelete = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'delete', node });
+  };
+
+  const handleAddChild = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'addChild', node });
+  };
+
+  const handleAddSpouse = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'addSpouse', node });
+  };
+
+  const handleRelocate = (node: ErgoTreeNode) => {
+    setActionModal({ type: 'relocate', node });
   };
 
   // Quick stats calculation
@@ -218,7 +296,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               onClick={() => setTreeDirection('horizontal')}
               title="Chuyển sơ đồ ngang (Từ trái sang phải)"
             >
-              ➔ Ngang
+              Ngang
             </button>
           </div>
 
@@ -335,54 +413,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         </div>
       </div>
 
-      {/* Focus View Clean Notification */}
-      {focusMemberId && (
-        <div
-          className="focus-view-banner"
-          style={{
-            margin: '0 24px 12px 24px',
-            padding: '10px 18px',
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>
-              Đang chọn làm trung tâm mạng lưới:
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: 800, color: '#15803d' }}>
-              {allMembers.find((m) => m.id === focusMemberId)?.fullName || 'Thành viên'}
-            </span>
-            <span style={{ fontSize: '12px', color: '#16a34a' }}>
-              (Camera lướt mượt căn giữa & phóng to 115%)
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setZoomScale(1.0);
-              setFocusMemberId(undefined);
-            }}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #86efac',
-              color: '#166534',
-              borderRadius: '8px',
-              padding: '4px 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-            }}
-          >
-            ✕ Bỏ chọn tâm điểm (Quay lại xem toàn bộ cây)
-          </button>
-        </div>
-      )}
 
       {/* Canvas Area */}
       {loading ? (
@@ -409,10 +439,30 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         x={contextMenu.x}
         y={contextMenu.y}
         node={contextMenu.member as ErgoTreeNode}
+        focusMemberId={focusMemberId}
         onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
         onSelectFocus={handleSelectFocus}
         onViewBio={handleViewBio}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onAddChild={handleAddChild}
+        onAddSpouse={handleAddSpouse}
+        onRelocate={handleRelocate}
         onActionToast={handleActionToast}
+      />
+
+      {/* Tree Action Modals (Edit, Delete, Add Child, Add Spouse, Relocate) */}
+      <TreeActionModals
+        type={actionModal.type}
+        node={actionModal.node}
+        familyId={selectedFamilyId}
+        allMembers={allMembers}
+        onClose={() => setActionModal({ type: null, node: null })}
+        onSuccess={(msg) => {
+          setSuccessToastMessage(msg);
+          reloadTree();
+          setTimeout(() => setSuccessToastMessage(null), 4000);
+        }}
       />
 
       {/* Notification Toast */}
@@ -420,6 +470,46 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         isOpen={isToastOpen}
         onClose={() => setIsToastOpen(false)}
       />
+
+      {/* Interactive Success Alert Banner */}
+      {successToastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            background: 'linear-gradient(135deg, #15803d, #16a34a)',
+            color: '#ffffff',
+            padding: '14px 22px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px -5px rgba(22, 163, 74, 0.4)',
+            fontSize: '14px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            zIndex: 10000,
+            animation: 'modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+            <span>{successToastMessage}</span>
+          <button
+            onClick={() => setSuccessToastMessage(null)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '16px',
+              cursor: 'pointer',
+              marginLeft: '8px',
+              padding: 0,
+              opacity: 0.8,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 };

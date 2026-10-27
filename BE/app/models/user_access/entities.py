@@ -104,6 +104,9 @@ class CredentialMetadata(Base):
         nullable=False,
         server_default=text("'FIREBASE'::character varying"),
     )
+    password_hash: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
     password_changed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

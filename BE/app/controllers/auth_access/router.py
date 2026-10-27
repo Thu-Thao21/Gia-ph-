@@ -63,52 +63,80 @@ async def create_session(
 
 
 from datetime import datetime, timezone, timedelta
+import bcrypt
+from fastapi import HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.security.tokens import generate_session_token, hash_session_token
-from app.models.user_access.entities import User
+from app.models.user_access.entities import User, CredentialMetadata
 from app.schemas.auth import SessionUser
 
 
-class DevSessionRequest(BaseModel):
-    email: str = "dev-sa@example.test"
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 
 @router.post(
-    "/dev-session",
-    status_code=201,
+    "/login",
+    status_code=200,
     response_model=SessionCreateResponse,
 )
-async def dev_session(
-    body: DevSessionRequest,
+async def login(
+    body: LoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
     users: UserAccessRepository = Depends(get_user_access_repo),
 ) -> SessionCreateResponse:
-    if not settings.DEBUG:
-        raise AppError(ErrorCode.FORBIDDEN)
-
-    target_email = body.email.strip().lower()
-    user_map = {
-        "admin": "thuthaor120608@gmail.com",
-        "thuthao": "thuthaor120608@gmail.com",
-        "thangvo": "thangvo250904@gmail.com",
-        "phuchau": "maiphuchau144@gmail.com",
-        "giahuy": "huy13052005@gmail.com",
-        "minhquan": "quankophaiwibu@gmail.com",
-        "truongtoc_vo": "thangvo250904@gmail.com",
-        "truongtoc_mai": "maiphuchau144@gmail.com",
-    }
-    if target_email in user_map:
-        target_email = user_map[target_email]
-
-    stmt = select(User).where((User.email == target_email) | (User.username == target_email))
+    ident = body.email.strip().lower()
+    stmt = (
+        select(User, CredentialMetadata)
+        .outerjoin(CredentialMetadata, User.user_id == CredentialMetadata.user_id)
+        .where((func.lower(User.email) == ident) | (func.lower(User.username) == ident))
+    )
     res = await db.execute(stmt)
-    user = res.scalar_one_or_none()
-    if not user:
-        raise AppError(ErrorCode.ACCOUNT_BLOCKED)
+    row = res.first()
+    if not row:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "AUTHENTICATION_FAILED", "message": "Email hoặc tên đăng nhập không tồn tại trong hệ thống."}
+        )
+    user, cred = row
+
+    if user.status != "ACTIVE":
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "ACCOUNT_BLOCKED", "message": "Tài khoản của bạn hiện đang bị khóa hoặc chưa kích hoạt."}
+        )
+
+    # Verify password if credential_metadata has password_hash
+    if cred and cred.password_hash:
+        try:
+            valid = bcrypt.checkpw(body.password.encode("utf-8"), cred.password_hash.encode("utf-8"))
+        except Exception:
+            valid = False
+        if not valid:
+            cred.failed_login_count += 1
+            await db.commit()
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "AUTHENTICATION_FAILED", "message": "Mật khẩu không chính xác."}
+            )
+
+    # Check Clan Leader requirement:
+    # Trưởng tộc (BUSINESS_OWNER) chỉ được đăng nhập bằng tài khoản @giapha.com
+    active_roles = await users.list_active_role_grants(user.user_id)
+    is_business_owner = any(r[0] == "BUSINESS_OWNER" for r in active_roles)
+    is_sa = any(r[0] == "SYSTEM_ADMIN" for r in active_roles)
+
+    if is_business_owner and not is_sa:
+        if not user.email.lower().endswith("@giapha.com"):
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "FORBIDDEN", "message": "Tài khoản Trưởng tộc bắt buộc phải sử dụng email định danh @giapha.com do hệ thống cấp."}
+            )
 
     now = datetime.now(timezone.utc)
     token = generate_session_token()
@@ -124,6 +152,8 @@ async def dev_session(
         user_agent=client.user_agent,
     )
     user.last_login_at = now
+    if cred:
+        cred.failed_login_count = 0
     await users.add_login_history(
         user_id=user.user_id,
         identifier=user.email,
@@ -144,8 +174,9 @@ async def dev_session(
             email=user.email,
             status=user.status,
         ),
-        requires_password_change=False,
+        requires_password_change=cred.must_change_password if cred else False,
     )
+
 
 
 # The three routes below are the ONLY ones using get_principal_allow_restricted.
@@ -210,7 +241,14 @@ async def change_password(
 
 import uuid
 from fastapi import HTTPException
-from app.core.utils.otp_service import generate_otp, verify_otp, is_email_verified, send_otp_via_email
+from app.core.utils.otp_service import (
+    can_send_otp,
+    generate_otp,
+    verify_otp,
+    is_email_verified,
+    consume_verified_email,
+    send_otp_via_email,
+)
 
 
 class RegisterSendOtpRequest(BaseModel):
@@ -240,7 +278,7 @@ async def register_send_otp(
     users: UserAccessRepository = Depends(get_user_access_repo),
 ):
     email = body.email.strip().lower()
-    if not (email.endswith("@gmail.com") or email.endswith("@example.test") or email.endswith(".test")):
+    if not email.endswith("@gmail.com"):
         raise HTTPException(
             status_code=422,
             detail={"code": "VALIDATION_ERROR", "message": "Email bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com"}
@@ -251,8 +289,19 @@ async def register_send_otp(
             status_code=409,
             detail={"code": "EMAIL_ALREADY_EXISTS", "message": "Địa chỉ Gmail này đã được sử dụng để đăng ký tài khoản."}
         )
+    allowed, wait_sec = can_send_otp(email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "TOO_MANY_REQUESTS", "message": f"Vui lòng đợi {wait_sec} giây trước khi yêu cầu gửi lại mã OTP."}
+        )
     otp = generate_otp(email)
-    send_otp_via_email(email, otp)
+    delivered = send_otp_via_email(email, otp)
+    if not delivered:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "SERVICE_UNAVAILABLE", "message": "Hệ thống gửi email OTP đang bận hoặc gặp lỗi. Vui lòng thử lại sau."}
+        )
     return {"message": "Mã xác thực 6 số đã được gửi tới Gmail của bạn. Vui lòng kiểm tra hộp thư."}
 
 
@@ -262,7 +311,7 @@ async def register_send_otp(
 )
 async def register_verify_otp(body: RegisterVerifyOtpRequest):
     email = body.email.strip().lower()
-    if not (email.endswith("@gmail.com") or email.endswith("@example.test") or email.endswith(".test")):
+    if not email.endswith("@gmail.com"):
         raise HTTPException(
             status_code=422,
             detail={"code": "VALIDATION_ERROR", "message": "Email bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com"}
@@ -271,7 +320,7 @@ async def register_verify_otp(body: RegisterVerifyOtpRequest):
     if not success:
         raise HTTPException(
             status_code=400,
-            detail={"code": "INVALID_OTP", "message": "Mã xác thực OTP không đúng hoặc đã hết hạn."}
+            detail={"code": "INVALID_OTP", "message": "Mã xác thực OTP không đúng, đã quá số lần thử hoặc đã hết hạn (5 phút)."}
         )
     return {"message": "Xác thực Gmail thành công."}
 
@@ -289,7 +338,7 @@ async def register_public(
     provider: IdentityProvider = Depends(get_identity_provider),
 ) -> SessionCreateResponse:
     email = body.email.strip().lower()
-    if not (email.endswith("@gmail.com") or email.endswith("@example.test") or email.endswith(".test")):
+    if not email.endswith("@gmail.com"):
         raise HTTPException(
             status_code=422,
             detail={"code": "VALIDATION_ERROR", "message": "Email bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com"}
@@ -314,7 +363,7 @@ async def register_public(
     user_id = uuid.uuid4()
     firebase_uid = f"usr_{uuid.uuid4().hex[:16]}"
 
-    # Try creating user in identity provider if available
+    # Try creating user in identity provider if configured
     try:
         provider_user = await provider.create_user(
             uid=firebase_uid,
@@ -324,8 +373,8 @@ async def register_public(
         )
         if provider_user and hasattr(provider_user, "uid") and provider_user.uid:
             firebase_uid = provider_user.uid
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Identity provider creation skipped or failed: %s", e)
 
     # Create user in PostgreSQL
     user = await users.create_user_account(
@@ -344,6 +393,10 @@ async def register_public(
 
     cred = await users.add_credential_metadata(user_id, now=now)
     cred.must_change_password = False
+    cred.password_hash = bcrypt.hashpw(body.password.encode("utf-8"), bcrypt.gensalt(12)).decode("utf-8")
+
+    # Consume the verified state
+    consume_verified_email(email)
 
     # Issue session token
     token = generate_session_token()

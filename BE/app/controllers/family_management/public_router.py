@@ -123,15 +123,27 @@ class VerifyOtpRequest(BaseModel):
 async def send_registration_otp(data: SendOtpRequest):
     """Sends a 6-digit OTP to the user's real Gmail address."""
     clean_email = data.email.strip().lower()
-    if not (clean_email.endswith("@gmail.com") or clean_email.endswith("@example.test")):
+    if not clean_email.endswith("@gmail.com"):
         raise HTTPException(
             status_code=400,
             detail="Email bắt buộc phải là địa chỉ Gmail có đuôi @gmail.com",
         )
 
-    from app.core.utils.otp_service import generate_otp, send_otp_via_email
+    from app.core.utils.otp_service import can_send_otp, generate_otp, send_otp_via_email
+    allowed, wait_sec = can_send_otp(clean_email)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Vui lòng đợi {wait_sec} giây trước khi yêu cầu gửi lại mã OTP.",
+        )
+
     otp_code = generate_otp(clean_email)
-    send_otp_via_email(clean_email, otp_code)
+    delivered = send_otp_via_email(clean_email, otp_code)
+    if not delivered:
+        raise HTTPException(
+            status_code=503,
+            detail="Hệ thống gửi thư tạm thời bận hoặc gặp lỗi khi chuyển tiếp mã OTP. Vui lòng thử lại sau.",
+        )
 
     return {
         "success": True,
@@ -147,7 +159,7 @@ async def verify_registration_otp(data: VerifyOtpRequest):
     if not is_valid:
         raise HTTPException(
             status_code=400,
-            detail="Mã OTP không chính xác hoặc đã hết hạn (hiệu lực 5 phút).",
+            detail="Mã OTP không chính xác, đã vượt quá số lần thử hoặc đã hết hạn (5 phút).",
         )
 
     return {

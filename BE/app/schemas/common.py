@@ -102,12 +102,10 @@ def _clean_email(value: str) -> str:
     if len(value) > MAX_TEXT_255:
         raise ValueError("invalid length after normalization")
     val_lower = value.strip().lower()
-    # Allow @gmail.com (member/admin), @giapha.com (clan leader), and test fixture domains
+    # Allow @gmail.com (member/admin/sa) and @giapha.com (clan leader)
     if not (
         val_lower.endswith("@gmail.com")
         or val_lower.endswith("@giapha.com")
-        or val_lower.endswith("@example.test")
-        or val_lower.endswith(".test")
     ):
         raise ValueError("Email bắt buộc phải là địa chỉ Gmail (@gmail.com) hoặc tài khoản Trưởng tộc (@giapha.com)")
     return value

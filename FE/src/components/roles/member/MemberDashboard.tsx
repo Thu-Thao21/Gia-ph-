@@ -20,13 +20,13 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   const { account } = useAuth();
   const isFamilyOwner = userRole === 'Chủ dòng họ';
 
-  const clanName = account?.clan_name || account?.memberships?.[0]?.clan_name || 'Võ Đại Tộc (Gò Nổi - Quảng Nam)';
+  const clanName = account?.clan_name || account?.memberships?.[0]?.clan_name || 'Dòng họ';
   const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id;
 
   const [familyBranch, setFamilyBranch] = useState<string>(clanName);
-  const [generationLevel, setGenerationLevel] = useState<string>('Đời thứ 3');
-  const [totalMembers, setTotalMembers] = useState<number>(14);
-  const [linkedFamiliesCount, setLinkedFamiliesCount] = useState<number>(2);
+  const [generationLevel, setGenerationLevel] = useState<string>('--');
+  const [totalMembers, setTotalMembers] = useState<number>(0);
+  const [linkedFamiliesCount, setLinkedFamiliesCount] = useState<number>(0);
 
   useEffect(() => {
     if (clanName) {

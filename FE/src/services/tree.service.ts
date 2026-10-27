@@ -6,10 +6,14 @@ import type { ErgoTreeNode, SpouseNode } from '../types/tree';
 export async function buildErgoTreeFromDB(
   familyId?: string,
   focusMemberId?: string,
+  cachedMembers?: Member[],
 ): Promise<{ rootNodes: ErgoTreeNode[]; allMembers: Member[] }> {
   try {
-    let res = await fetchMembers({ familyId, limit: 1000 });
-    let allMembers = Array.isArray(res?.items) ? res.items : [];
+    let allMembers = (cachedMembers && cachedMembers.length > 0) ? cachedMembers : [];
+    if (allMembers.length === 0) {
+      let res = await fetchMembers({ familyId, limit: 1000 });
+      allMembers = Array.isArray(res?.items) ? res.items : [];
+    }
 
     if (allMembers.length === 0) {
       return { rootNodes: [], allMembers: [] };

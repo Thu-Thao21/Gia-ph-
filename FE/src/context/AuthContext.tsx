@@ -114,23 +114,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (payload: { emailOrPhone: string; password: string }): Promise<AccountProfile> => {
     const ident = payload.emailOrPhone.trim().toLowerCase();
-    const isDevIdent =
-      ident === 'thuthaor120608@gmail.com' ||
-      ident === 'admin' ||
-      ident === 'quankophaiwibu@gmail.com' ||
-      ident === 'minhquan' ||
-      ident === 'thangvo250904@gmail.com' ||
-      ident === 'thangvo' ||
-      ident === 'huy13052005@gmail.com' ||
-      ident === 'giahuy' ||
-      ident === 'maiphuchau144@gmail.com' ||
-      ident === 'phuchau' ||
-      ident === 'truongtoc_vo' ||
-      ident === 'truongtoc_mai' ||
-      ident.endsWith('@giapha.com');
 
-    if (isDevIdent) {
-      const res = await apiClient.post<SessionCreateResponse>('/auth/dev-session', { email: ident });
+    // 1. Xác thực tài khoản và mật khẩu trực tiếp qua Backend đối chiếu với Neon DB
+    try {
+      const res = await apiClient.post<SessionCreateResponse>('/auth/login', {
+        email: ident,
+        password: payload.password,
+      });
       setSession({ accessToken: res.data.access_token, expiresAt: res.data.expires_at });
       try {
         const profile = await fetchCurrentAccount();
@@ -140,10 +130,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const info = readApiError(err);
         if (info.code === 'PASSWORD_CHANGE_REQUIRED') {
           const restrictedProfile: AccountProfile = {
-            id: 'dev-user',
-            firebase_uid: 'dev-user',
+            id: res.data.user.user_id,
+            firebase_uid: res.data.user.user_id,
             email: ident,
-            display_name: ident,
+            display_name: res.data.user.display_name,
             email_verified: true,
             phone_verified: false,
             status: 'pending',
@@ -156,14 +146,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         throw err;
       }
+    } catch (apiErr: any) {
+      // 2. Nếu Backend trả về lỗi cụ thể (sai mật khẩu, bị khóa, sai định dạng), ném lỗi rõ ràng
+      const message =
+        apiErr?.response?.data?.detail?.message ||
+        apiErr?.response?.data?.error?.message ||
+        apiErr?.message ||
+        'Tài khoản hoặc mật khẩu không chính xác trong hệ thống.';
+      throw new Error(message);
     }
-
-    const profile = await loginWithEmailPassword({
-      email: payload.emailOrPhone,
-      password: payload.password,
-    });
-    setAccount(profile);
-    return profile;
   };
 
   useEffect(() => {
