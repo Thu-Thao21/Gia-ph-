@@ -44,11 +44,13 @@ class AppError(Exception):
         message: str | None = None,
         *,
         headers: Mapping[str, str] | None = None,
+        details: Mapping[str, object] | None = None,
     ) -> None:
         self.code = code
         self.message = message or DEFAULT_ERROR_MESSAGE[code]
         self.status_code = ERROR_HTTP_STATUS[code]
         self.headers = dict(headers or {})
+        self.details = dict(details) if details else None  # numbers only, never user data
         super().__init__(code.value)  # keep str(exc) free of user data
 
 
@@ -64,6 +66,7 @@ def error_response(
     *,
     status_code: int | None = None,
     headers: Mapping[str, str] | None = None,
+    details: Mapping[str, object] | None = None,
 ) -> JSONResponse:
     rid = _request_id(request)
     body = ErrorResponse(
@@ -71,19 +74,21 @@ def error_response(
             code=code,
             message=message or DEFAULT_ERROR_MESSAGE[code],
             request_id=rid,
+            details=dict(details) if details else None,
         )
     )
     out_headers = {REQUEST_ID_HEADER: rid, **(headers or {})}
     return JSONResponse(
         status_code=status_code or ERROR_HTTP_STATUS[code],
-        content=body.model_dump(mode="json"),
+        content=body.model_dump(mode="json", exclude_none=True),
         headers=out_headers,
     )
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     return error_response(
-        request, exc.code, exc.message, status_code=exc.status_code, headers=exc.headers
+        request, exc.code, exc.message, status_code=exc.status_code, headers=exc.headers,
+        details=exc.details,
     )
 
 
@@ -115,7 +120,9 @@ async def validation_exception_handler(
     message = DEFAULT_ERROR_MESSAGE[ErrorCode.VALIDATION_ERROR]
     if locations:
         message = f"{message} Fields: {', '.join(locations[:20])}"
-    return error_response(request, ErrorCode.VALIDATION_ERROR, message)
+    # details.fields: the same field locations as a list, so a form can mark each field (Mốc M5c).
+    details = {"fields": locations[:20]} if locations else None
+    return error_response(request, ErrorCode.VALIDATION_ERROR, message, details=details)
 
 
 async def database_unavailable_handler(request: Request, exc: Exception) -> JSONResponse:

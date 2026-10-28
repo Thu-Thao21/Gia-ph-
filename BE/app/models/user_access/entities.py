@@ -48,6 +48,9 @@ class User(Base):
     username: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    # Mốc M5 (migration 0009): the real Gmail of a clan Owner, whose `email` is a @giapha.com login
+    # identifier. Every mail meant for the Owner (temporary password, password reset) goes here.
+    contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(30),
@@ -199,6 +202,31 @@ class LoginHistory(Base):
     )
 
 
+class UsedPasswordResetCode(Base):
+    """Maps public.used_password_reset_codes (migration 0006, Mốc M4b): reset codes already used.
+
+    code_hash = SHA-256 hex of the code (never the code). The primary key is the unique constraint
+    that makes "use a code once" race-safe."""
+
+    __tablename__ = "used_password_reset_codes"
+    __table_args__ = (
+        CheckConstraint("code_hash ~ '^[0-9a-f]{64}$'", name="used_password_reset_codes_code_hash_check"),
+        Index("idx_used_password_reset_codes_user", "user_id", text("used_at DESC")),
+    )
+
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+
+
 class AuditLog(Base):
     """Maps public.audit_logs (Neon inspect)."""
 
@@ -340,3 +368,90 @@ class UserRole(Base):
     revoked_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class EmailOtpChallenge(Base):
+    """Maps public.email_otp_challenges (migration 0007, Mốc M5-1): one e-mail OTP, hashed.
+
+    No e-mail address, no code, no token is stored: email_hash and code_hash are HMACs keyed by
+    OTP_HMAC_KEY, token_hash the SHA-256 of a random one-time token."""
+
+    __tablename__ = "email_otp_challenges"
+    __table_args__ = (
+        CheckConstraint(
+            "purpose IN ('MEMBER_REGISTRATION', 'BUSINESS_REGISTRATION')",
+            name="email_otp_challenges_purpose_check",
+        ),
+        CheckConstraint("email_hash ~ '^[0-9a-f]{64}$'", name="email_otp_challenges_email_hash_check"),
+        CheckConstraint("code_hash ~ '^[0-9a-f]{64}$'", name="email_otp_challenges_code_hash_check"),
+        CheckConstraint(
+            "token_hash IS NULL OR token_hash ~ '^[0-9a-f]{64}$'",
+            name="email_otp_challenges_token_hash_check",
+        ),
+        CheckConstraint("failed_attempts >= 0", name="email_otp_challenges_failed_attempts_check"),
+        UniqueConstraint("token_hash", name="email_otp_challenges_token_hash_key"),
+        Index("idx_email_otp_challenges_lookup", "purpose", "email_hash", text("created_at DESC")),
+    )
+
+    challenge_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    email_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    invalidated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class GmailRegistryEntry(Base):
+    """Maps public.gmail_registry (migration 0008, Mốc M5): a real Gmail registers ONCE.
+
+    One ACTIVE row per normalized_email (partial unique index); see app.core.utils.gmail_registry."""
+
+    __tablename__ = "gmail_registry"
+    __table_args__ = (
+        CheckConstraint(
+            "owner_type IN ('member', 'business_registration', 'clan_owner_contact')",
+            name="gmail_registry_owner_type_check",
+        ),
+        CheckConstraint("status IN ('active', 'released', 'duplicate')", name="gmail_registry_status_check"),
+        CheckConstraint(
+            "user_id IS NOT NULL OR registration_id IS NOT NULL", name="gmail_registry_owner_check"
+        ),
+        CheckConstraint(
+            "normalized_email NOT LIKE '%@giapha.com'", name="gmail_registry_not_login_id_check"
+        ),
+        Index(
+            "uq_gmail_registry_active_email",
+            "normalized_email",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+        Index("idx_gmail_registry_user", "user_id"),
+        Index("idx_gmail_registry_registration", "registration_id"),
+    )
+
+    registry_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    normalized_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    original_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    owner_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=True
+    )
+    registration_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("business_registrations.registration_id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    note: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    released_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

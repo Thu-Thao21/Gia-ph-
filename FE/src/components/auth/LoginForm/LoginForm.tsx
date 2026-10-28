@@ -4,20 +4,21 @@ import PasswordInput from '../PasswordInput/PasswordInput';
 import type { AccountProfile } from '../../../context/AuthContext';
 import './LoginForm.css';
 
-import { loginWithGoogle, loginWithFacebook } from '../../../services/auth.service';
-
 export interface LoginFormProps {
   onSwitchToRegister: () => void;
   onSwitchToForgotPassword?: () => void;
   onSuccess: (profile?: AccountProfile) => void;
+  /** Thông báo hiển thị trong thẻ, ngay trên form (vd: sau khi đặt lại mật khẩu thành công). */
+  notice?: string;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onSwitchToRegister,
   onSwitchToForgotPassword,
   onSuccess,
+  notice,
 }) => {
-  const { login, refreshAccount } = useAuth();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({ emailOrPhone: '', password: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,38 +53,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError('');
-    setIsSubmitting(true);
-    try {
-      const profile = await loginWithGoogle();
-      if (profile.id) {
-        localStorage.removeItem('auth_token');
-        onSuccess(await refreshAccount() || profile);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đăng nhập Google thất bại.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    setError('');
-    setIsSubmitting(true);
-    try {
-      const profile = await loginWithFacebook();
-      if (profile.id) {
-        localStorage.removeItem('auth_token');
-        onSuccess(await refreshAccount() || profile);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đăng nhập Facebook thất bại.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="login-form-card">
       <div className="login-form-glow-top" />
@@ -96,6 +65,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <h1 className="login-form-title">Chào mừng bạn trở lại!</h1>
         <p className="login-form-subtitle">Đăng nhập bằng tài khoản của bạn. Hệ thống sẽ tự xác định quyền truy cập.</p>
       </div>
+
+      {notice ? (
+        <p role="status" data-testid="login-notice" className="login-form-notice">
+          {notice}
+        </p>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="login-form-body">
         <div className="login-form-group">
@@ -148,23 +123,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <p className="login-form-footer-note">
           Quyền truy cập được xác định theo vai trò đã cấp cho tài khoản.
         </p>
-
-        <div className="login-form-divider">
-          <span className="login-form-divider-line" />
-          <span className="login-form-divider-text">HOẶC</span>
-          <span className="login-form-divider-line" />
-        </div>
-
-        <div className="login-form-socials">
-          <button type="button" onClick={handleGoogleLogin} className="btn-social-google">
-            <span className="btn-social-icon-google">G</span>
-            <span>Google</span>
-          </button>
-          <button type="button" onClick={handleFacebookLogin} className="btn-social-facebook">
-            <span className="btn-social-icon-facebook">F</span>
-            <span>Facebook</span>
-          </button>
-        </div>
+        {/* Nhóm chốt (Mốc M1): chỉ đăng nhập bằng email/tên đăng nhập + mật khẩu (POST /auth/login). */}
       </form>
 
       <div className="login-form-switch">

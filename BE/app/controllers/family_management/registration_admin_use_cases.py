@@ -34,6 +34,7 @@ from app.dependencies.auth import Principal
 from app.models.family.repository import FamilyRepository
 from app.models.user_access.repository import UserAccessRepository
 from app.schemas.business import (
+    SimilarClanItem,
     BusinessRegistrationDetail,
     BusinessRegistrationListQuery,
     BusinessRegistrationSummary,
@@ -50,6 +51,8 @@ logger = logging.getLogger("mfg.registration_admin")
 
 PENDING = "PENDING"
 DECISION_STATUS = {"APPROVED": "APPROVED", "REJECTED": "REJECTED"}
+# A registration in one of these gives its representative Gmail back to the registry (Mốc M5).
+GMAIL_RELEASING_STATUSES = ("REJECTED", "CANCELLED")
 
 
 def _now() -> datetime:
@@ -102,6 +105,7 @@ async def get_registration_detail(
     history = await family.list_registration_status_history(registration_id)
     attachments = await family.list_registration_attachments(registration_id)
     clan = await family.get_clan_by_registration_id(registration_id)
+    similar = await similar_clans(family, registration)
     return BusinessRegistrationDetail(
         registration_id=registration.registration_id,
         clan_name=registration.clan_name,
@@ -118,6 +122,7 @@ async def get_registration_detail(
         rejection_reason=registration.rejection_reason,
         updated_at=registration.updated_at,
         clan_id=clan.clan_id if clan is not None else None,
+        similar_clans=similar,
         status_history=[
             RegistrationStatusHistoryItem(
                 from_status=h.from_status,
@@ -191,6 +196,9 @@ async def review_registration(
         reason=reason,
         now=changed_at,
     )
+    if new_status in GMAIL_RELEASING_STATUSES:  # Mốc M5: the Gmail is free again, same transaction
+        await users.gmail_release_registration(registration_id, changed_at)
+        await family.clan_key_release_registration(registration_id, changed_at)  # M5c: the clan key too
     await users.add_audit_log(
         actor_id=principal.user_id,
         action="registration.review",
@@ -216,7 +224,59 @@ async def review_registration(
     )
 
 
+# Vietnamese sentences of the soft warnings (Mốc M5c), keyed by clan_identity.similarity_reason().
+SIMILAR_CLAN_MESSAGES = {
+    "same_clan_key": "Trùng tên và quê gốc với một dòng họ / hồ sơ khác (dữ liệu cũ đánh dấu trùng).",
+    "same_name_other_origin": "Cùng tên dòng họ nhưng khác quê gốc.",
+    "similar_name_shared_origin": "Tên gần giống (khác dấu cách) và quê gốc trùng một phần.",
+}
+
+
+async def similar_clans(family: FamilyRepository, registration) -> list[SimilarClanItem]:
+    """Soft warnings for the System Admin (Mốc M5c): clans / registrations that look like this one.
+    Never blocking; only what is needed to look at them (no representative's personal data)."""
+    from app.core.utils import clan_identity
+
+    n = clan_identity.name_key(registration.clan_name)
+    o = clan_identity.origin_key(registration.origin_place)
+    items: list[SimilarClanItem] = []
+    for row in await family.clan_identity_lookalikes(n, clan_identity.compact(n)):
+        if row["registration_id"] == registration.registration_id:
+            continue
+        if row["name_key"] == n and row["origin_key"] == o:
+            reason = "same_clan_key"
+        else:
+            reason = clan_identity.similarity_reason(n, o, row["name_key"], row["origin_key"])
+        if reason is None:
+            continue
+        is_clan = row["clan_id"] is not None
+        items.append(SimilarClanItem(
+            kind="clan" if is_clan else "registration",
+            registration_id=row["registration_id"],
+            clan_id=row["clan_id"],
+            clan_code=row["clan_code"] if is_clan else None,
+            clan_name=(row["clan_name"] if is_clan else None) or row["registration_clan_name"] or "",
+            origin_place=row["registration_origin"],
+            status=(row["clan_status"] if is_clan else row["registration_status"]) or "",
+            reason=reason,
+            message=SIMILAR_CLAN_MESSAGES[reason],
+        ))
+    return items
+
+
+async def owner_login_id(users: UserAccessRepository, clan_code: str) -> str:
+    """Mốc M5c: "<clan code>@giapha.com", then "-2", "-3"... when that e-mail exists already."""
+    from app.core.utils import clan_identity
+
+    for candidate in clan_identity.login_id_candidates(clan_code):
+        if await users.get_user_by_email_ci(candidate) is None:
+            return candidate
+    raise AppError(ErrorCode.INTERNAL_ERROR, "No free login ID for this clan code.")
+
+
 def generate_clan_leader_email(clan_name: str, origin_place: str | None = None) -> str:
+    """Before Mốc M5c: "<name>.<origin>@giapha.com". Kept for reference; new Owners get
+    owner_login_id(clan_code) and the Owners provisioned before keep their login ID."""
     import unicodedata, re
 
     def to_slug(text: str) -> str:
@@ -246,15 +306,20 @@ async def _provision_owner_via_firebase_rest(
     applicant_phone: str | None,
     origin_place: str | None,
     sender: any,
+    clan_code: str,
 ) -> tuple[str, str, datetime, str]:
+    from app.core.utils import clan_identity
     from app.dependencies.permissions import BUSINESS_OWNER_ROLE
 
-    clan_leader_email = generate_clan_leader_email(clan_name, origin_place)
-    prefix, domain = clan_leader_email.split("@", 1)
-    counter = 1
-    while await users.get_user_by_email_ci(clan_leader_email) is not None:
-        clan_leader_email = f"{prefix}{counter}@{domain}"
-        counter += 1
+    # Mốc M5c: the login ID comes from the clan code; a Firebase account already holding one is
+    # skipped like a DB user holding it.
+    login_ids = [c for c in clan_identity.login_id_candidates(clan_code)]
+    taken = set()
+    for candidate in login_ids:
+        if await users.get_user_by_email_ci(candidate) is not None:
+            taken.add(candidate)
+    free_ids = iter([c for c in login_ids if c not in taken])
+    clan_leader_email = next(free_ids)
 
     chars = string.ascii_letters + string.digits + "!@#$%"
     temp_pass = "".join(secrets.choice(chars) for _ in range(16))
@@ -296,8 +361,7 @@ async def _provision_owner_via_firebase_rest(
 
             error_msg = data.get("error", {}).get("message", "")
             if "EMAIL_EXISTS" in error_msg:
-                clan_leader_email = f"{prefix}{counter}@{domain}"
-                counter += 1
+                clan_leader_email = next(free_ids)
             else:
                 logger.error("Firebase REST signUp failed: %s", data)
                 raise AppError(ErrorCode.PROVIDER_UNAVAILABLE, f"Firebase Auth error: {error_msg}")
@@ -313,7 +377,7 @@ async def _provision_owner_via_firebase_rest(
         user_id = existing_db_user.user_id
     else:
         user_id = uuid.uuid4()
-        await users.create_user_account(
+        owner = await users.create_user_account(
             user_id=user_id,
             firebase_uid=firebase_uid,
             email=clan_leader_email,
@@ -322,6 +386,13 @@ async def _provision_owner_via_firebase_rest(
             status="PENDING",
             first_login_required=True,
             now=now,
+        )
+        from app.controllers.family_management.owner_provisioning_use_cases import bind_owner_contact
+
+        clan = await family.get_clan_by_id(clan_id)
+        await bind_owner_contact(
+            users=users, owner=owner, registration_id=clan.registration_id if clan else None,
+            contact_email=applicant_email, actor_id=principal.user_id, clan_id=clan_id, now=now,
         )
         cred = await users.add_credential_metadata(user_id, now=now)
         cred.must_change_password = True
@@ -444,12 +515,7 @@ async def approve_and_provision_registration(
     expires_at = None
     delivery_status = None
     if existing_owner is None:
-        clan_leader_email = generate_clan_leader_email(reg_clan_name, reg_origin_place)
-        prefix, domain = clan_leader_email.split("@", 1)
-        counter = 1
-        while await users.get_user_by_email_ci(clan_leader_email) is not None:
-            clan_leader_email = f"{prefix}{counter}@{domain}"
-            counter += 1
+        clan_leader_email = await owner_login_id(users, clan.clan_code)  # Mốc M5c
 
         provision_success = False
         if getattr(provider, "admin_api_enabled", False):
@@ -478,17 +544,8 @@ async def approve_and_provision_registration(
                 delivery_status = prov.response.email_delivery_status
                 owner_email = prov.response.owner_email or clan_leader_email
                 owner_name = prov.response.owner_display_name or rep_name
-
-                mail_res = await sender.send_owner_temporary_password(
-                    to_email=rep_email,
-                    display_name=rep_name,
-                    temporary_password=temp_pass or "",
-                    expires_at=expires_at or _now(),
-                    clan_name=clan.name,
-                    account_email=owner_email,
-                )
-                if mail_res.status:
-                    delivery_status = mail_res.status
+                # provision_owner already mailed the temporary password ONCE, to the registration's
+                # representative_email (Mốc M5-0): it is not sent a second time from here.
                 provision_success = True
             except AppError as e:
                 if e.code != ErrorCode.PROVIDER_UNAVAILABLE:
@@ -508,6 +565,7 @@ async def approve_and_provision_registration(
                 applicant_phone=rep_phone,
                 origin_place=reg_origin_place,
                 sender=sender,
+                clan_code=clan.clan_code,
             )
             owner_name = rep_name
     else:

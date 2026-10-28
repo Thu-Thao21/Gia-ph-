@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuthContext();
+  const { isAuthenticated, loading, account } = useAuthContext();
 
   if (loading) {
     return (
@@ -21,6 +21,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // [L-17] Phiên hạn chế: BE chỉ cho /auth/me, /auth/change-password, /auth/logout, nên đi thẳng
+  // tới màn đổi mật khẩu thay vì vào dashboard.
+  if (account?.requires_password_change) {
+    return <Navigate to="/change-password" replace />;
   }
 
   return <>{children}</>;

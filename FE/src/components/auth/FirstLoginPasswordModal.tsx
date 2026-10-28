@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useAuthContext } from '../../context/AuthContext';
+import { useAuthContext, type AccountProfile } from '../../context/AuthContext';
+import { passwordPolicyError } from '../../services/auth.service';
 import './FirstLoginPasswordModal.css';
 
 interface FirstLoginPasswordModalProps {
   isOpen: boolean;
-  onSuccess: () => void;
+  /** Nhận tài khoản sau khi đổi (phiên mới do BE cấp, không còn hạn chế). */
+  onSuccess: (profile: AccountProfile) => void;
   onCancel?: () => void;
 }
 
@@ -30,8 +32,9 @@ export const FirstLoginPasswordModal: React.FC<FirstLoginPasswordModalProps> = (
       setErrorMsg('Vui lòng nhập mật khẩu tạm thời hiện tại.');
       return;
     }
-    if (newPassword.length < 6) {
-      setErrorMsg('Mật khẩu mới phải có ít nhất 6 ký tự.');
+    const policyError = passwordPolicyError(newPassword);
+    if (policyError) {
+      setErrorMsg(policyError);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -45,9 +48,9 @@ export const FirstLoginPasswordModal: React.FC<FirstLoginPasswordModalProps> = (
 
     setLoading(true);
     try {
-      await changePassword(currentPassword, newPassword);
+      const profile = await changePassword(currentPassword, newPassword);
       setLoading(false);
-      onSuccess();
+      onSuccess(profile);
     } catch (err: any) {
       setLoading(false);
       setErrorMsg(err?.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.');
@@ -88,7 +91,7 @@ export const FirstLoginPasswordModal: React.FC<FirstLoginPasswordModalProps> = (
               className="first-pwd-input"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường và số"
               required
             />
           </div>

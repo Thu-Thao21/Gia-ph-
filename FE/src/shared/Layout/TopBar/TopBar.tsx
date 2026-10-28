@@ -170,11 +170,11 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="topbar-profile-role">{userRole}</div>
               </div>
 
-              <button className="topbar-menu-item" onClick={() => handleNavigate('/clan-admin/profile')}>
+              <button className="topbar-menu-item" onClick={() => handleNavigate('/user')}>
                 Hồ sơ cá nhân
               </button>
 
-              <button className="topbar-menu-item" onClick={() => handleNavigate('/clan-admin/settings')}>
+              <button className="topbar-menu-item" onClick={() => handleNavigate('/user')}>
                 Cài đặt tài khoản
               </button>
 

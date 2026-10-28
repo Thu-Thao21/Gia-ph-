@@ -40,6 +40,20 @@ export interface AdminRegistrationSummary {
   reviewed_at?: string | null;
 }
 
+/** Cảnh báo mềm cho Super Admin (Mốc M5c): dòng họ / hồ sơ trông giống hồ sơ đang xem. Không chặn duyệt. */
+export interface SimilarClanItem {
+  kind: 'clan' | 'registration';
+  registration_id?: string | null;
+  clan_id?: string | null;
+  clan_code?: string | null;
+  clan_name: string;
+  origin_place?: string | null;
+  status: string;
+  reason: 'same_clan_key' | 'same_name_other_origin' | 'similar_name_shared_origin';
+  /** Câu tiếng Việt do BE soạn. */
+  message: string;
+}
+
 export interface AdminRegistrationDetail extends AdminRegistrationSummary {
   representative_email: string;
   representative_phone?: string | null;
@@ -48,6 +62,7 @@ export interface AdminRegistrationDetail extends AdminRegistrationSummary {
   rejection_reason?: string | null;
   updated_at: string;
   clan_id?: string | null;
+  similar_clans?: SimilarClanItem[];
 }
 
 /** GET /admin/users */

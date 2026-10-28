@@ -16,7 +16,8 @@ export const apiClient = axios.create({
   timeout: 30000,
 });
 
-// Chỉ gửi access_token của BE mới (lấy từ POST /auth/session); không gửi Firebase ID token.
+// baseURL đã gồm /api/v1: mọi lời gọi viết đường dẫn KHÔNG có tiền tố (vd '/auth/login').
+// Chỉ gửi access_token của BE (lấy từ POST /auth/login); không gửi Firebase ID token.
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const accessToken = getAccessToken();

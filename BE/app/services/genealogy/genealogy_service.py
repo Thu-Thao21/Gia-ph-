@@ -91,13 +91,10 @@ class GenealogyService:
 
     async def _get_person_for_family(self, family_id: str, person_id: str) -> Person:
         person = await self.repo.get_person_by_id(person_id)
-        if not person:
+        # A person of ANOTHER family answers exactly like a missing one (Mốc M2, IDOR): the
+        # caller was only checked for `family_id`, and must not learn that the id exists.
+        if not person or str(person.family_id) != str(family_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
-        if str(person.family_id) != str(family_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Person does not belong to this family",
-            )
         return person
 
     async def _validate_branch(self, family_id: str, branch_id: str | None) -> None:

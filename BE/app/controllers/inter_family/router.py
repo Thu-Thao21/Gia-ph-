@@ -1,33 +1,92 @@
-"""Inter-Family Networking & Data Sharing Router (FR-BO-53..57, FR-BO-77)."""
+"""Inter-Family Networking & Data Sharing Router (FR-BO-53..57, FR-BO-77).
+
+Access (Mốc M2b). Every route needs a session; the caller's clans are the clans they are an
+ACTIVE member of; "manage clan X" means the family permission family.update in X (AccessService,
+the same check as the genealogy and member routes). A System Admin (SA) passes every check.
+
+  GET  /families, /diagram       every ACTIVE clan (public directory data); links and
+                                 "connected" only for links that involve the caller's clans
+  GET  /links, /link-requests    only rows that involve one of the caller's clans
+  GET  /links/{id}/policies      the caller is in one of the link's two clans
+  PUT  /links/{id}/policies      manage the policy's owner clan
+  DELETE|POST /links/{id}[/terminate]   manage one of the link's two clans
+  POST /link-requests            manage the SOURCE clan named in the body (never any clan)
+  POST /link-requests/{id}/review       manage the TARGET clan
+  GET  /shared-tree/{clan}       member of a clan with an ACTIVE link to that clan
+
+A link or request that involves none of the caller's clans answers 404, exactly like an id
+that does not exist (no probing of other clans' ids); being in the clan without the right to
+manage it answers 403.
+"""
 
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
-from sqlalchemy import and_, or_, select
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres import get_db
 from app.dependencies.auth import get_current_account
-from app.models.family.entities import Clan
-from app.models.genealogy.entities import Person, Relationship
 from app.models.inter_family import (
     InterClanLink,
     InterClanRequest,
     InterClanSharedPolicy,
 )
+from app.models.inter_family.repository import InterFamilyRepository
 from app.models.postgres import Account
 from app.schemas.genealogy import RelationshipResponse, TreeDataResponse, TreeNode
+from app.services.auth_access.access_service import AccessService
 
 router = APIRouter(prefix="/networks", tags=["inter-family"])
 
+MANAGE_PERMISSION = "family.update"
+DEFAULT_ALLOWED_FIELDS = {"full_name": True, "generation": True, "gender": True, "avatar_url": True}
+
+# ----- shared-tree privacy (Mốc M2c) -----
+# The owner clan's policy (inter_clan_shared_policies.allowed_fields, JSONB) decides EVERY person
+# field the other clan receives. A field is shown only when its key is exactly true:
+#   full_name, gender, avatar_url   identity of a person
+#   generation, branch_id           position in the clan
+#   living_persons                  without it, a LIVING person (or one with is_alive unknown) is
+#                                   shown masked whatever the keys above say: no name, gender,
+#                                   avatar (birth date and contacts are never sent, see below)
+# Never sent at all: birth/death date, biography, contacts (persons has no contact column).
+# Always sent (the tree cannot be drawn without them): id, isLiving, status, the edges.
+MASKED_NAME = "Thành viên gia tộc (Bảo mật)"
+MASKED_GENDER = "unknown"
+MASKED_GENERATION = 0
+
+
+def shared_tree_node(person, allowed_fields: dict) -> TreeNode:
+    def allowed(key: str) -> bool:
+        return allowed_fields.get(key) is True
+
+    living = person.is_alive is None or bool(person.is_alive)
+    identity = not living or allowed("living_persons")
+    return TreeNode(
+        id=str(person.id),
+        fullName=person.full_name if identity and allowed("full_name") else MASKED_NAME,
+        gender=(person.gender or MASKED_GENDER) if identity and allowed("gender") else MASKED_GENDER,
+        generation=(person.generation or 1) if allowed("generation") else MASKED_GENERATION,
+        branchId=str(person.branch_id) if person.branch_id and allowed("branch_id") else None,
+        avatarUrl=person.avatar_url if identity and allowed("avatar_url") else None,
+        isLiving=living,
+        status=person.status,
+    )
+
 
 class LinkRequestCreate(BaseModel):
+    # Both spellings: the FE sends snake_case (target_family_id), the old contract camelCase.
+    model_config = ConfigDict(populate_by_name=True)
+
     target_family_id: str = Field(alias="targetFamilyId")
+    # The clan the request is sent FROM. Optional only when the caller manages exactly one clan.
+    source_family_id: Optional[str] = Field(None, alias="sourceFamilyId")
     source_person_id: Optional[str] = Field(None, alias="sourcePersonId")
     target_person_id: Optional[str] = Field(None, alias="targetPersonId")
     message: Optional[str] = None
@@ -62,9 +121,14 @@ class LinkResponse(BaseModel):
 
 
 class PolicyUpdate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     data_scope: Optional[str] = Field(None, alias="dataScope")
     allowed_fields: Optional[dict] = Field(None, alias="allowedFields")
     can_export: Optional[bool] = Field(None, alias="canExport")
+    # Whose policy (each link has one per clan). Optional only when the caller manages exactly
+    # one of the link's two clans.
+    owner_clan_id: Optional[str] = Field(None, alias="ownerClanId")
 
 
 class PolicyResponse(BaseModel):
@@ -78,24 +142,88 @@ class PolicyResponse(BaseModel):
     updated_at: datetime = Field(alias="updatedAt")
 
 
+# ----- access -----
+
+
+def get_inter_family_repo(db: AsyncSession = Depends(get_db)) -> InterFamilyRepository:
+    return InterFamilyRepository(db)
+
+
+@dataclass
+class Caller:
+    account: Account
+    access: AccessService
+    is_sa: bool
+    clans: set[uuid.UUID]  # ACTIVE memberships
+
+    def scope(self) -> Optional[set[uuid.UUID]]:
+        """Clan filter for list queries: None = every clan (SA)."""
+        return None if self.is_sa else self.clans
+
+    def involved(self, *clan_ids: uuid.UUID) -> bool:
+        return self.is_sa or any(c in self.clans for c in clan_ids)
+
+    async def manages(self, clan_id: uuid.UUID) -> bool:
+        return self.is_sa or await self.access.has_family_permission(
+            self.account, clan_id, MANAGE_PERMISSION
+        )
+
+
+async def get_caller(
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+) -> Caller:
+    access = AccessService(db)
+    return Caller(
+        account=account,
+        access=access,
+        is_sa=await access.is_system_admin(account),
+        clans=await access.member_clan_ids(account),
+    )
+
+
+get_caller.clan_permission = "inter-family (member / family.update)"  # read by scripts/route_inventory.py
+
+
+def _not_found(what: str = "Not found") -> HTTPException:
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=what)
+
+
+def _forbidden(detail: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+def _uuid(raw: Optional[str], what: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(raw))
+    except (TypeError, ValueError):
+        raise _not_found(f"{what} not found") from None
+
+
+async def _visible_link(repo: InterFamilyRepository, caller: Caller, link_id: str) -> InterClanLink:
+    link = await repo.get_link(_uuid(link_id, "Link"))
+    if link is None or not caller.involved(link.clan_a_id, link.clan_b_id):
+        raise _not_found("Link not found")
+    return link
+
+
+# ----- routes -----
+
+
 @router.get("/families")
 async def get_network_families(
     category: str = Query("all"),
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Returns linked families or discovered clans for the network tab."""
-    # Find all active links
-    stmt = select(InterClanLink).where(InterClanLink.status == "ACTIVE")
-    res = await db.execute(stmt)
-    links = list(res.scalars().all())
-
-    # Fetch clans to build network responses
-    clans_res = await db.execute(select(Clan).where(Clan.status == "ACTIVE"))
-    clans = {str(c.clan_id): c for c in clans_res.scalars().all()}
+    """Returns linked families or discovered clans for the network tab. "connected" means an
+    ACTIVE link with one of the caller's clans (any link for SA)."""
+    links = await repo.list_links(clan_ids=caller.scope(), status="ACTIVE")
+    linked = {str(c) for l in links for c in (l.clan_a_id, l.clan_b_id)}
 
     items = []
-    for c_id, clan in clans.items():
+    for clan in await repo.list_active_clans():
+        c_id = str(clan.clan_id)
         items.append({
             "id": c_id,
             "name": clan.name,
@@ -103,27 +231,22 @@ async def get_network_families(
             "category": "thong_gia",
             "relationshipCount": 1,
             "branches": ["Nhánh chính"],
-            "status": "connected" if any(str(l.clan_a_id) == c_id or str(l.clan_b_id) == c_id for l in links) else "available",
+            "status": "connected" if c_id in linked else "available",
         })
-
     return items
 
 
 @router.get("/links", response_model=List[LinkResponse])
 async def list_inter_clan_links(
     status_filter: Optional[str] = Query(None, alias="status"),
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Lists established inter-clan links (FR-BO-53..55)."""
-    stmt = select(InterClanLink).order_by(InterClanLink.linked_at.desc())
-    if status_filter:
-        stmt = stmt.where(InterClanLink.status == status_filter.upper())
-    res = await db.execute(stmt)
-    links = list(res.scalars().all())
-
-    clans_res = await db.execute(select(Clan))
-    clan_map = {str(c.clan_id): c.name for c in clans_res.scalars().all()}
+    """Lists inter-clan links of the caller's clans (FR-BO-53..55); SA sees all."""
+    links = await repo.list_links(
+        clan_ids=caller.scope(), status=status_filter.upper() if status_filter else None
+    )
+    names = await repo.clan_names(c for l in links for c in (l.clan_a_id, l.clan_b_id))
 
     output = []
     for link in links:
@@ -134,9 +257,9 @@ async def list_inter_clan_links(
                 id=str(link.id),
                 requestId=str(link.request_id),
                 clanAId=a_id,
-                clanAName=clan_map.get(a_id, "Dòng họ A"),
+                clanAName=names.get(a_id, "Dòng họ A"),
                 clanBId=b_id,
-                clanBName=clan_map.get(b_id, "Dòng họ B"),
+                clanBName=names.get(b_id, "Dòng họ B"),
                 status=link.status,
                 linkedAt=link.linked_at,
                 endedAt=link.ended_at,
@@ -149,36 +272,31 @@ async def list_inter_clan_links(
 @router.post("/links/{link_id}/terminate")
 async def terminate_link(
     link_id: str,
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Terminates an inter-family connection link (FR-BO-55)."""
-    link_uuid = uuid.UUID(link_id)
-    res = await db.execute(select(InterClanLink).where(InterClanLink.id == link_uuid))
-    link = res.scalar_one_or_none()
-    if not link:
-        raise HTTPException(status_code=404, detail="Link not found")
+    """Terminates an inter-family connection link (FR-BO-55): manage one of its two clans."""
+    link = await _visible_link(repo, caller, link_id)
+    if not (await caller.manages(link.clan_a_id) or await caller.manages(link.clan_b_id)):
+        raise _forbidden("Managing one of the linked clans is required")
 
     if link.status == "TERMINATED":
         return {"status": "TERMINATED", "message": "Link already terminated"}
 
     link.status = "TERMINATED"
     link.ended_at = datetime.now(timezone.utc)
-    await db.commit()
+    await repo.commit()
     return {"status": "TERMINATED", "link_id": str(link.id)}
 
 
 @router.get("/diagram")
 async def get_network_diagram(
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Returns network graph nodes and edges for visualizing inter-clan relationships."""
-    clans_res = await db.execute(select(Clan).where(Clan.status == "ACTIVE"))
-    clans = list(clans_res.scalars().all())
-
-    links_res = await db.execute(select(InterClanLink).where(InterClanLink.status == "ACTIVE"))
-    links = list(links_res.scalars().all())
+    """Network graph: every ACTIVE clan as a node; edges only for the caller's links (SA: all)."""
+    clans = await repo.list_active_clans()
+    links = await repo.list_links(clan_ids=caller.scope(), status="ACTIVE")
 
     nodes = [
         {
@@ -207,14 +325,12 @@ async def get_network_diagram(
 @router.get("/links/{link_id}/policies", response_model=List[PolicyResponse])
 async def get_sharing_policies(
     link_id: str,
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Gets shared data policies configured for an inter-clan link (FR-BO-57, FR-BO-77)."""
-    link_uuid = uuid.UUID(link_id)
-    stmt = select(InterClanSharedPolicy).where(InterClanSharedPolicy.link_id == link_uuid)
-    res = await db.execute(stmt)
-    policies = list(res.scalars().all())
+    """Gets shared data policies of a link of the caller's clans (FR-BO-57, FR-BO-77)."""
+    link = await _visible_link(repo, caller, link_id)
+    policies = await repo.list_policies(link.id)
 
     return [
         PolicyResponse(
@@ -235,16 +351,34 @@ async def get_sharing_policies(
 async def update_sharing_policy(
     link_id: str,
     data: PolicyUpdate,
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Updates shared data policy for a link (FR-BO-57, FR-BO-77)."""
-    link_uuid = uuid.UUID(link_id)
-    stmt = select(InterClanSharedPolicy).where(InterClanSharedPolicy.link_id == link_uuid)
-    res = await db.execute(stmt)
-    policy = res.scalars().first()
+    """Updates the caller's OWN clan's sharing policy on a link (FR-BO-57, FR-BO-77): manage
+    the policy's owner clan. Never the other clan's policy."""
+    link = await _visible_link(repo, caller, link_id)
+    sides = (link.clan_a_id, link.clan_b_id)
+
+    if data.owner_clan_id is not None:
+        owner = _uuid(data.owner_clan_id, "Policy")
+        if owner not in sides:
+            raise _not_found("Policy not found for this link")
+        if not await caller.manages(owner):
+            raise _forbidden("Managing the policy's owner clan is required")
+    else:
+        managed = [c for c in sides if await caller.manages(c)]
+        if not managed:
+            raise _forbidden("Managing the policy's owner clan is required")
+        if len(managed) > 1:
+            raise HTTPException(
+                status_code=422,
+                detail="ownerClanId is required: you manage both clans of this link",
+            )
+        owner = managed[0]
+
+    policy = await repo.get_policy(link.id, owner)
     if not policy:
-        raise HTTPException(status_code=404, detail="Policy not found for this link")
+        raise _not_found("Policy not found for this link")
 
     if data.data_scope is not None:
         policy.data_scope = data.data_scope
@@ -253,9 +387,9 @@ async def update_sharing_policy(
     if data.can_export is not None:
         policy.can_export = data.can_export
 
-    policy.updated_by = account.id
+    policy.updated_by = caller.account.id
     policy.updated_at = datetime.now(timezone.utc)
-    await db.commit()
+    await repo.commit()
 
     return {
         "status": "SUCCESS",
@@ -268,20 +402,12 @@ async def update_sharing_policy(
 
 @router.get("/link-requests", response_model=List[LinkRequestResponse])
 async def list_link_requests(
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Lists inter-family connection requests."""
-    stmt = (
-        select(InterClanRequest)
-        .order_by(InterClanRequest.created_at.desc())
-        .limit(100)
-    )
-    res = await db.execute(stmt)
-    requests = list(res.scalars().all())
-
-    clans_res = await db.execute(select(Clan))
-    clan_map = {str(c.clan_id): c.name for c in clans_res.scalars().all()}
+    """Lists connection requests sent by or to the caller's clans (SA: all)."""
+    requests = await repo.list_requests(clan_ids=caller.scope())
+    names = await repo.clan_names(c for r in requests for c in (r.source_clan_id, r.target_clan_id))
 
     output = []
     for req in requests:
@@ -291,9 +417,9 @@ async def list_link_requests(
             LinkRequestResponse(
                 id=str(req.id),
                 sourceFamilyId=s_id,
-                sourceFamilyName=clan_map.get(s_id, "Dòng họ nguồn"),
+                sourceFamilyName=names.get(s_id, "Dòng họ nguồn"),
                 targetFamilyId=t_id,
-                targetFamilyName=clan_map.get(t_id, "Dòng họ đích"),
+                targetFamilyName=names.get(t_id, "Dòng họ đích"),
                 status=req.status,
                 message=req.message,
                 createdAt=req.created_at,
@@ -305,43 +431,77 @@ async def list_link_requests(
 @router.post("/link-requests", status_code=status.HTTP_201_CREATED, response_model=LinkRequestResponse)
 async def create_link_request(
     data: LinkRequestCreate,
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Sends an inter-clan connection request (FR-BO-53)."""
-    # Find user's clan from memberships or clans
-    # Fallback to source family if specified or first active clan
-    clans_res = await db.execute(select(Clan).where(Clan.status == "ACTIVE").limit(2))
-    all_clans = list(clans_res.scalars().all())
-    if not all_clans:
-        raise HTTPException(status_code=400, detail="No active clans found in system")
+    """Sends a connection request (FR-BO-53) FROM a clan the caller manages.
 
-    target_clan_id = uuid.UUID(data.target_family_id)
-    # Source clan is the first clan not equal to target
-    source_clan = next((c for c in all_clans if c.clan_id != target_clan_id), all_clans[0])
+    The source clan is the one named in the body; without one, the only clan the caller manages.
+    It is never picked for them (it used to be "the first ACTIVE clan in the system")."""
+    if data.source_family_id is not None:
+        source_id = _uuid(data.source_family_id, "Source family")
+        if not caller.involved(source_id):
+            raise _not_found("Source family not found")
+        if not await caller.manages(source_id):
+            raise _forbidden("Managing the source clan is required")
+    else:
+        managed = [c for c in sorted(caller.clans, key=str) if await caller.manages(c)]
+        if len(managed) != 1:
+            raise HTTPException(
+                status_code=422,
+                detail="sourceFamilyId is required (the clan the request is sent from)",
+            )
+        source_id = managed[0]
+
+    source_clan = await repo.get_clan(source_id)
+    target_id = _uuid(data.target_family_id, "Target family")
+    target_clan = await repo.get_clan(target_id)
+    if source_clan is None or source_clan.status != "ACTIVE":
+        raise _not_found("Source family not found")
+    if target_clan is None or target_clan.status != "ACTIVE":
+        raise _not_found("Target family not found")
+    if target_id == source_id:
+        raise HTTPException(status_code=422, detail="A clan cannot link to itself")
+
+    # A person named in the request must belong to the side it is named for.
+    person_ids: dict[str, Optional[uuid.UUID]] = {}
+    for field, raw, clan_id in (
+        ("sourcePersonId", data.source_person_id, source_id),
+        ("targetPersonId", data.target_person_id, target_id),
+    ):
+        if raw is None:
+            person_ids[field] = None
+            continue
+        person = await repo.get_person(_uuid(raw, "Person"))
+        if person is None or person.family_id != clan_id:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{field} is not a person of that clan",
+            )
+        person_ids[field] = person.id
 
     req = InterClanRequest(
         id=uuid.uuid4(),
-        source_clan_id=source_clan.clan_id,
-        target_clan_id=target_clan_id,
-        requester_id=account.id,
-        source_person_id=uuid.UUID(data.source_person_id) if data.source_person_id else None,
-        target_person_id=uuid.UUID(data.target_person_id) if data.target_person_id else None,
+        source_clan_id=source_id,
+        target_clan_id=target_id,
+        requester_id=caller.account.id,
+        source_person_id=person_ids["sourcePersonId"],
+        target_person_id=person_ids["targetPersonId"],
         message=data.message,
         status="PENDING",
     )
-    db.add(req)
-    await db.commit()
+    repo.add(req)
+    await repo.commit()
 
     return LinkRequestResponse(
         id=str(req.id),
         sourceFamilyId=str(req.source_clan_id),
         sourceFamilyName=source_clan.name,
         targetFamilyId=str(req.target_clan_id),
-        targetFamilyName="Dòng họ đối tác",
+        targetFamilyName=target_clan.name,
         status=req.status,
         message=req.message,
-        createdAt=req.created_at,
+        createdAt=req.created_at or datetime.now(timezone.utc),
     )
 
 
@@ -349,15 +509,15 @@ async def create_link_request(
 async def review_link_request(
     request_id: str,
     data: LinkRequestReview,
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Approves or rejects an inter-family request (FR-BO-54)."""
-    req_uuid = uuid.UUID(request_id)
-    res = await db.execute(select(InterClanRequest).where(InterClanRequest.id == req_uuid))
-    req = res.scalar_one_or_none()
-    if not req:
-        raise HTTPException(status_code=404, detail="Request not found")
+    """Approves or rejects a request (FR-BO-54): manage the TARGET clan."""
+    req = await repo.get_request(_uuid(request_id, "Request"))
+    if not req or not caller.involved(req.source_clan_id, req.target_clan_id):
+        raise _not_found("Request not found")
+    if not await caller.manages(req.target_clan_id):
+        raise _forbidden("Managing the target clan is required")
 
     if req.status != "PENDING":
         raise HTTPException(status_code=400, detail=f"Request already processed ({req.status})")
@@ -368,7 +528,7 @@ async def review_link_request(
     try:
         if action == "APPROVE":
             req.status = "APPROVED"
-            req.reviewed_by = account.id
+            req.reviewed_by = caller.account.id
             req.reviewed_at = now
 
             # Create active InterClanLink
@@ -380,47 +540,38 @@ async def review_link_request(
                 status="ACTIVE",
                 linked_at=now,
             )
-            db.add(link)
-            await db.flush()
+            repo.add(link)
+            await repo.flush()
 
             # Create default InterClanSharedPolicy for both clans atomically
-            policy_a = InterClanSharedPolicy(
-                id=uuid.uuid4(),
-                link_id=link.id,
-                owner_clan_id=req.source_clan_id,
-                data_scope="BASIC",
-                allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
-                visibility="INTER_FAMILY",
-                can_export=False,
-                updated_by=account.id,
-            )
-            policy_b = InterClanSharedPolicy(
-                id=uuid.uuid4(),
-                link_id=link.id,
-                owner_clan_id=req.target_clan_id,
-                data_scope="BASIC",
-                allowed_fields={"full_name": True, "generation": True, "gender": True, "avatar_url": True},
-                visibility="INTER_FAMILY",
-                can_export=False,
-                updated_by=account.id,
-            )
-            db.add(policy_a)
-            db.add(policy_b)
+            for owner in (req.source_clan_id, req.target_clan_id):
+                repo.add(
+                    InterClanSharedPolicy(
+                        id=uuid.uuid4(),
+                        link_id=link.id,
+                        owner_clan_id=owner,
+                        data_scope="BASIC",
+                        allowed_fields=dict(DEFAULT_ALLOWED_FIELDS),
+                        visibility="INTER_FAMILY",
+                        can_export=False,
+                        updated_by=caller.account.id,
+                    )
+                )
 
-            await db.commit()
+            await repo.commit()
             return {"status": "APPROVED", "link_id": str(link.id)}
 
         elif action == "REJECT":
             req.status = "REJECTED"
-            req.reviewed_by = account.id
+            req.reviewed_by = caller.account.id
             req.reviewed_at = now
-            await db.commit()
+            await repo.commit()
             return {"status": "REJECTED"}
 
         else:
             raise HTTPException(status_code=400, detail="Invalid review action. Must be APPROVE or REJECT.")
     except Exception:
-        await db.rollback()
+        await repo.rollback()
         raise
 
 
@@ -428,63 +579,29 @@ async def review_link_request(
 @router.get("/families/{target_family_id}/shared-tree", response_model=TreeDataResponse)
 async def get_shared_tree(
     target_family_id: str,
-    db: AsyncSession = Depends(get_db),
-    account: Account = Depends(get_current_account),
+    caller: Caller = Depends(get_caller),
+    repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
-    """Accesses shared tree data of a linked family under INTER_FAMILY privacy policy (FR-BO-56, FR-BO-77)."""
-    target_uuid = uuid.UUID(target_family_id)
+    """Shared tree of a clan LINKED to one of the caller's clans, under the target clan's policy
+    on that link (FR-BO-56, FR-BO-77). SA: any clan."""
+    target_uuid = _uuid(target_family_id, "Family")
 
-    # Check if there is an active link involving this clan
-    stmt = select(InterClanLink).where(
-        InterClanLink.status == "ACTIVE",
-        or_(
-            InterClanLink.clan_a_id == target_uuid,
-            InterClanLink.clan_b_id == target_uuid,
-        ),
-    )
-    res = await db.execute(stmt)
-    link = res.scalars().first()
-    if not link:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No active inter-clan link with this family",
-        )
+    links = await repo.active_links_between(target_uuid, clan_ids=caller.scope())
+    if not links and (not caller.is_sa or await repo.get_clan(target_uuid) is None):
+        raise _not_found("Family not found")
 
-    # Fetch sharing policy of target family
-    policy_stmt = select(InterClanSharedPolicy).where(
-        InterClanSharedPolicy.link_id == link.id,
-        InterClanSharedPolicy.owner_clan_id == target_uuid,
-    )
-    p_res = await db.execute(policy_stmt)
-    policy = p_res.scalars().first()
-    allowed_fields = policy.allowed_fields if policy and policy.allowed_fields else {
-        "full_name": True,
-        "generation": True,
-        "gender": True,
-        "avatar_url": True,
-    }
+    # Fetch sharing policy of target family on the caller's link
+    policy = await repo.get_policy(links[0].id, target_uuid) if links else None
+    # The policy row decides, even when it shares nothing ({}); the defaults only stand in for a
+    # missing row (an SA looking at a clan without links). Living persons stay masked either way.
+    allowed_fields = (policy.allowed_fields or {}) if policy else dict(DEFAULT_ALLOWED_FIELDS)
 
     # Fetch persons and relationships of target clan
-    persons_res = await db.execute(select(Person).where(Person.family_id == target_uuid))
-    persons = list(persons_res.scalars().all())
+    persons = await repo.persons_of(target_uuid)
+    relationships = await repo.relationships_of(target_uuid)
 
-    rels_res = await db.execute(select(Relationship).where(Relationship.family_id == target_uuid))
-    relationships = list(rels_res.scalars().all())
-
-    # Build tree nodes with privacy scoping
-    nodes = [
-        TreeNode(
-            id=str(p.id),
-            fullName=p.full_name,
-            gender=p.gender or "unknown",
-            generation=p.generation or 1,
-            branchId=str(p.branch_id) if p.branch_id else None,
-            avatarUrl=p.avatar_url if allowed_fields.get("avatar_url", True) else None,
-            isLiving=True if p.is_alive is None else p.is_alive,
-            status=p.status,
-        )
-        for p in persons
-    ]
+    # Build tree nodes with privacy scoping: every field through the owner clan's policy
+    nodes = [shared_tree_node(p, allowed_fields) for p in persons]
 
     edges = [
         RelationshipResponse(

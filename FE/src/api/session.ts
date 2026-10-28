@@ -1,9 +1,9 @@
 /**
- * Phiên của BE mới (access_token lấy từ POST /auth/session).
+ * Phiên của BE (access_token lấy từ POST /auth/login hoặc POST /auth/change-password).
  *
  * access_token là bí mật: chỉ giữ trong bộ nhớ của ứng dụng, không ghi vào
- * localStorage, URL hay log (handoff_frontend.md mục 2). Khi tải lại trang,
- * AuthContext đổi Firebase ID token hiện tại lấy một phiên mới.
+ * localStorage, URL hay log (handoff_frontend.md mục 2). Tải lại trang thì phiên mất
+ * và phải đăng nhập lại (Firebase không còn dùng để khôi phục phiên, Mốc M1).
  */
 
 interface AppSession {

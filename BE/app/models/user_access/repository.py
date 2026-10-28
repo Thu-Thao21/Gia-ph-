@@ -4,15 +4,18 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Select, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user_access.entities import (
     AuditLog,
     CredentialMetadata,
+    GmailRegistryEntry,
     LoginHistory,
     Permission,
     Role,
     RolePermission,
+    UsedPasswordResetCode,
     User,
     UserRole,
     UserSession,
@@ -82,10 +85,123 @@ class UserAccessRepository:
         stmt = select(User).where(User.email == email)
         return (await self._session.execute(stmt)).scalar_one_or_none()
 
+    # ----- Gmail registry (Mốc M5, table gmail_registry, migration 0008) -----
+
+    async def gmail_active(self, normalized_email: str) -> GmailRegistryEntry | None:
+        """The ACTIVE registry row of a normalized Gmail, or None when nobody holds it."""
+        stmt = select(GmailRegistryEntry).where(
+            GmailRegistryEntry.normalized_email == normalized_email,
+            GmailRegistryEntry.status == "active",
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def gmail_claim(
+        self,
+        *,
+        normalized_email: str,
+        original_email: str,
+        owner_type: str,
+        user_id: uuid.UUID | None,
+        registration_id: uuid.UUID | None,
+        now: datetime,
+    ) -> bool:
+        """Hold the Gmail, atomically, in the CALLER's transaction: True for the one caller that
+        inserted the active row. INSERT ... ON CONFLICT (normalized_email) WHERE status = 'active'
+        DO NOTHING on the partial unique index: a concurrent claim waits, then inserts nothing.
+        Pending ORM rows (the user / registration it points to) are flushed first."""
+        await self._session.flush()
+        stmt = (
+            pg_insert(GmailRegistryEntry)
+            .values(
+                registry_id=uuid.uuid4(), normalized_email=normalized_email,
+                original_email=original_email.strip(), owner_type=owner_type, user_id=user_id,
+                registration_id=registration_id, status="active", created_at=now,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[GmailRegistryEntry.normalized_email],
+                index_where=GmailRegistryEntry.status == "active",
+            )
+            .returning(GmailRegistryEntry.registry_id)
+        )
+        return (await self._session.execute(stmt)).first() is not None
+
+    async def gmail_release_registration(self, registration_id: uuid.UUID, now: datetime) -> int:
+        """A rejected / cancelled Business registration gives its Gmail back (status released)."""
+        result = await self._session.execute(
+            update(GmailRegistryEntry)
+            .where(
+                GmailRegistryEntry.registration_id == registration_id,
+                GmailRegistryEntry.owner_type == "business_registration",
+                GmailRegistryEntry.status == "active",
+            )
+            .values(status="released", released_at=now)
+        )
+        return result.rowcount or 0
+
+    async def gmail_bind_owner(
+        self,
+        *,
+        registration_id: uuid.UUID | None,
+        user_id: uuid.UUID,
+        normalized_email: str,
+        original_email: str,
+        now: datetime,
+    ) -> str:
+        """The Owner provisioned from a registration takes over ITS registry row (no second row):
+        "bound". No row for the registration (made before the registry): a new clan_owner_contact
+        row, "claimed". The Gmail held by somebody else: "conflict" (nothing written)."""
+        await self._session.flush()
+        if registration_id is not None:
+            result = await self._session.execute(
+                update(GmailRegistryEntry)
+                .where(
+                    GmailRegistryEntry.registration_id == registration_id,
+                    GmailRegistryEntry.status == "active",
+                )
+                .values(owner_type="clan_owner_contact", user_id=user_id)
+                .returning(GmailRegistryEntry.registry_id)
+            )
+            if result.first() is not None:
+                return "bound"
+        claimed = await self.gmail_claim(
+            normalized_email=normalized_email, original_email=original_email,
+            owner_type="clan_owner_contact", user_id=user_id, registration_id=registration_id, now=now,
+        )
+        return "claimed" if claimed else "conflict"
+
+    async def get_owner_by_contact(self, normalized_email: str) -> User | None:
+        """The clan Owner whose contact Gmail is this one (its active clan_owner_contact row)."""
+        stmt = (
+            select(User)
+            .join(GmailRegistryEntry, GmailRegistryEntry.user_id == User.user_id)
+            .where(
+                GmailRegistryEntry.normalized_email == normalized_email,
+                GmailRegistryEntry.status == "active",
+                GmailRegistryEntry.owner_type == "clan_owner_contact",
+            )
+        )
+        return (await self._session.execute(stmt)).scalars().first()
+
     async def get_user_by_email_ci(self, email: str) -> User | None:
         """The user with this e-mail in ANY letter case (uq_users_email_lower is the matching index)."""
         stmt = select(User).where(func.lower(User.email) == email.lower())
         return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def get_user_by_login_identifier(self, identifier: str) -> User | None:
+        """POST /auth/login: the user whose e-mail, else whose username, equals `identifier` in
+        any letter case. E-mail wins, so another user's username can never shadow an e-mail.
+
+        ONE statement (Mốc M2: each round trip to the DB costs about 0.23 s): the e-mail match
+        sorts first, then the oldest username match."""
+        needle = identifier.lower()
+        email_match = func.lower(User.email) == needle
+        stmt = (
+            select(User)
+            .where(or_(email_match, func.lower(User.username) == needle))
+            .order_by(email_match.desc(), User.created_at, User.user_id)
+            .limit(1)
+        )
+        return (await self._session.execute(stmt)).scalars().first()
 
     async def create_user_account(
         self,
@@ -131,6 +247,52 @@ class UserAccessRepository:
             .execution_options(populate_existing=True)
         )
         return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def lock_or_create_credential_metadata(
+        self, user_id: uuid.UUID, *, now: datetime
+    ) -> CredentialMetadata:
+        """The credential row, created first when the user has none, then locked like
+        lock_credential_metadata. POST /auth/login needs a row to count wrong passwords on: an
+        existing account without one must lock after 5 like any other (no tell-tale difference).
+
+        INSERT ... ON CONFLICT DO NOTHING: two concurrent first attempts cannot both insert (the
+        loser's insert is a no-op) and both then lock the SAME row, one after the other.
+        Defaults as add_credential_metadata: no hash, so the account still cannot log in."""
+        await self._session.execute(
+            pg_insert(CredentialMetadata)
+            .values(
+                user_id=user_id,
+                auth_provider="FIREBASE",
+                must_change_password=False,
+                failed_login_count=0,
+                updated_at=now,
+            )
+            .on_conflict_do_nothing(index_elements=[CredentialMetadata.user_id])
+        )
+        cred = await self.lock_credential_metadata(user_id)
+        if cred is None:  # cannot happen: just inserted or already there, inside this transaction
+            raise RuntimeError("credential_metadata row missing after insert")
+        return cred
+
+    # ----- Single-use password-reset codes (Mốc M4b), table used_password_reset_codes (0006) -----
+
+    async def reset_code_used(self, code_hash: str) -> bool:
+        """True when a reset code with this hash was already used (a row exists)."""
+        stmt = select(UsedPasswordResetCode.code_hash).where(UsedPasswordResetCode.code_hash == code_hash)
+        return (await self._session.execute(stmt)).first() is not None
+
+    async def claim_reset_code(self, user_id: uuid.UUID, code_hash: str, *, now: datetime) -> bool:
+        """Record the code as USED, atomically: True for the one caller that inserted the row,
+        False when it already existed. INSERT ... ON CONFLICT (code_hash) DO NOTHING: a second
+        concurrent claim waits on the primary key until the first commits, then inserts nothing.
+        Only the SHA-256 is stored, never the code."""
+        stmt = (
+            pg_insert(UsedPasswordResetCode)
+            .values(code_hash=code_hash, user_id=user_id, used_at=now)
+            .on_conflict_do_nothing(index_elements=[UsedPasswordResetCode.code_hash])
+            .returning(UsedPasswordResetCode.code_hash)
+        )
+        return (await self._session.execute(stmt)).first() is not None
 
     async def get_user_fresh(self, user_id: uuid.UUID) -> User | None:
         """The users row re-read from the database WITHOUT a lock (E6b: a status already committed by

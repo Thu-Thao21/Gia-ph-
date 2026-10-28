@@ -4,7 +4,7 @@
   Referrer-Policy to EVERY HTTP response, never replacing a value a handler already set.
   No Strict-Transport-Security yet: the service does not run behind HTTPS (security_review.md).
 - NoStoreRoute: route class for routers whose every response, success or error, must not be
-  cached (the auth router: POST /auth/session returns the access token). L-26.
+  cached (the auth router: POST /auth/login and /auth/change-password return the access token). L-26.
 """
 
 from __future__ import annotations

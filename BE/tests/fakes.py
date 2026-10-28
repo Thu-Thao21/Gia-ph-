@@ -62,13 +62,20 @@ def make_user(
 
 
 def disabled_rate_limiters() -> RateLimiters:
-    """For a test app that mounts a rate-limited router (POST /auth/session, Mốc H2) but does not
+    """For a test app that mounts a rate-limited router (POST /auth/login, Mốc M1) but does not
     test the limiter: without app.state.rate_limiters the dependency fails loudly."""
     return RateLimiters(
         enabled=False,
         registration=SlidingWindowLimiter(5, 3600),
         track=SlidingWindowLimiter(20, 600),
-        session=SlidingWindowLimiter(20, 600),
+        login=SlidingWindowLimiter(10, 600),
+        otp_send=SlidingWindowLimiter(5, 600),
+        otp_verify=SlidingWindowLimiter(10, 600),
+        register_public=SlidingWindowLimiter(5, 3600),
+        password_reset=SlidingWindowLimiter(10, 600),
+        password_reset_failures=SlidingWindowLimiter(5, 900),
+        password_reset_request=SlidingWindowLimiter(5, 900),
+        password_reset_request_email=SlidingWindowLimiter(3, 3600),
     )
 
 
@@ -104,6 +111,7 @@ class FakeIdentityProvider:
     open_transaction_calls: list[str] = field(default_factory=list)  # operations called with one open
     # (operation, length, has_upper, has_lower, has_digit, has_symbol): the SHAPE of the password only
     password_shapes: list[tuple] = field(default_factory=list)
+    issued_reset_codes: list[str] = field(default_factory=list)  # generate_password_reset_link
 
     def issue(
         self,
@@ -194,6 +202,18 @@ class FakeIdentityProvider:
         if isinstance(fault, After):
             raise fault.error
         return user
+
+    async def generate_password_reset_link(self, email: str) -> str:
+        """Like the Admin SDK: a Firebase action link holding an oobCode; ProviderUserNotFound when no
+        provider user has that e-mail. Records only the operation, never the code."""
+        fault = await self._enter("generate_password_reset_link", "")
+        if isinstance(fault, Exception):
+            raise fault
+        if not any((u.email or "").lower() == email.lower() for u in self.provider_users.values()):
+            raise ProviderUserNotFound()
+        code = f"oob-{uuid.uuid4().hex}"
+        self.issued_reset_codes.append(code)
+        return f"https://example.firebaseapp.com/__/auth/action?mode=resetPassword&oobCode={code}&apiKey=k&lang=vi"
 
     async def delete_user(self, uid: str) -> bool:
         require_own_uid(uid)  # like the real adapter: refused before any call
@@ -309,6 +329,70 @@ class FakeUserAccessRepo:
         self.calls.append("lock_credential")
         return self.creds.get(user_id)
 
+    async def lock_or_create_credential_metadata(self, user_id, *, now):
+        self.calls.append("lock_or_create_credential")
+        if user_id not in self.creds:
+            await self.add_credential_metadata(user_id, now=now)
+        return self.creds[user_id]
+
+    # --- M5: Gmail registry (gmail_registry). Rows are SimpleNamespace with the table's columns;
+    # gmail_claim is atomic here as the partial unique index makes it in PostgreSQL. ---
+    gmail_rows: list = field(default_factory=list)
+
+    async def gmail_active(self, normalized_email):
+        return next(
+            (r for r in self.gmail_rows if r.normalized_email == normalized_email and r.status == "active"), None
+        )
+
+    async def gmail_claim(self, *, normalized_email, original_email, owner_type, user_id, registration_id, now):
+        if any(r.normalized_email == normalized_email and r.status == "active" for r in self.gmail_rows):
+            return False
+        self.gmail_rows.append(SimpleNamespace(
+            registry_id=uuid.uuid4(), normalized_email=normalized_email, original_email=original_email.strip(),
+            owner_type=owner_type, user_id=user_id, registration_id=registration_id, status="active",
+            note=None, created_at=now, released_at=None,
+        ))
+        return True
+
+    async def gmail_release_registration(self, registration_id, now):
+        n = 0
+        for r in self.gmail_rows:
+            if r.registration_id == registration_id and r.owner_type == "business_registration" and r.status == "active":
+                r.status, r.released_at, n = "released", now, n + 1
+        return n
+
+    async def gmail_bind_owner(self, *, registration_id, user_id, normalized_email, original_email, now):
+        if registration_id is not None:
+            for r in self.gmail_rows:
+                if r.registration_id == registration_id and r.status == "active":
+                    r.owner_type, r.user_id = "clan_owner_contact", user_id
+                    return "bound"
+        claimed = await self.gmail_claim(
+            normalized_email=normalized_email, original_email=original_email,
+            owner_type="clan_owner_contact", user_id=user_id, registration_id=registration_id, now=now,
+        )
+        return "claimed" if claimed else "conflict"
+
+    async def get_owner_by_contact(self, normalized_email):
+        row = next(
+            (r for r in self.gmail_rows if r.normalized_email == normalized_email and r.status == "active"
+             and r.owner_type == "clan_owner_contact"),
+            None,
+        )
+        return self.users.get(row.user_id) if row is not None else None
+
+    # --- M4b: single-use reset codes ---
+    used_reset_codes: dict = field(default_factory=dict)  # code_hash -> user_id
+
+    async def reset_code_used(self, code_hash):
+        return code_hash in self.used_reset_codes
+
+    async def claim_reset_code(self, user_id, code_hash, *, now):
+        if code_hash in self.used_reset_codes:
+            return False
+        self.used_reset_codes[code_hash] = user_id
+        return True
+
     async def get_user_fresh(self, user_id):
         self.calls.append("get_user_fresh")
         return self.users.get(user_id)
@@ -346,6 +430,13 @@ class FakeUserAccessRepo:
     async def get_user_by_email_ci(self, email):
         self.calls.append("get_user_by_email_ci")
         return next((u for u in self.users.values() if u.email.lower() == email.lower()), None)
+
+    async def get_user_by_login_identifier(self, identifier):
+        self.calls.append("get_user_by_login_identifier")
+        needle = identifier.lower()
+        return next((u for u in self.users.values() if u.email.lower() == needle), None) or next(
+            (u for u in self.users.values() if (u.username or "").lower() == needle), None
+        )
 
     async def create_user_account(
         self, *, user_id, firebase_uid, email, display_name, phone, status, first_login_required, now
@@ -712,6 +803,62 @@ class FakeFamilyRepo:
     # The names of the unique indexes the database would enforce are still checked after those.
     lock_wait_error: bool = False  # lock_registration times out (SQLSTATE 55P03)
 
+    # --- M5c: clan identity (clan_identity_registry); claim is atomic as the partial unique index ---
+    clan_keys: list = field(default_factory=list)
+
+    async def clan_key_active(self, clan_key):
+        return next((r for r in self.clan_keys if r.clan_key == clan_key and r.status == "active"), None)
+
+    async def clan_key_claim(self, *, clan_key, name_key, origin_key, kind, registration_id, clan_id, now):
+        if any(r.clan_key == clan_key and r.status == "active" for r in self.clan_keys):
+            return False
+        self.clan_keys.append(SimpleNamespace(
+            registry_id=uuid.uuid4(), clan_key=clan_key, name_key=name_key, origin_key=origin_key, kind=kind,
+            registration_id=registration_id, clan_id=clan_id, status="active", note=None, created_at=now,
+            released_at=None,
+        ))
+        return True
+
+    async def clan_key_release_registration(self, registration_id, now):
+        n = 0
+        for r in self.clan_keys:
+            if r.registration_id == registration_id and r.kind == "registration" and r.status == "active":
+                r.status, r.released_at, n = "released", now, n + 1
+        return n
+
+    async def clan_key_bind_clan(self, *, registration_id, clan_id, clan_key, name_key, origin_key, now):
+        if registration_id is not None:
+            for r in self.clan_keys:
+                if r.registration_id == registration_id and r.status == "active":
+                    r.kind, r.clan_id = "clan", clan_id
+                    return "bound"
+        ok = await self.clan_key_claim(clan_key=clan_key, name_key=name_key, origin_key=origin_key, kind="clan",
+                                       registration_id=registration_id, clan_id=clan_id, now=now)
+        return "claimed" if ok else "conflict"
+
+    async def clan_identity_lookalikes(self, name_key, compact_name):
+        regs = {r.registration_id: r for r in self.registrations}
+        out = []
+        for r in self.clan_keys:
+            if r.status not in ("active", "duplicate"):
+                continue
+            if r.name_key != name_key and r.name_key.replace(" ", "") != compact_name:
+                continue
+            reg, clan = regs.get(r.registration_id), self.clans.get(r.clan_id) if r.clan_id else None
+            out.append({
+                "kind": r.kind, "status": r.status, "name_key": r.name_key, "origin_key": r.origin_key,
+                "registration_id": r.registration_id, "clan_id": r.clan_id,
+                "registration_clan_name": reg.clan_name if reg else None,
+                "registration_origin": reg.origin_place if reg else None,
+                "registration_status": reg.status if reg else None,
+                "clan_name": clan.name if clan else None, "clan_code": clan.clan_code if clan else None,
+                "clan_status": clan.status if clan else None,
+            })
+        return out
+
+    async def clan_code_taken(self, clan_code):
+        return any(c.clan_code.lower() == clan_code.lower() for c in self.clans.values())
+
     async def get_clan_by_code(self, clan_code):
         self.calls.append("get_clan_by_code")
         return next((c for c in self.clans.values() if c.clan_code == clan_code), None)
@@ -1048,3 +1195,69 @@ class FakeTx(FakeDb):
             self.family.subscriptions[:] = b["subscriptions"]
         if self.users is not None:
             self.users.audit[:] = b["audit"]
+
+
+class FakeEmailOtpRepo:
+    """email_otp_challenges in memory (Mốc M5-1). Rows are SimpleNamespace objects with the table's
+    columns; lock_open and claim_token are atomic here as they are in PostgreSQL (no await between
+    the check and the write)."""
+
+    def __init__(self) -> None:
+        self.rows: list = []
+
+    def _for(self, purpose, email_hash):
+        return [r for r in self.rows if r.purpose == purpose and r.email_hash == email_hash]
+
+    async def recent(self, purpose, email_hash, since):
+        rows = [r for r in self._for(purpose, email_hash) if r.created_at >= since]
+        return sorted(rows, key=lambda r: r.created_at, reverse=True)
+
+    async def invalidate_open(self, purpose, email_hash, now):
+        for r in self._for(purpose, email_hash):
+            if r.verified_at is None and r.invalidated_at is None:
+                r.invalidated_at = now
+
+    async def add(self, **values):
+        from types import SimpleNamespace
+
+        row = SimpleNamespace(
+            invalidated_at=None, verified_at=None, token_hash=None, token_expires_at=None,
+            token_used_at=None, **values,
+        )
+        self.rows.append(row)
+        return row
+
+    async def lock_open(self, purpose, email_hash, now):
+        open_rows = [
+            r for r in self._for(purpose, email_hash)
+            if r.verified_at is None and r.invalidated_at is None and r.expires_at > now
+        ]
+        return max(open_rows, key=lambda r: r.created_at) if open_rows else None
+
+    async def invalidate(self, challenge_id, now):
+        for r in self.rows:
+            if r.challenge_id == challenge_id:
+                r.invalidated_at = now
+
+    def _token_row(self, purpose, email_hash, token_hash, now):
+        return next(
+            (
+                r for r in self._for(purpose, email_hash)
+                if r.token_hash == token_hash and r.token_used_at is None
+                and r.token_expires_at is not None and r.token_expires_at > now
+            ),
+            None,
+        )
+
+    async def by_token_hash(self, token_hash):
+        return next((r for r in self.rows if r.token_hash == token_hash), None)
+
+    async def token_usable(self, purpose, email_hash, token_hash, now):
+        return self._token_row(purpose, email_hash, token_hash, now) is not None
+
+    async def claim_token(self, purpose, email_hash, token_hash, now):
+        row = self._token_row(purpose, email_hash, token_hash, now)
+        if row is None:
+            return False
+        row.token_used_at = now
+        return True

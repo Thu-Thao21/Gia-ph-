@@ -15,6 +15,24 @@ import {
   withRequestId,
   type ServicePlan,
 } from '../../../services/business.service';
+import {
+  formatWait,
+  otpErrorMessage,
+  isOtpRateLimited,
+  otpNewCodeReason,
+  otpRetryAfterSeconds,
+  type OtpNewCodeReason,
+} from '../../../api/otpErrors';
+import OtpResendPrompt from '../../../components/auth/OtpResendPrompt/OtpResendPrompt';
+import {
+  DUPLICATE_CLAN_MESSAGE,
+  FIELD_INFO,
+  invalidFields,
+  logoError as checkLogo,
+  normalizeVnMobile,
+  originError,
+  personNameError,
+} from './registrationRules';
 import './BusinessRegisterWizard.css';
 
 export const BusinessRegisterWizard: React.FC = () => {
@@ -36,9 +54,15 @@ export const BusinessRegisterWizard: React.FC = () => {
   const [otpCode, setOtpCode] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  // Token dùng một lần BE trả sau khi xác thực đúng mã (Mốc M5-1); chỉ giữ trong bộ nhớ.
+  const [verificationToken, setVerificationToken] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpMsg, setOtpMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [otpCountdown, setOtpCountdown] = useState(0);
+  // Khác null khi mã đang nhập không dùng được nữa (hết hạn, sai quá số lần, đã có mã mới hơn).
+  const [newCodeReason, setNewCodeReason] = useState<OtpNewCodeReason | null>(null);
+  // Lần gửi mã gần nhất bị giới hạn: khối "Gửi mã mới" chỉ giữ nút khóa + đếm ngược, không thêm câu.
+  const [otpRateLimited, setOtpRateLimited] = useState(false);
 
   useEffect(() => {
     if (otpCountdown <= 0) return;
@@ -63,16 +87,16 @@ export const BusinessRegisterWizard: React.FC = () => {
     try {
       await sendRegistrationOtp(trimmed);
       setIsOtpSent(true);
+      setOtpCode('');
+      setNewCodeReason(null);
+      setOtpRateLimited(false);
       setOtpCountdown(60);
       setOtpMsg({ text: 'Mã xác thực 6 số đã được gửi tới Gmail của bạn. Vui lòng kiểm tra hộp thư.', isError: false });
     } catch (err: unknown) {
-      const info = readApiError(err);
-      setOtpMsg({
-        text: info.isNetworkError
-          ? 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.'
-          : info.message || 'Không thể gửi mã xác thực. Vui lòng thử lại sau.',
-        isError: true,
-      });
+      setOtpRateLimited(isOtpRateLimited(err));
+      const wait = otpRetryAfterSeconds(err);
+      if (wait !== null) setOtpCountdown(wait); // chờ đúng thời gian BE báo (retry_after)
+      setOtpMsg({ text: otpErrorMessage(err, 'send'), isError: true });
     } finally {
       setOtpLoading(false);
     }
@@ -87,17 +111,19 @@ export const BusinessRegisterWizard: React.FC = () => {
     setOtpLoading(true);
     setOtpMsg(null);
     try {
-      await verifyRegistrationOtp(repEmail.trim(), trimmedCode);
+      const verified = await verifyRegistrationOtp(repEmail.trim(), trimmedCode);
+      setVerificationToken(verified.verification_token);
       setIsEmailVerified(true);
       setOtpMsg({ text: 'Xác thực Gmail thành công!', isError: false });
     } catch (err: unknown) {
-      const info = readApiError(err);
-      setOtpMsg({
-        text: info.isNetworkError
-          ? 'Không thể kết nối đến máy chủ.'
-          : info.message || 'Mã xác thực không đúng hoặc đã hết hạn.',
-        isError: true,
-      });
+      const reason = otpNewCodeReason(err);
+      if (reason) {
+        // Mã đã nhập không dùng được nữa: xóa ô nhập, mời bấm "Gửi mã mới" (KHÔNG tự gửi).
+        setOtpCode('');
+        setNewCodeReason(reason);
+        setOtpRateLimited(false);
+      }
+      setOtpMsg({ text: otpErrorMessage(err, 'verify'), isError: true });
     } finally {
       setOtpLoading(false);
     }
@@ -160,16 +186,14 @@ export const BusinessRegisterWizard: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    const trimmedRepName = repName.trim();
-    if (!trimmedRepName || trimmedRepName.length > 255) {
-      setErrorMsg('Họ và tên người đại diện không được để trống hoặc chỉ chứa khoảng trắng (từ 1 đến 255 ký tự).');
+    // Mốc M5c: cùng quy tắc với BE (BE mới là nơi chặn thật).
+    const nameError = personNameError(repName);
+    if (nameError) {
+      setErrorMsg(nameError);
       return;
     }
-    const trimmedPhone = repPhone.trim();
-    // Regex: 6-30 ký tự, gồm số, khoảng trắng, (), -, và dấu + chỉ được đặt ở vị trí đầu tiên
-    const phoneRegex = /^\+?[0-9\s()-]{6,30}$/;
-    if (!phoneRegex.test(trimmedPhone) || (trimmedPhone.includes('+') && !trimmedPhone.startsWith('+'))) {
-      setErrorMsg('Số điện thoại không hợp lệ (từ 6 đến 30 ký tự, dấu + chỉ được đặt ở đầu, chỉ chấp nhận số và dấu cách, dấu ngoặc, gạch ngang).');
+    if (!normalizeVnMobile(repPhone)) {
+      setErrorMsg('Số điện thoại di động Việt Nam không hợp lệ (VD: 0912345678 hoặc +84 912 345 678; đầu số 03, 05, 07, 08, 09).');
       return;
     }
 
@@ -207,8 +231,9 @@ export const BusinessRegisterWizard: React.FC = () => {
       return;
     }
 
-    if (!familyOrigin.trim()) {
-      setErrorMsg('Vui lòng điền quê gốc / nhà thờ tổ chính.');
+    const originProblem = originError(familyOrigin);
+    if (originProblem) {
+      setErrorMsg(originProblem);
       return;
     }
 
@@ -241,10 +266,11 @@ export const BusinessRegisterWizard: React.FC = () => {
       const result = await createBusinessRegistration({
         representative_name: repName,
         representative_email: repEmail,
-        representative_phone: repPhone.trim() || undefined,
+        representative_phone: normalizeVnMobile(repPhone) ?? repPhone.trim(),
         clan_name: familyName,
-        origin_place: familyOrigin.trim() || undefined,
+        origin_place: familyOrigin.trim(),
         requested_plan_id: selectedPlan.plan_id,
+        verification_token: verificationToken,
       });
       setTrackingCode(result.tracking_code);
       setIsSubmitted(true);
@@ -252,14 +278,30 @@ export const BusinessRegisterWizard: React.FC = () => {
       const info = readApiError(err);
       if (info.isNetworkError) {
         setErrorMsg('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại.');
+      } else if (info.status === 409 && info.code === 'EMAIL_ALREADY_REGISTERED') {
+        // Mốc M5: một Gmail chỉ đăng ký một lần (thành viên, hồ sơ Business, Gmail liên hệ của Trưởng tộc).
+        setErrorMsg(
+          'Gmail này đã được dùng để đăng ký trên hệ thống. Vui lòng dùng một Gmail khác cho người đại diện, hoặc đăng nhập / dùng chức năng quên mật khẩu nếu đây là tài khoản của bạn.'
+        );
+      } else if (info.status === 409 && info.code === 'DUPLICATE_CLAN') {
+        // Mốc M5c: dòng họ đã có; câu chung, BE không trả gì về dòng họ kia.
+        setClanNameError(DUPLICATE_CLAN_MESSAGE);
+        setErrorMsg(DUPLICATE_CLAN_MESSAGE);
+        setStep(2);
       } else if (info.status === 409 && info.code === 'DUPLICATE_RESOURCE') {
         setErrorMsg(
           'Đã có một hồ sơ đang chờ duyệt với cùng email và tên dòng họ. Vui lòng dùng mã tra cứu đã nhận để theo dõi, không cần gửi lại.'
         );
       } else if (info.status === 422) {
-        setErrorMsg(
-          'Thông tin đăng ký không hợp lệ. Vui lòng kiểm tra email, số điện thoại (6–30 ký tự gồm chữ số, dấu cách, + ( ) -), các trường bắt buộc và gói đã chọn.'
-        );
+        // Mốc M5c: BE trả details.fields; hiện đúng trường sai và quay về bước chứa trường đó.
+        const fields = invalidFields(info.details?.fields);
+        if (fields.length > 0) {
+          setErrorMsg(`Vui lòng kiểm tra lại: ${fields.map((f) => FIELD_INFO[f].label).join(', ')}.`);
+          if (fields.includes('clan_name')) setClanNameError('Tên dòng họ chưa hợp lệ (5–255 ký tự, chỉ chữ, số và khoảng trắng).');
+          setStep(FIELD_INFO[fields[0]].step);
+        } else {
+          setErrorMsg('Thông tin đăng ký không hợp lệ. Vui lòng kiểm tra lại các trường bắt buộc và gói đã chọn.');
+        }
       } else if (info.status === 429) {
         if (info.retryAfterSeconds) retry.start(info.retryAfterSeconds);
         setErrorMsg(info.retryAfterSeconds ? RATE_LIMIT_DONE_MESSAGE : rateLimitMessage(null));
@@ -403,7 +445,9 @@ export const BusinessRegisterWizard: React.FC = () => {
                       onChange={(e) => {
                         setRepEmail(e.target.value);
                         if (isEmailVerified) setIsEmailVerified(false);
+                        setVerificationToken('');
                         if (isOtpSent) setIsOtpSent(false);
+                        setNewCodeReason(null);
                         setOtpMsg(null);
                       }}
                       disabled={isEmailVerified}
@@ -416,7 +460,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                         onClick={handleSendOtp}
                         disabled={otpLoading || otpCountdown > 0 || !isValidGmail(repEmail)}
                       >
-                        {otpLoading ? 'Đang gửi...' : otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : isOtpSent ? 'Gửi lại mã' : 'Gửi mã OTP'}
+                        {otpLoading ? 'Đang gửi...' : otpCountdown > 0 ? `Gửi lại (${formatWait(otpCountdown)})` : isOtpSent ? 'Gửi lại mã' : 'Gửi mã OTP'}
                       </button>
                     )}
                   </div>
@@ -437,8 +481,10 @@ export const BusinessRegisterWizard: React.FC = () => {
                         }}
                         onClick={() => {
                           setIsEmailVerified(false);
+                          setVerificationToken('');
                           setIsOtpSent(false);
                           setOtpCode('');
+                          setNewCodeReason(null);
                           setOtpMsg(null);
                         }}
                       >
@@ -451,6 +497,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                         <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
                           Nhập mã xác thực 6 số gửi đến hộp thư {repEmail}:
                         </span>
+                        {(!newCodeReason || newCodeReason === 'superseded') && (
                         <div className="otp-input-row">
                           <input
                             type="text"
@@ -469,6 +516,16 @@ export const BusinessRegisterWizard: React.FC = () => {
                             {otpLoading ? 'Đang kiểm tra...' : 'Xác nhận OTP'}
                           </button>
                         </div>
+                        )}
+                        {newCodeReason && (
+                          <OtpResendPrompt
+                            reason={newCodeReason}
+                            secondsLeft={otpCountdown}
+                            loading={otpLoading}
+                            onResend={handleSendOtp}
+                            rateLimited={otpRateLimited}
+                          />
+                        )}
                       </div>
                     )
                   )}
@@ -583,21 +640,23 @@ export const BusinessRegisterWizard: React.FC = () => {
                 </div>
 
                 <div className="form-field">
-                  <label className="field-label">Ảnh biểu trưng / Logo dòng họ (Tùy chọn, tối đa 5MB)</label>
+                  <label className="field-label">Ảnh biểu trưng / Logo dòng họ (Tùy chọn, tối đa 2MB)</label>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp"
                     className="field-input"
                     data-testid="input-clan-logo"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
+                    onChange={async (e) => {
+                      const input = e.target;
+                      const file = input.files?.[0];
                       setLogoError('');
-                      if (file) {
-                        if (file.size > 5 * 1024 * 1024) {
-                          setLogoError('Ảnh biểu trưng dòng họ vượt quá 5MB. Vui lòng chọn tệp nhỏ hơn 5MB.');
-                          e.target.value = '';
-                          return;
-                        }
+                      if (!file) return;
+                      // Mốc M5c: kiểm tra theo NỘI DUNG (magic bytes), không theo đuôi tệp; không nhận SVG.
+                      const head = new Uint8Array(await file.slice(0, 512).arrayBuffer());
+                      const problem = checkLogo(file.size, head);
+                      if (problem) {
+                        setLogoError(problem);
+                        input.value = '';
                       }
                     }}
                   />
@@ -611,7 +670,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                     </span>
                   )}
                   <small style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                    Định dạng hỗ trợ: JPG, PNG, WEBP, SVG (tối đa 5MB).
+                    Định dạng hỗ trợ: JPG, PNG, WEBP (tối đa 2MB). Không nhận SVG.
                   </small>
                 </div>
 

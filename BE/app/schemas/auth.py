@@ -1,6 +1,6 @@
 """Auth API contracts (plan section 6). Types only, no endpoints yet.
 
-Secrets (id_token, recent_id_token, oob_code, passwords) are SecretStr: never
+Secrets (oob_code, passwords) are SecretStr: never
 trimmed and masked in repr/logs. Call .get_secret_value() only at the adapter.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 
 from app.schemas.common import (
     Email,
@@ -25,11 +25,14 @@ ClanStatus = Literal["PENDING", "ACTIVE", "SUSPENDED", "EXPIRED", "LOCKED", "INA
 MembershipStatus = Literal["INVITED", "ACTIVE", "SUSPENDED", "REVOKED"]
 
 
-# ----- POST /auth/session -----
+# ----- POST /auth/login (password checked against credential_metadata.password_hash) -----
 
 
-class SessionCreateRequest(RequestModel):
-    id_token: SecretToken = Field(description="Firebase ID token from the FE SDK.")
+class LoginRequest(RequestModel):
+    # Named `email` for the FE; a username is accepted too. No password policy here: a login
+    # must never answer "too weak" (422) for an existing password, only right or wrong.
+    email: str = Field(min_length=1, max_length=255, description="E-mail or username.")
+    password: SecretStr = Field(min_length=1, max_length=4096)
 
 
 class SessionUser(ResponseModel):
@@ -40,7 +43,8 @@ class SessionUser(ResponseModel):
 
 
 class SessionCreateResponse(ResponseModel):
-    """201. access_token is returned exactly once; only its SHA-256 is stored."""
+    """POST /auth/login and POST /auth/change-password (200). access_token is returned exactly
+    once; only its SHA-256 is stored."""
 
     access_token: str
     token_type: Literal["Bearer"] = "Bearer"
@@ -70,6 +74,8 @@ class MeResponse(ResponseModel):
 
     user_id: uuid.UUID
     display_name: str
+    email: str
+    username: str | None = None
     status: UserStatus
     memberships: list[MembershipSummary]
     permissions: list[str] = Field(
@@ -102,11 +108,11 @@ class PasswordResetConfirmRequest(RequestModel):
     new_password: Password
 
 
-# ----- POST /auth/change-password -> 204 -----
+# ----- POST /auth/change-password -> 200 SessionCreateResponse (a new session) -----
 
 
 class ChangePasswordRequest(RequestModel):
+    # Checked against password_hash with bcrypt; no policy on it (it is an existing password).
+    current_password: SecretStr = Field(min_length=1, max_length=4096)
+    # The shared policy (app.core.security.password_hash.check_password_policy) runs here.
     new_password: Password
-    recent_id_token: SecretToken = Field(
-        description="Fresh Firebase ID token proving a recent sign-in; UID must match."
-    )

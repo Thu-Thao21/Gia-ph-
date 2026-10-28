@@ -2,15 +2,24 @@
 Script to backfill and synchronize the person_closure table from existing persons and relationships in PostgreSQL.
 """
 import sys
+from pathlib import Path
+
 import psycopg
 
 sys.stdout.reconfigure(encoding='utf-8')
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-DB_CONN_STR = "postgresql://neondb_owner:npg_XkwBJVU8WF4e@ep-green-mode-b4ugmgu4-pooler.c-6.us-east-2.aws.neon.tech/mfgms_ai?sslmode=require"
+from app.core.config import settings
+
+
+def _conn_str() -> str:
+    # settings.DATABASE_URL (BE/.env) is normalized to the SQLAlchemy form; psycopg wants plain postgresql://.
+    return settings.DATABASE_URL.replace("postgresql+psycopg://", "postgresql://", 1)
+
 
 def backfill():
     print("=== SYNCHRONIZING PERSON_CLOSURE TABLE ===")
-    conn = psycopg.connect(DB_CONN_STR)
+    conn = psycopg.connect(_conn_str())
     cur = conn.cursor()
     
     # 1. Clean up any invalid or orphaned closure records

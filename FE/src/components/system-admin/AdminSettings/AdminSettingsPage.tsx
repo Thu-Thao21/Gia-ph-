@@ -1,4 +1,3 @@
-import '../../clan-admin/Settings/ClanAccountMgmt.css';
 import React, { useState } from 'react';
 import PageHeader from '../../../shared/Layout/PageHeader';
 

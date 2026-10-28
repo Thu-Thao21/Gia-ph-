@@ -8,13 +8,17 @@ query is validated, so a caller without access never learns about validation det
 
 from __future__ import annotations
 
+import logging
+import time
 import uuid
 
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.auth_access import user_admin_use_cases as use_cases
 from app.controllers.auth_access.use_cases import ClientInfo
+from app.core.middleware.request_id import get_request_id
 from app.core.utils.openapi_responses import AUTHENTICATED, error_responses
 from app.db.postgres import get_db
 from app.dependencies.auth import Principal, get_user_access_repo
@@ -38,6 +42,27 @@ from app.schemas.users import (
 )
 
 router = APIRouter(tags=["user-admin"])
+logger = logging.getLogger("mfg.admin")
+
+ADMIN_STATS_KEYS = (
+    "total_users", "active_users", "total_clans", "active_clans", "total_persons",
+    "pending_registrations", "total_packages", "total_documents",
+)
+ADMIN_STATS_SQL = text(
+    """
+    SELECT
+        u.total_users, u.active_users, c.total_clans, c.active_clans,
+        (SELECT count(*) FROM persons) AS total_persons,
+        (SELECT count(*) FROM business_registrations WHERE status = 'PENDING') AS pending_registrations,
+        (SELECT count(*) FROM subscription_plans) AS total_packages,
+        (SELECT count(*) FROM documents) AS total_documents
+    FROM
+        (SELECT count(*) AS total_users,
+                count(*) FILTER (WHERE status = 'ACTIVE') AS active_users FROM users) AS u,
+        (SELECT count(*) AS total_clans,
+                count(*) FILTER (WHERE status = 'ACTIVE') AS active_clans FROM clans) AS c
+    """
+)
 
 
 @router.get(
@@ -49,27 +74,16 @@ router = APIRouter(tags=["user-admin"])
 async def get_admin_stats(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    from sqlalchemy import text
-    u_count = (await db.execute(text("SELECT count(*) FROM users;"))).scalar() or 0
-    u_active = (await db.execute(text("SELECT count(*) FROM users WHERE status = 'ACTIVE';"))).scalar() or 0
-    c_count = (await db.execute(text("SELECT count(*) FROM clans;"))).scalar() or 0
-    c_active = (await db.execute(text("SELECT count(*) FROM clans WHERE status = 'ACTIVE';"))).scalar() or 0
-    p_count = (await db.execute(text("SELECT count(*) FROM persons;"))).scalar() or 0
-    r_pending = (await db.execute(text("SELECT count(*) FROM business_registrations WHERE status = 'PENDING';"))).scalar() or 0
-    pkg_count = (await db.execute(text("SELECT count(*) FROM subscription_plans;"))).scalar() or 0
-    doc_count = (await db.execute(text("SELECT count(*) FROM documents;"))).scalar() or 0
-
-    return {
-        "total_users": u_count,
-        "active_users": u_active,
-        "total_clans": c_count,
-        "active_clans": c_active,
-        "total_persons": p_count,
-        "pending_registrations": r_pending,
-        "total_packages": pkg_count,
-        "total_documents": doc_count,
-        "system_status": "100%",
-    }
+    """All counters in ONE statement (N-12): each count was its own round trip to Neon (about
+    0.23 s each from here), so 8 of them took 2-8 s. FILTER keeps one scan per table."""
+    started = time.perf_counter()
+    row = (await db.execute(ADMIN_STATS_SQL)).mappings().one()
+    logger.info(
+        "admin.stats timing db=%.0fms request_id=%s",
+        (time.perf_counter() - started) * 1000,
+        get_request_id(),
+    )
+    return {**{key: int(row[key] or 0) for key in ADMIN_STATS_KEYS}, "system_status": "100%"}
 
 
 @router.get(

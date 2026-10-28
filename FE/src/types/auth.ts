@@ -34,7 +34,7 @@ export type BeUserStatus = 'PENDING' | 'ACTIVE' | 'LOCKED' | 'SUSPENDED' | 'DISA
 export type BeClanStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'LOCKED' | 'INACTIVE';
 export type BeMembershipStatus = 'INVITED' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
 
-/** user trong response của POST /auth/session. */
+/** user trong response của POST /auth/login và POST /auth/change-password. */
 export interface SessionUser {
   user_id: string;
   display_name: string;
@@ -42,7 +42,7 @@ export interface SessionUser {
   status: BeUserStatus;
 }
 
-/** 201 của POST /auth/session. access_token chỉ trả một lần. */
+/** 200 của POST /auth/login và POST /auth/change-password (phiên mới). access_token chỉ trả một lần. */
 export interface SessionCreateResponse {
   access_token: string;
   token_type: 'Bearer';
@@ -65,6 +65,8 @@ export interface MembershipSummary {
 export interface MeResponse {
   user_id: string;
   display_name: string;
+  email: string;
+  username?: string | null;
   status: BeUserStatus;
   memberships: MembershipSummary[];
   permissions: string[];

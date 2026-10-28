@@ -2,6 +2,16 @@
 
 Directly bridges the UI requests (/families, /members) with Neon PostgreSQL
 clans, persons, and relationships.
+
+Access (Mốc M2, N-1/N-2): EVERY route needs a session (get_current_account) and the family
+permission the genealogy service uses for the same data (AccessService, C01):
+    person.view    members, member detail
+    person.update  persons export (the whole clan with birth dates: managers only, Mốc M2b)
+    family.view    clan profile          family.update   clan profile update
+    branch.view    branch list           branch.manage   branch create / delete
+System admins pass every family check; data spanning ALL clans (no family_id) is SA only.
+A resource addressed by its own id (GET /members/{id}) that the caller may not see answers
+404, exactly like a missing one, so ids of other clans cannot be probed.
 """
 
 from __future__ import annotations
@@ -17,18 +27,36 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres import get_db
+from app.dependencies.auth import get_current_account
 from app.models.family.entities import Clan, ClanProfile
 from app.models.genealogy.entities import Person, Relationship, FamilyBranch
-from app.models.user_access.entities import User
+from app.models.postgres import Account
+from app.services.auth_access.access_service import AccessService
 
 router = APIRouter(tags=["members-families"])
+
+
+def _family_uuid(family_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(family_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid family_id")
+
+
+async def _require(db: AsyncSession, account: Account, family_id: uuid.UUID, permission: str) -> None:
+    """403 unless the caller holds `permission` in this family (SA always passes)."""
+    await AccessService(db).require_family_permission(account, str(family_id), permission)
 
 
 @router.get("/families")
 async def list_families(
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """List all active clans/families with member counts."""
+    """List all active clans/families with member counts (every clan: system admin only).
+
+    NOTE: public_router registers GET /families first, so this handler is not reached today."""
+    await AccessService(db).require_system_admin(account)
     clans_stmt = select(Clan).where(Clan.status == "ACTIVE").order_by(Clan.name)
     clans_res = await db.execute(clans_stmt)
     clans = clans_res.scalars().all()
@@ -63,16 +91,22 @@ async def list_members(
     page: int = Query(1, ge=1),
     limit: int = Query(100, ge=1),
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """List persons with parent/spouse relations resolved for TreeLayout and MemberList."""
+    """List persons with parent/spouse relations resolved for TreeLayout and MemberList.
+
+    With family_id: person.view in that family. Without: persons of EVERY clan, SA only."""
     # Build query on persons
     stmt = select(Person)
     if family_id:
         try:
             f_uuid = uuid.UUID(family_id)
-            stmt = stmt.where(Person.family_id == f_uuid)
         except ValueError:
             return {"items": [], "total": 0, "page": page, "limit": limit, "totalPages": 0}
+        await _require(db, account, f_uuid, "person.view")
+        stmt = stmt.where(Person.family_id == f_uuid)
+    else:
+        await AccessService(db).require_system_admin(account)
 
     if search:
         s = f"%{search.strip()}%"
@@ -155,8 +189,9 @@ async def list_members(
 async def get_member_detail(
     member_id: str,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """Get single member detail."""
+    """Get single member detail (person.view in the member's family)."""
     try:
         p_uuid = uuid.UUID(member_id)
     except ValueError:
@@ -167,6 +202,12 @@ async def get_member_detail(
     p = res.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Member not found")
+    try:
+        await _require(db, account, p.family_id, "person.view")
+    except HTTPException as exc:
+        if exc.status_code == 403:  # another clan's member: same answer as a missing one
+            raise HTTPException(status_code=404, detail="Member not found") from None
+        raise
 
     # Get clan name
     clan_stmt = select(Clan.name).where(Clan.clan_id == p.family_id)
@@ -228,12 +269,11 @@ class BranchCreate(BaseModel):
 async def get_clan_profile(
     family_id: str,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """Get clan profile including historical and origin details."""
-    try:
-        f_uuid = uuid.UUID(family_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid family_id")
+    """Get clan profile including historical and origin details (family.view)."""
+    f_uuid = _family_uuid(family_id)
+    await _require(db, account, f_uuid, "family.view")
 
     clan_res = await db.execute(select(Clan).where(Clan.clan_id == f_uuid))
     clan = clan_res.scalar_one_or_none()
@@ -262,12 +302,11 @@ async def update_clan_profile(
     family_id: str,
     data: ClanProfileUpdate,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """Update clan profile (BUG-012)."""
-    try:
-        f_uuid = uuid.UUID(family_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid family_id")
+    """Update clan profile (BUG-012). family.update."""
+    f_uuid = _family_uuid(family_id)
+    await _require(db, account, f_uuid, "family.update")
 
     clan_res = await db.execute(select(Clan).where(Clan.clan_id == f_uuid))
     clan = clan_res.scalar_one_or_none()
@@ -330,12 +369,11 @@ async def update_clan_profile(
 async def list_family_branches(
     family_id: str,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """List branches belonging to a family."""
-    try:
-        f_uuid = uuid.UUID(family_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid family_id")
+    """List branches belonging to a family (branch.view)."""
+    f_uuid = _family_uuid(family_id)
+    await _require(db, account, f_uuid, "branch.view")
 
     stmt = select(FamilyBranch).where(FamilyBranch.family_id == f_uuid).order_by(FamilyBranch.branch_order)
     res = await db.execute(stmt)
@@ -371,12 +409,12 @@ async def create_family_branch(
     family_id: str,
     data: BranchCreate,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """Create a new branch with unique name constraint and leader person ID (BUG-020, BUG-024)."""
-    try:
-        f_uuid = uuid.UUID(family_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid family_id")
+    """Create a new branch with unique name constraint and leader person ID (BUG-020, BUG-024).
+    branch.manage."""
+    f_uuid = _family_uuid(family_id)
+    await _require(db, account, f_uuid, "branch.manage")
 
     clean_name = data.name.strip()
     if not clean_name:
@@ -431,13 +469,15 @@ async def delete_family_branch(
     family_id: str,
     branch_id: str,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """Delete a branch with member check protection (BUG-011)."""
+    """Delete a branch with member check protection (BUG-011). branch.manage."""
     try:
         f_uuid = uuid.UUID(family_id)
         b_uuid = uuid.UUID(branch_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid UUID")
+    await _require(db, account, f_uuid, "branch.manage")
 
     branch_res = await db.execute(
         select(FamilyBranch).where(FamilyBranch.id == b_uuid, FamilyBranch.family_id == f_uuid)
@@ -467,8 +507,14 @@ async def export_persons(
     family_id: Optional[str] = None,
     format: str = Query("csv"),
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    """Export person list as CSV (BUG-025)."""
+    """Export person list as CSV (BUG-025). person.update in that family."""
+    return await export_persons_csv(db=db, account=account, family_id=family_id)
+
+
+async def export_persons_csv(*, db: AsyncSession, account: Account, family_id: Optional[str]) -> Response:
+    """The CSV of one family's persons. Also used by GET /api/v1/families/{id}/persons/export."""
     if not family_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -481,6 +527,9 @@ async def export_persons(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid family_id format"
         )
+    # The whole clan with birth and death dates leaves the system: managers only (Mốc M2b),
+    # a plain member (person.view) gets 403.
+    await _require(db, account, f_uuid, "person.update")
 
     stmt = select(Person).where(Person.family_id == f_uuid)
 
@@ -560,10 +609,11 @@ class MemberRelocateRequest(BaseModel):
     newBranchId: Optional[str] = None
 
 
-@router.post("/members", status_code=status.HTTP_201_CREATED)
+@router.post("/members", status_code=status.HTTP_201_CREATED, dependencies=[Depends(get_current_account)])
 async def create_member(
     data: MemberCreateRequest,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
     """Create a new member and automatically establish parent-child or spouse relationships."""
     clean_name = data.fullName.strip()
@@ -640,8 +690,7 @@ async def create_member(
         except Exception:
             pass
 
-    admin_uid_res = await db.execute(select(User.user_id).limit(1))
-    admin_uid = admin_uid_res.scalar_one_or_none()
+    admin_uid = account.id
 
     new_person = Person(
         family_id=fam_id,
@@ -696,11 +745,12 @@ async def create_member(
     }
 
 
-@router.patch("/members/{member_id}")
+@router.patch("/members/{member_id}", dependencies=[Depends(get_current_account)])
 async def update_member(
     member_id: str,
     data: MemberUpdateRequest,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
     """Update member personal details."""
     try:
@@ -770,10 +820,11 @@ async def update_member(
     }
 
 
-@router.delete("/members/{member_id}", status_code=status.HTTP_200_OK)
+@router.delete("/members/{member_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(get_current_account)])
 async def delete_member(
     member_id: str,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
     """Delete a member and all their relationships from the family tree."""
     try:
@@ -799,11 +850,12 @@ async def delete_member(
     return {"success": True, "message": f"Đã xóa thành viên '{p.full_name}' khỏi cây gia phả."}
 
 
-@router.post("/members/{member_id}/relocate")
+@router.post("/members/{member_id}/relocate", dependencies=[Depends(get_current_account)])
 async def relocate_member(
     member_id: str,
     data: MemberRelocateRequest,
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
     """Relocate a member under a new parent or branch."""
     try:
@@ -834,8 +886,7 @@ async def relocate_member(
             for r in old_rels.scalars().all():
                 await db.delete(r)
 
-            admin_uid_res = await db.execute(select(User.user_id).limit(1))
-            admin_uid = admin_uid_res.scalar_one_or_none()
+            admin_uid = account.id
 
             # Add new relationship
             new_rel = Relationship(

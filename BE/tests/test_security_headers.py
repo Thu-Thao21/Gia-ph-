@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import pytest
 from fastapi import Response
 from fastapi.testclient import TestClient
@@ -28,6 +29,7 @@ from app.main import create_app
 from tests.fakes import FakeDb, FakeFamilyRepo, FakeIdentityProvider, FakeUserAccessRepo, make_user
 
 ORIGIN = "http://localhost:5173"  # in FRONTEND_ORIGINS (tests/conftest.py)
+PASSWORD = "Mat-Khau-H1-123"
 SECURITY = {
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
@@ -62,12 +64,12 @@ class World:
         self.client = TestClient(app)
 
     def user(self):
-        return self.repo.add_user(make_user("ACTIVE"))
+        user = self.repo.add_user(make_user("ACTIVE"))
+        self.repo.set_cred(user, password_hash=bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt(4)).decode())
+        return user
 
-    def login(self, user):
-        return self.client.post(
-            "/api/v1/auth/session", json={"id_token": self.provider.issue(user.firebase_uid)}
-        )
+    def login(self, user, password=PASSWORD):
+        return self.client.post("/api/v1/auth/login", json={"email": user.email, "password": password})
 
     def token(self, user) -> str:
         now = datetime.now(timezone.utc)
@@ -99,22 +101,34 @@ def assert_security_headers(r) -> None:
 # ----- auth router: no-store on success and on error (L-26) -----
 
 
-def test_session_201_with_the_access_token_is_no_store(w):
+def test_login_200_with_the_access_token_is_no_store(w):
     r = w.login(w.user())
-    assert r.status_code == 201 and "access_token" in r.json()
+    assert r.status_code == 200 and "access_token" in r.json()
     assert_no_store(r)
     assert_security_headers(r)
 
 
-def test_session_401_is_no_store(w):
-    r = w.client.post("/api/v1/auth/session", json={"id_token": "garbage"})
-    assert (r.status_code, r.json()["error"]["code"]) == (401, "INVALID_ID_TOKEN")
+def test_login_401_is_no_store(w):
+    r = w.login(w.user(), password="Sai-Mat-Khau-999")
+    assert (r.status_code, r.json()["error"]["code"]) == (401, "AUTHENTICATION_FAILED")
     assert_no_store(r)
 
 
-def test_session_422_validation_error_is_no_store(w):
-    r = w.client.post("/api/v1/auth/session", json={})
+def test_login_422_validation_error_is_no_store(w):
+    r = w.client.post("/api/v1/auth/login", json={})
     assert r.status_code == 422
+    assert_no_store(r)
+
+
+def test_change_password_200_with_the_new_access_token_is_no_store(w):
+    user = w.user()
+    token = w.login(user).json()["access_token"]
+    r = w.client.post(
+        "/api/v1/auth/change-password",
+        headers=bearer(token),
+        json={"current_password": PASSWORD, "new_password": "Mat-Khau-Moi-456"},
+    )
+    assert r.status_code == 200 and "access_token" in r.json()
     assert_no_store(r)
 
 
@@ -151,7 +165,7 @@ def test_an_unhandled_error_in_an_auth_route_is_a_500_still_no_store_and_with_co
 
     w.app.dependency_overrides[get_user_access_repo] = broken_repo
     r = w.client.post(
-        "/api/v1/auth/session", json={"id_token": "anything"}, headers={"Origin": ORIGIN}
+        "/api/v1/auth/login", json={"email": "a@b.test", "password": "x"}, headers={"Origin": ORIGIN}
     )
     assert (r.status_code, r.json()["error"]["code"]) == (500, "INTERNAL_ERROR")
     assert "simulated bug" not in r.text
@@ -190,7 +204,7 @@ def test_a_500_envelope_has_the_security_headers_and_the_cors_headers(w):
 
 def test_a_cors_preflight_has_the_security_headers(w):
     r = w.client.options(
-        "/api/v1/auth/session",
+        "/api/v1/auth/login",
         headers={"Origin": ORIGIN, "Access-Control-Request-Method": "POST"},
     )
     assert r.status_code == 200

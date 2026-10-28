@@ -200,11 +200,41 @@ def test_the_fingerprint_command_prints_only_the_database_and_the_fingerprint():
 
 def test_the_history_is_one_line_baseline_then_0002_then_0003():
     script = ScriptDirectory.from_config(Config(str(BE_DIR / "alembic.ini")))
-    assert script.get_heads() == ["0004_genealogy_fields"]
+    assert script.get_heads() == ["0010_clan_identity_registry"]
+    assert script.get_revision("0010_clan_identity_registry").down_revision == "0009_users_contact_email"
+    assert script.get_revision("0009_users_contact_email").down_revision == "0008_gmail_registry"
+    assert script.get_revision("0008_gmail_registry").down_revision == "0007_email_otp_challenges"
+    assert script.get_revision("0007_email_otp_challenges").down_revision == "0006_used_password_reset_codes"
+    assert script.get_revision("0006_used_password_reset_codes").down_revision == "0005_credential_password_hash"
+    assert script.get_revision("0005_credential_password_hash").down_revision == "0004_genealogy_fields"
     assert script.get_revision("0004_genealogy_fields").down_revision == "0003_provisioning_idempotency"
     assert script.get_revision("0003_provisioning_idempotency").down_revision == "0002_integrity_constraints"
     assert script.get_revision("0002_integrity_constraints").down_revision == "0001_baseline"
     assert script.get_revision("0001_baseline").down_revision is None
+
+
+def test_0005_upgrade_twice_is_harmless_and_downgrade_drops_only_the_column(monkeypatch):
+    """The main database already has password_hash (old seed file): every statement must be
+    IF [NOT] EXISTS so running the upgrade there, or twice, changes nothing and raises nothing."""
+    module = load_migration("0005_credential_password_hash")
+    executed: list[str] = []
+    monkeypatch.setattr(module.op, "execute", executed.append)
+    module.upgrade()
+    module.upgrade()
+    assert executed == [
+        "ALTER TABLE credential_metadata ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);"
+    ] * 2
+    executed.clear()
+    module.downgrade()
+    module.downgrade()
+    assert executed == ["ALTER TABLE credential_metadata DROP COLUMN IF EXISTS password_hash;"] * 2
+
+
+def test_0005_offline_preview_adds_the_column_idempotently():
+    proc = run_cli("-m", "alembic", "upgrade", "0004_genealogy_fields:0005_credential_password_hash", "--sql")
+    assert proc.returncode == 0, proc.stderr[-600:]
+    assert "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)" in proc.stdout
+    assert_no_secret(proc.stdout + proc.stderr)
 
 
 def test_the_baseline_is_empty():
@@ -439,3 +469,41 @@ def test_downgrade_restores_exactly_the_old_state(mig, monkeypatch):
         "WHERE revoked_at IS NULL"
     )
     assert len(sql) == 6
+
+
+def test_0006_creates_only_the_used_codes_table_idempotently(monkeypatch):
+    """A new table only (no existing table changes); IF [NOT] EXISTS so a rerun is harmless."""
+    module = load_migration("0006_used_password_reset_codes")
+    executed: list[str] = []
+    monkeypatch.setattr(module.op, "execute", executed.append)
+    module.upgrade()
+    create, index = executed
+    assert "CREATE TABLE IF NOT EXISTS used_password_reset_codes" in create
+    assert "PRIMARY KEY (code_hash)" in create and "REFERENCES users (user_id) ON DELETE CASCADE" in create
+    assert index.startswith("CREATE INDEX IF NOT EXISTS idx_used_password_reset_codes_user")
+    assert not any("ALTER TABLE" in sql for sql in executed)
+    executed.clear()
+    module.downgrade()
+    assert executed == [
+        "DROP INDEX IF EXISTS idx_used_password_reset_codes_user;",
+        "DROP TABLE IF EXISTS used_password_reset_codes;",
+    ]
+
+
+def test_0007_creates_only_the_otp_table_idempotently(monkeypatch):
+    module = load_migration("0007_email_otp_challenges")
+    executed: list[str] = []
+    monkeypatch.setattr(module.op, "execute", executed.append)
+    module.upgrade()
+    create, index = executed
+    assert "CREATE TABLE IF NOT EXISTS email_otp_challenges" in create
+    assert "UNIQUE (token_hash)" in create and "MEMBER_REGISTRATION" in create
+    assert "email " not in create.replace("email_hash", "")  # no plain e-mail column
+    assert index.startswith("CREATE INDEX IF NOT EXISTS idx_email_otp_challenges_lookup")
+    assert not any("ALTER TABLE" in sql for sql in executed)
+    executed.clear()
+    module.downgrade()
+    assert executed == [
+        "DROP INDEX IF EXISTS idx_email_otp_challenges_lookup;",
+        "DROP TABLE IF EXISTS email_otp_challenges;",
+    ]

@@ -311,7 +311,8 @@ async def _execute(
             failure=exc.failure, clock=clock,
         ) from None
 
-    delivery = await _send(sender, run, password, expires_at)
+    contact = await owner_contact(db, users, family, run.clan_id, user_id)
+    delivery = await _send(sender, contact, run, password, expires_at)
     logger.info("owner.provision job_id=%s step=done request_id=%s", run.job_id, get_request_id())
     return ProvisionResult(
         status=status,
@@ -567,10 +568,20 @@ async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock):
         now = clock()
         expires_at = now + timedelta(hours=settings.OWNER_TEMP_PASSWORD_TTL_HOURS)
         user_id = uuid.uuid4()
-        await users.create_user_account(
+        owner = await users.create_user_account(
             user_id=user_id, firebase_uid=run.uid, email=run.email, display_name=run.display_name,
             phone=job.phone, status="PENDING", first_login_required=True, now=now,
         )
+        # Mốc M5: the Owner's real Gmail (users.contact_email) and its registry row, in T4.
+        registration = (
+            await family.get_registration_by_id(clan.registration_id) if clan.registration_id else None
+        )
+        if registration is not None:
+            await bind_owner_contact(
+                users=users, owner=owner, registration_id=clan.registration_id,
+                contact_email=str(registration.representative_email), actor_id=run.actor_id,
+                clan_id=run.clan_id, now=now,
+            )
         cred = await users.add_credential_metadata(user_id, now=now)
         cred.must_change_password = True
         cred.temporary_password_issued_at = now
@@ -602,12 +613,69 @@ async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock):
     return await _phase(db, work, _classify_finish)
 
 
-async def _send(sender: EmailSender, run: JobRun, password: str, expires_at: datetime) -> EmailDeliveryResult:
-    """After the commit. A failure to send never undoes the Owner: the job is SUCCEEDED."""
+@dataclass(frozen=True)
+class OwnerContact:
+    """Where an Owner's mail goes (Mốc M5-0): the real Gmail of the clan's Business registration."""
+
+    email: str | None
+    clan_name: str | None
+
+
+async def owner_contact(
+    db, users: UserAccessRepository, family: FamilyRepository, clan_id: uuid.UUID, user_id: uuid.UUID
+) -> OwnerContact:
+    """The Owner's users.contact_email (Mốc M5; set when the Owner was provisioned), never
+    users.email: an Owner's @giapha.com login identifier is not a mailbox. None for an Owner without
+    one (a clan made without a registration). A read only: ended before any e-mail is sent."""
+    try:
+        clan = await family.get_clan_by_id(clan_id)
+        owner = await users.get_user_fresh(user_id)
+        contact = (owner.contact_email or "").strip() if owner is not None else ""
+        return OwnerContact(email=contact or None, clan_name=str(clan.name) if clan is not None else None)
+    finally:
+        await rollback_quietly(db)
+
+
+async def bind_owner_contact(
+    *, users: UserAccessRepository, owner, registration_id, contact_email: str, actor_id, clan_id, now
+) -> str:
+    """In the transaction that creates the Owner (Mốc M5): users.contact_email = the registration's
+    real Gmail, and the registry row of that registration becomes the Owner's (no second row).
+    A Gmail already held by somebody else (data from before the registry) is still set as the
+    contact, so the Owner gets the mail, and the conflict is audited for a person to resolve."""
+    from app.core.integrations.email_sender import mask_email
+    from app.core.utils import gmail_registry
+
+    contact = (contact_email or "").strip()
+    if not contact or gmail_registry.is_login_identifier(contact):
+        return "no_contact"
+    owner.contact_email = contact
+    outcome = await users.gmail_bind_owner(
+        registration_id=registration_id, user_id=owner.user_id,
+        normalized_email=gmail_registry.normalize_email(contact), original_email=contact, now=now,
+    )
+    if outcome == "conflict":
+        logger.warning("owner.provision gmail_registry=conflict clan_id=%s", clan_id)
+        await users.add_audit_log(
+            actor_id=actor_id, action="gmail_registry.owner_contact_conflict", entity_type="user",
+            entity_id=owner.user_id, clan_id=clan_id, old_data=None,
+            new_data={"email": mask_email(contact)}, ip_address=None, occurred_at=now,
+        )
+    return outcome
+
+
+async def _send(
+    sender: EmailSender, contact: OwnerContact, run: JobRun, password: str, expires_at: datetime
+) -> EmailDeliveryResult:
+    """After the commit, ONCE, to the contact Gmail only (the login identifier is shown in the mail).
+    A failure to send never undoes the Owner: the job is SUCCEEDED."""
+    if not contact.email:
+        logger.warning("owner.provision email_skipped reason=no_contact_email job_id=%s", run.job_id)
+        return EmailDeliveryResult(status="FAILED", error="no_contact_email")
     try:
         return await sender.send_owner_temporary_password(
-            to_email=run.email, display_name=run.display_name, temporary_password=password,
-            expires_at=expires_at,
+            to_email=contact.email, display_name=run.display_name, temporary_password=password,
+            expires_at=expires_at, clan_name=contact.clan_name, account_email=run.email,
         )
     except Exception:  # noqa: BLE001 - nothing about the message or the password is logged
         logger.warning("owner.provision email_failed job_id=%s request_id=%s", run.job_id, get_request_id())

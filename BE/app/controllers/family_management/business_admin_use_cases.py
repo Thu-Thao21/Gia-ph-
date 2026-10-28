@@ -33,6 +33,7 @@ from typing import Callable
 from sqlalchemy.exc import IntegrityError
 
 from app.controllers.auth_access.use_cases import ClientInfo, UnitOfWork
+from app.core.utils import clan_identity
 from app.core.utils.clan_code import generate_clan_code
 from app.core.utils.dates import add_months
 from app.core.errors.db_errors import constraint_name
@@ -117,8 +118,12 @@ async def create_business(
             raise _duplicate_code()
 
         clan = None
-        for _attempt in range(1 if supplied is not None else GENERATED_CODE_ATTEMPTS):
-            code = supplied if supplied is not None else generate()
+        candidates = iter(
+            [supplied] if supplied is not None
+            else [generate() for _ in range(GENERATED_CODE_ATTEMPTS)] if code_generator is not None
+            else await _free_codes(family, users, registration.clan_name)
+        )
+        for code in candidates:
             try:
                 clan = await family.create_clan(
                     registration_id=registration_id,
@@ -144,6 +149,15 @@ async def create_business(
         await family.create_clan_profile(
             clan_id=clan.clan_id, origin_place=registration.origin_place, now=moment
         )
+        # Mốc M5c: the clan takes over its registration's clan key (no second row).
+        c_name = clan_identity.name_key(registration.clan_name)
+        c_origin = clan_identity.origin_key(registration.origin_place)
+        bound = await family.clan_key_bind_clan(
+            registration_id=registration_id, clan_id=clan.clan_id, clan_key=f"{c_name}|{c_origin}",
+            name_key=c_name, origin_key=c_origin, now=moment,
+        )
+        if bound == "conflict":
+            logger.warning("business.create clan_key=conflict registration_id=%s", registration_id)
         subscription = await family.create_subscription(
             clan_id=clan.clan_id,
             plan_id=plan.plan_id,
@@ -199,3 +213,18 @@ async def create_business(
         execute=execute,
         now=moment,
     )
+
+
+async def _free_codes(family: FamilyRepository, users, clan_name: str) -> list[str]:
+    """Mốc M5c: the codes made from the clan name, in order, that no clan uses (any letter case) and
+    whose Owner login ID "<code>@giapha.com" no user has. The unique indexes still decide a race."""
+    free = []
+    for code in clan_identity.code_candidates(clan_name):
+        if await family.clan_code_taken(code):
+            continue
+        if users is not None and await users.get_user_by_email_ci(f"{code}@{clan_identity.LOGIN_DOMAIN}") is not None:
+            continue
+        free.append(code)
+        if len(free) >= GENERATED_CODE_ATTEMPTS:  # the same attempt budget as before
+            break
+    return free

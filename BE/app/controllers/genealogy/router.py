@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.genealogy.controller import GenealogyController
@@ -64,9 +64,11 @@ async def export_family_persons(
     family_id: str,
     format: str = Query("csv"),
     db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
 ):
-    from app.controllers.member_api_router import export_persons
-    return await export_persons(family_id=family_id, format=format, db=db)
+    """CSV of the family's persons: person.update in THIS family (Mốc M2 N-2, M2b)."""
+    from app.controllers.member_api_router import export_persons_csv
+    return await export_persons_csv(db=db, account=account, family_id=family_id)
 
 
 @router.get("/persons/{person_id}", response_model=PersonResponse)

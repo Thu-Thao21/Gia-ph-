@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import LoginForm from '../../components/auth/LoginForm';
 import AuthLanding from '../../components/auth/AuthLanding';
 import loginBackground from '../../assets/nenan.png';
@@ -11,6 +12,8 @@ export interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwitchToForgotPassword, onSuccess }) => {
+  // Thông báo do trang trước gửi sang (vd: sau khi đặt lại mật khẩu thành công).
+  const notice = (useLocation().state as { notice?: string } | null)?.notice;
   return (
     <AuthLanding
       title="Kết nối các dòng họ, lưu giữ nguồn cội"
@@ -21,6 +24,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, onSwitchToFor
         onSwitchToRegister={onSwitchToRegister}
         onSwitchToForgotPassword={onSwitchToForgotPassword}
         onSuccess={onSuccess}
+        notice={notice}
       />
     </AuthLanding>
   );

@@ -885,3 +885,46 @@ class IdempotencyKey(Base):
     response_body: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = _now_ts()
     expires_at: Mapped[datetime] = _req_ts()
+
+
+class ClanIdentityEntry(Base):
+    """Maps public.clan_identity_registry (migration 0010, Mốc M5c): each clan exists ONCE.
+
+    One ACTIVE row per clan_key (partial unique index), held by a Business registration in progress
+    (kind registration) or by the clan made from it (kind clan, registration_id kept). See
+    app.core.utils.clan_identity for the keys."""
+
+    __tablename__ = "clan_identity_registry"
+    __table_args__ = (
+        CheckConstraint("kind IN ('registration', 'clan')", name="clan_identity_registry_kind_check"),
+        CheckConstraint(
+            "status IN ('active', 'released', 'duplicate')", name="clan_identity_registry_status_check"
+        ),
+        CheckConstraint(
+            "registration_id IS NOT NULL OR clan_id IS NOT NULL", name="clan_identity_registry_owner_check"
+        ),
+        Index("uq_clan_identity_active_key", "clan_key", unique=True, postgresql_where=text("status = 'active'")),
+        Index("idx_clan_identity_name_key", "name_key"),
+        Index("idx_clan_identity_registration", "registration_id"),
+        Index("idx_clan_identity_clan", "clan_id"),
+    )
+
+    registry_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    clan_key: Mapped[str] = mapped_column(String(600), nullable=False)
+    name_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    origin_key: Mapped[str] = mapped_column(String(300), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    registration_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("business_registrations.registration_id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    clan_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clans.clan_id", ondelete="CASCADE"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    note: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    released_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

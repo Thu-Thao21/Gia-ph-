@@ -67,11 +67,21 @@ class InvalidIdToken(Exception):
 
 
 class ProviderUnavailable(Exception):
-    """Firebase is not configured or not reachable. Never fall back to a weaker check."""
+    """Firebase is not configured or not reachable. Never fall back to a weaker check.
 
-    def __init__(self, reason: str) -> None:
+    error: the SDK exception behind it as "ClassName:CODE" (firebase_error_name), for logs and
+    audit rows; never the SDK message, which can echo the e-mail."""
+
+    def __init__(self, reason: str, *, error: str | None = None) -> None:
         super().__init__(reason)
         self.reason = reason
+        self.error = error
+
+
+def firebase_error_name(exc: BaseException) -> str:
+    """"UnexpectedResponseError:UNKNOWN": the class and FirebaseError.code only."""
+    code = getattr(exc, "code", None)
+    return f"{type(exc).__name__}:{code}" if code else type(exc).__name__
 
 
 class PasswordRejected(Exception):
@@ -144,6 +154,8 @@ class IdentityProvider(Protocol):
     async def create_user(self, *, uid: str, email: str, display_name: str, password: str) -> ProviderUser: ...
 
     async def delete_user(self, uid: str) -> bool: ...
+
+    async def generate_password_reset_link(self, email: str) -> str: ...
 
 
 def identity_from_claims(claims: dict[str, Any]) -> VerifiedIdentity:
@@ -346,6 +358,50 @@ class FirebaseIdentityProvider:
             await self._call(firebase_auth.revoke_refresh_tokens, uid, app=app)
         except (ValueError, firebase_exceptions.FirebaseError):
             raise ProviderUnavailable("revoke_refresh_tokens_failed") from None
+
+    async def generate_password_reset_link(self, email: str) -> str:
+        """Firebase's password-reset action link for `email` (Mốc M4b), WITHOUT Firebase sending any
+        e-mail: the app builds its own link from the oobCode and mails it. Admin API (service
+        account), through `_call` like every SDK call. ProviderUserNotFound when no Firebase user
+        has that e-mail. The link holds a live reset code: never log it."""
+        app = self._require_admin()
+        try:
+            return await self._call(firebase_auth.generate_password_reset_link, email, app=app)
+        except (firebase_auth.EmailNotFoundError, firebase_auth.UserNotFoundError):
+            # EMAIL_NOT_FOUND / USER_NOT_FOUND (siblings under NotFoundError; NOT the other
+            # NotFoundError subclasses: CONFIGURATION_NOT_FOUND / TENANT_NOT_FOUND are setup errors).
+            raise ProviderUserNotFound() from None
+        except firebase_auth.UnexpectedResponseError as exc:
+            # With Email Enumeration Protection on (the project default since 2023), an unknown
+            # e-mail is NOT an EMAIL_NOT_FOUND error: accounts:sendOobCode answers 200 with
+            # {"kind", "email"} and no oobLink, and the SDK raises UnexpectedResponseError (seen
+            # with firebase_admin 7.7.0). The same error could mean something else, so ask
+            # get_user_by_email before calling the account missing.
+            if await self._no_user_with_email(email, app):
+                raise ProviderUserNotFound() from None
+            raise ProviderUnavailable(
+                "generate_reset_link_failed", error=firebase_error_name(exc)
+            ) from None
+        except ValueError:
+            raise ProviderInvalidUser() from None
+        except firebase_exceptions.FirebaseError as exc:
+            raise ProviderUnavailable(
+                "generate_reset_link_failed", error=firebase_error_name(exc)
+            ) from None
+
+    async def _no_user_with_email(self, email: str, app: firebase_admin.App) -> bool:
+        """True only when Firebase says no user has this e-mail (read-only lookup)."""
+        try:
+            await self._call(firebase_auth.get_user_by_email, email, app=app)
+        except firebase_auth.UserNotFoundError:
+            return True
+        except ValueError:
+            raise ProviderInvalidUser() from None
+        except firebase_exceptions.FirebaseError as exc:
+            raise ProviderUnavailable(
+                "get_user_by_email_failed", error=firebase_error_name(exc)
+            ) from None
+        return False
 
     async def delete_user(self, uid: str) -> bool:
         """Delete the user `uid`, only if it is an `own-<uuid>`. True if deleted, False if there was none."""

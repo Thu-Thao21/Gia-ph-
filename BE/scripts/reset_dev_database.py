@@ -6,7 +6,7 @@ Script Reset toàn bộ dữ liệu nghiệp vụ test trên Neon PostgreSQL DEV
 - Giữ nguyên các bảng seed hệ thống bắt buộc: roles, permissions, role_permissions, subscription_plans, plan_feature_limits.
 - Tạo đúng 1 tài khoản System Admin mặc định:
     Email: thuthaor120608@gmail.com
-    Password: (Firebase: 12060805)
+    Password: không ghi ở đây (mật khẩu được gửi riêng cho từng người)
     Firebase UID: Kt23xmxKJ6Stne3GEOerJ5ParHE3
     Role: SYSTEM_ADMIN
     Status: ACTIVE

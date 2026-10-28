@@ -13,7 +13,7 @@ Every request:
 Roles are never read from the token; authorization lives in permissions.py and
 re-reads the database on every request.
 
-No Firebase here. The ID-token exchange (POST /auth/session) lives in
+No Firebase here. The login (POST /auth/login, password checked in the DB) lives in
 app/controllers/auth_access and reuses evaluate_account() below, so a login and
 every later request apply the same account rules.
 """
@@ -41,11 +41,14 @@ API_PREFIX = "/api/v1"
 # Restricted sessions may only reach these routes. get_principal_allow_restricted
 # must be attached to exactly these three routes; the path check below is an
 # extra defensive layer, not the primary control.
+# Paths WITHOUT the API prefix: main.py mounts every router twice (at /api/v1 and at the root,
+# which is what the FE calls), and route_path() strips the prefix before comparing, so both
+# spellings of these three routes match and nothing else does.
 RESTRICTED_ALLOWED_PATHS: frozenset[str] = frozenset(
     {
-        f"{API_PREFIX}/auth/me",
-        f"{API_PREFIX}/auth/change-password",
-        f"{API_PREFIX}/auth/logout",
+        "/auth/me",
+        "/auth/change-password",
+        "/auth/logout",
     }
 )
 
@@ -93,10 +96,10 @@ async def evaluate_account(
     issued_at: datetime,
     stale_error: Callable[[], AppError],
 ) -> bool:
-    """Account rules shared by every request and by the ID-token exchange.
+    """Account rules shared by every request and by the login.
 
-    issued_at: when the credential being used was issued (session created_at, or the
-    Firebase auth_time at login). Anything issued before the latest password change is
+    issued_at: when the credential being used was issued (session created_at, or "now" at
+    login, where the password has just been checked). Anything issued before the latest password change is
     dead, even if the explicit revoke after the change was missed -> stale_error().
 
     Returns requires_password_change. Raises AppError; order matters:
@@ -180,14 +183,29 @@ def _extract_token(credentials: HTTPAuthorizationCredentials | None) -> str:
     return token
 
 
-def _normalize_path(path: str) -> str:
-    return path.rstrip("/") or "/"
+def route_path(path: str) -> str:
+    """The route a request path names, the same for both mounts: no trailing slash, and the
+    API_PREFIX removed when it is a whole leading segment (/api/v1/auth/me and /auth/me are
+    one route; /api/v1x/auth/me is not)."""
+    path = path.rstrip("/") or "/"
+    if path == API_PREFIX:
+        return "/"
+    if path.startswith(API_PREFIX + "/"):
+        return path[len(API_PREFIX):]
+    return path
 
 
 async def get_user_access_repo(
     db: AsyncSession = Depends(get_db),
 ) -> UserAccessRepository:
     return UserAccessRepository(db)
+
+
+async def get_email_otp_repo(db: AsyncSession = Depends(get_db)):
+    """email_otp_challenges (Mốc M5-1). Tests replace it with a fake."""
+    from app.models.user_access.otp_repository import EmailOtpRepository
+
+    return EmailOtpRepository(db)
 
 
 async def get_principal_allow_restricted(
@@ -199,7 +217,7 @@ async def get_principal_allow_restricted(
     principal = await resolve_principal(_extract_token(credentials), repo)
     if (
         principal.requires_password_change
-        and _normalize_path(request.url.path) not in RESTRICTED_ALLOWED_PATHS
+        and route_path(request.url.path) not in RESTRICTED_ALLOWED_PATHS
     ):
         # Defensive: the dependency was attached to a route it should not be on.
         raise AppError(ErrorCode.PASSWORD_CHANGE_REQUIRED)
