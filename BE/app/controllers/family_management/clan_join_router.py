@@ -51,12 +51,11 @@ async def get_optional_principal(
 async def search_public_clans(
     q: Optional[str] = Query(None, description="Tìm kiếm theo tên hoặc mã dòng tộc"),
     limit: int = Query(50, ge=1, le=100),
-    principal: Optional[Principal] = Depends(get_optional_principal),
+    principal: Principal = Depends(get_principal),
     db: AsyncSession = Depends(get_db),
 ):
     """Tìm kiếm dòng họ công khai để người dùng nộp yêu cầu gia nhập."""
-    user_id = principal.user_id if principal else None
-    return await use_cases.search_public_clans(db=db, user_id=user_id, query=q, limit=limit)
+    return await use_cases.search_public_clans(db=db, user_id=principal.user_id, query=q, limit=limit)
 
 
 # ---------------------------------------------------------------------------

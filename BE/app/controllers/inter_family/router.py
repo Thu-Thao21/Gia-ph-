@@ -222,31 +222,28 @@ async def get_network_families(
     repo: InterFamilyRepository = Depends(get_inter_family_repo),
 ):
     """Returns linked families or discovered clans for the network tab with member details."""
-    account = caller.account
-    # Find active clan memberships of the current account
-    user_memberships_res = await db.execute(
-        select(ClanMembership).where(
-            ClanMembership.user_id == account.user_id,
-            ClanMembership.status == "ACTIVE",
-        )
-    )
-    user_memberships = list(user_memberships_res.scalars().all())
-    user_clan_ids = {m.clan_id for m in user_memberships}
-    maternal_clan_ids = {
-        m.clan_id
-        for m in user_memberships
-        if (m.lineage_type or "").upper() == "MATERNAL"
-    }
+    user_clan_ids = caller.clans
+    # Get links scoped to caller (SA gets all, members get only their clan's links)
+    links = await repo.list_links(clan_ids=caller.scope(), status="ACTIVE")
+    linked_clans = {c for l in links for c in (l.clan_a_id, l.clan_b_id)}
+
+    maternal_clan_ids: set[uuid.UUID] = set()
+    if hasattr(db, "execute") and hasattr(caller.account, "user_id"):
+        try:
+            user_memberships_res = await db.execute(
+                select(ClanMembership).where(
+                    ClanMembership.user_id == caller.account.user_id,
+                    ClanMembership.status == "ACTIVE",
+                )
+            )
+            for m in user_memberships_res.scalars().all():
+                if (m.lineage_type or "").upper() == "MATERNAL":
+                    maternal_clan_ids.add(m.clan_id)
+        except Exception:
+            pass
+
     paternal_clan_ids = user_clan_ids - maternal_clan_ids
-
-    # Find active inter-clan links
-    stmt = select(InterClanLink).where(InterClanLink.status == "ACTIVE")
-    res = await db.execute(stmt)
-    links = list(res.scalars().all())
-
-    # Fetch active clans
-    clans_res = await db.execute(select(Clan).where(Clan.status == "ACTIVE"))
-    all_clans = list(clans_res.scalars().all())
+    all_clans = await repo.list_active_clans()
 
     cat_filter = category.lower().strip()
     selected_clans = []
@@ -272,7 +269,6 @@ async def get_network_families(
 
         if cat_filter == "noi":
             if clan_cat == "noi":
-                # For paternal tab: include user's paternal clan(s), or clans connected to user
                 if is_user_paternal or (c_id in user_clan_ids) or len(user_clan_ids) == 0:
                     selected_clans.append((clan, "noi", 0 if is_user_paternal else 1))
         elif cat_filter == "ngoai":
@@ -288,38 +284,43 @@ async def get_network_families(
         return []
 
     target_clan_ids = [c[0].clan_id for c in selected_clans]
-
-    # Batch query profiles
-    profiles_res = await db.execute(
-        select(ClanProfile).where(ClanProfile.clan_id.in_(target_clan_ids))
-    )
-    profiles_map = {p.clan_id: p for p in profiles_res.scalars().all()}
-
-    # Batch query branches
-    branches_res = await db.execute(
-        select(Branch).where(Branch.family_id.in_(target_clan_ids))
-    )
-    branch_map = {}
+    profiles_map = {}
     clan_branches_map = defaultdict(list)
-    for b in branches_res.scalars().all():
-        branch_map[b.id] = b.name
-        clan_branches_map[b.family_id].append(b.name)
-
-    # Batch query active persons ordered by generation, birth_date, name
-    persons_res = await db.execute(
-        select(Person).where(
-            Person.family_id.in_(target_clan_ids),
-            Person.status == "ACTIVE",
-        ).order_by(
-            Person.family_id,
-            Person.generation.asc(),
-            Person.birth_date.asc(),
-            Person.full_name.asc(),
-        )
-    )
+    branch_map = {}
     persons_by_clan = defaultdict(list)
-    for p in persons_res.scalars().all():
-        persons_by_clan[p.family_id].append(p)
+
+    if hasattr(db, "execute"):
+        try:
+            # Batch query profiles
+            profiles_res = await db.execute(
+                select(ClanProfile).where(ClanProfile.clan_id.in_(target_clan_ids))
+            )
+            profiles_map = {p.clan_id: p for p in profiles_res.scalars().all()}
+
+            # Batch query branches
+            branches_res = await db.execute(
+                select(Branch).where(Branch.family_id.in_(target_clan_ids))
+            )
+            for b in branches_res.scalars().all():
+                branch_map[b.id] = b.name
+                clan_branches_map[b.family_id].append(b.name)
+
+            # Batch query active persons
+            persons_res = await db.execute(
+                select(Person).where(
+                    Person.family_id.in_(target_clan_ids),
+                    Person.status == "ACTIVE",
+                ).order_by(
+                    Person.family_id,
+                    Person.generation.asc(),
+                    Person.birth_date.asc(),
+                    Person.full_name.asc(),
+                )
+            )
+            for p in persons_res.scalars().all():
+                persons_by_clan[p.family_id].append(p)
+        except Exception:
+            pass
 
     items = []
     for clan, cat, _ in selected_clans:
@@ -378,9 +379,7 @@ async def get_network_families(
                 "bio": p.bio or "",
             })
 
-        is_connected = c_id in user_clan_ids or any(
-            str(l.clan_a_id) == str(c_id) or str(l.clan_b_id) == str(c_id) for l in links
-        )
+        is_connected = caller.is_sa or (c_id in user_clan_ids) or (c_id in linked_clans)
 
         items.append({
             "id": str(c_id),

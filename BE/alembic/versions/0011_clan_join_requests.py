@@ -1,7 +1,7 @@
 """add clan_join_requests table and lineage_type to clan_memberships
 
-Revision ID: 0005_clan_join_requests
-Revises: 0004_genealogy_fields
+Revision ID: 0011_clan_join_requests
+Revises: 0010_clan_identity_registry
 Create Date: 2026-10-27
 """
 from typing import Sequence, Union
@@ -9,8 +9,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "0005_clan_join_requests"
-down_revision: Union[str, Sequence[str], None] = "0004_genealogy_fields"
+revision: str = "0011_clan_join_requests"
+down_revision: Union[str, Sequence[str], None] = "0010_clan_identity_registry"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

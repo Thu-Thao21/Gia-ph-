@@ -1074,6 +1074,12 @@ class FakeFamilyRepo:
             if m.user_id == user_id and m.revoked_at is None and m.status != "REVOKED"
         ]
 
+    async def get_person_link_by_user(self, clan_id, user_id):
+        return None
+
+    async def get_person_link_by_person(self, clan_id, person_id):
+        return None
+
 
 @dataclass
 class FakeIdempotencyRepo:

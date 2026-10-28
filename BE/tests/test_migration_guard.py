@@ -200,7 +200,8 @@ def test_the_fingerprint_command_prints_only_the_database_and_the_fingerprint():
 
 def test_the_history_is_one_line_baseline_then_0002_then_0003():
     script = ScriptDirectory.from_config(Config(str(BE_DIR / "alembic.ini")))
-    assert script.get_heads() == ["0010_clan_identity_registry"]
+    assert script.get_heads() == ["0011_clan_join_requests"]
+    assert script.get_revision("0011_clan_join_requests").down_revision == "0010_clan_identity_registry"
     assert script.get_revision("0010_clan_identity_registry").down_revision == "0009_users_contact_email"
     assert script.get_revision("0009_users_contact_email").down_revision == "0008_gmail_registry"
     assert script.get_revision("0008_gmail_registry").down_revision == "0007_email_otp_challenges"
