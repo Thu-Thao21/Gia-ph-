@@ -57,6 +57,8 @@ export interface MembershipSummary {
   clan_name: string;
   clan_status: BeClanStatus;
   membership_status: BeMembershipStatus;
+  lineage_type?: 'PATERNAL' | 'MATERNAL' | string | null;
+  person_id?: string | null;
   roles: string[];
   permissions: string[];
 }

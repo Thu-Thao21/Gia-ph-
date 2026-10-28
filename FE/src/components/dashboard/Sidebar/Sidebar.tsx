@@ -110,6 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'clan-profile', label: 'Hồ sơ gia tộc' },
         { id: 'my-profile', label: 'Hồ sơ của tôi' },
+        { id: 'my-clans', label: 'Dòng tộc của tôi' },
         { id: 'my-proposals', label: 'Đề xuất của tôi' },
       ],
     },

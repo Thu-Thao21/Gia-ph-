@@ -22,28 +22,60 @@ try {
   // localStorage có thể không dùng được (chế độ riêng tư); bỏ qua.
 }
 
+const SESSION_KEY = 'mfgms_app_session';
+
 export function setSession(session: AppSession): void {
   current = session;
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch {}
 }
 
 export function clearSession(): void {
   current = null;
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {}
 }
 
 export function getAccessToken(): string | null {
+  if (!current) {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        current = JSON.parse(saved);
+      }
+    } catch {}
+  }
   return current?.accessToken ?? null;
 }
 
 export function getSessionExpiresAt(): string | null {
+  if (!current) {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        current = JSON.parse(saved);
+      }
+    } catch {}
+  }
   return current?.expiresAt ?? null;
 }
 
 /** Có phiên và phiên chưa quá expires_at theo đồng hồ máy khách. */
 export function hasSession(): boolean {
+  if (!current) {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY);
+      if (saved) {
+        current = JSON.parse(saved);
+      }
+    } catch {}
+  }
   if (!current) return false;
   const expiresAt = Date.parse(current.expiresAt);
   if (!Number.isNaN(expiresAt) && expiresAt <= Date.now()) {
-    current = null;
+    clearSession();
     return false;
   }
   return true;

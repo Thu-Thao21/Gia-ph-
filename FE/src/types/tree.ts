@@ -28,6 +28,7 @@ export interface ErgoTreeNode {
   bio?: string;
   userId?: string;
   isPrivate?: boolean;
+  isUnconnected?: boolean;
   fatherId?: string;
   motherId?: string;
   spouses: SpouseNode[];

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useClanContext } from '../../context/ClanContext';
 import apiClient from '../../api/axios';
 import {
   fetchClanUsers, assignFamilyAdmin, revokeFamilyAdmin, type ClanUserItem,
@@ -12,6 +13,11 @@ import {
 } from './familyAdminStore';
 import './FamilyAdminModule.css';
 import { downloadFamilyXlsx, downloadPersonTemplateXlsx, readPersonXlsx } from './familyAdminExcel';
+import {
+  getClanJoinRequestsForReviewer,
+  reviewClanJoinRequest,
+  type ClanJoinRequestItem,
+} from '../../services/clanJoin.service';
 
 export type FamilyAdminView = 'overview' | 'members' | 'relations' | 'branches' | 'tree' | 'search' | 'approvals' | 'accounts' | 'links' | 'exchange' | 'audit';
 type Props = { view: FamilyAdminView; onNavigate?: (view: FamilyAdminView) => void };
@@ -68,10 +74,12 @@ function parseCsv(text: string): string[][] {
 
 export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
   const { account } = useAuth();
-  const clanId = account?.clan_id || account?.memberships?.[0]?.clan_id || '';
-  const isLeader = account?.primary_role === 'family_head';
+  const { activeClanId, activeClanName, activeClanRole } = useClanContext();
+  const clanId = activeClanId || account?.clan_id || account?.memberships?.[0]?.clan_id || '';
+  const isLeader = activeClanRole === 'clan_admin';
 
   const data = useFamilyAdminState();
+  const clanDisplayName = activeClanName || data.familyName;
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [clanUsers, setClanUsers] = useState<ClanUserItem[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -95,33 +103,31 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
     loadClanUsers();
   }, [clanId, loadClanUsers]);
 
-  const handleAssignFA = async (userId: string, userName: string) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn nâng quyền Quản trị viên dòng họ (Family Admin) cho "${userName}" không?`)) {
-      return;
-    }
-    setActionUserId(userId);
-    try {
-      await assignFamilyAdmin(clanId, userId);
-      setNotice({ text: `Đã nâng quyền Family Admin thành công cho ${userName}.`, error: false });
-      await loadClanUsers();
-    } catch (err: any) {
-      setNotice({ text: err?.response?.data?.message || err?.message || 'Không thể nâng quyền Family Admin.', error: true });
-    } finally {
-      setActionUserId(null);
-    }
-  };
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'assign' | 'revoke';
+    userId: string;
+    userName: string;
+  } | null>(null);
 
-  const handleRevokeFA = async (userId: string, userName: string) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn thu hồi quyền Family Admin của "${userName}" không?`)) {
-      return;
-    }
+  const handleExecuteConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, userId, userName } = confirmAction;
     setActionUserId(userId);
     try {
-      await revokeFamilyAdmin(clanId, userId);
-      setNotice({ text: `Đã thu hồi quyền Family Admin của ${userName}.`, error: false });
+      if (type === 'assign') {
+        await assignFamilyAdmin(clanId, userId);
+        setNotice({ text: `Đã nâng quyền Family Admin thành công cho ${userName}.`, error: false });
+      } else {
+        await revokeFamilyAdmin(clanId, userId);
+        setNotice({ text: `Đã thu hồi quyền Family Admin của ${userName}.`, error: false });
+      }
+      setConfirmAction(null);
       await loadClanUsers();
     } catch (err: any) {
-      setNotice({ text: err?.response?.data?.message || err?.message || 'Không thể thu hồi quyền.', error: true });
+      setNotice({
+        text: err?.response?.data?.message || err?.message || (type === 'assign' ? 'Không thể nâng quyền Family Admin.' : 'Không thể thu hồi quyền.'),
+        error: true,
+      });
     } finally {
       setActionUserId(null);
     }
@@ -182,6 +188,116 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvPreview, setCsvPreview] = useState<Array<Pick<FamilyPerson, 'fullName' | 'gender' | 'birthDate' | 'branchId' | 'generation'>> | null>(null);
   const [xlsxPreview, setXlsxPreview] = useState<Array<Pick<FamilyPerson, 'fullName' | 'gender' | 'birthDate' | 'branchId' | 'generation'>> | null>(null);
+
+  // Join Requests review state for view === 'approvals'
+  const [approvalsTab, setApprovalsTab] = useState<'join-requests' | 'proposals'>('join-requests');
+  const [joinRequests, setJoinRequests] = useState<ClanJoinRequestItem[]>([]);
+  const [loadingJoinReqs, setLoadingJoinReqs] = useState(false);
+  const [selectedJoinReq, setSelectedJoinReq] = useState<ClanJoinRequestItem | null>(null);
+
+  const [reviewActionType, setReviewActionType] = useState<'APPROVE' | 'REJECT' | 'NEED_INFO'>('APPROVE');
+  const [reviewerNote, setReviewerNote] = useState('');
+  const [linkPersonMode, setLinkPersonMode] = useState<'existing' | 'new'>('new');
+  const [selectedPersonId, setSelectedPersonId] = useState('');
+  const [selectedParentId, setSelectedParentId] = useState('');
+  const [personSearchText, setPersonSearchText] = useState('');
+  const [newPersonName, setNewPersonName] = useState('');
+  const [newPersonGender, setNewPersonGender] = useState<'male' | 'female' | 'other'>('male');
+  const [newPersonBirthDate, setNewPersonBirthDate] = useState('');
+  const [newPersonBranchId, setNewPersonBranchId] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const loadJoinRequests = useCallback(async () => {
+    if (!clanId) return;
+    try {
+      setLoadingJoinReqs(true);
+      const res = await getClanJoinRequestsForReviewer(clanId);
+      setJoinRequests(res);
+    } catch (err) {
+      console.error('Failed to load clan join requests:', err);
+    } finally {
+      setLoadingJoinReqs(false);
+    }
+  }, [clanId]);
+
+  useEffect(() => {
+    if (view === 'approvals') {
+      loadJoinRequests();
+    }
+  }, [view, loadJoinRequests]);
+
+  const handleOpenReviewModal = (req: ClanJoinRequestItem) => {
+    setSelectedJoinReq(req);
+    setReviewActionType('APPROVE');
+    setReviewerNote('');
+    setLinkPersonMode('new');
+    setSelectedPersonId('');
+    setSelectedParentId('');
+    setPersonSearchText('');
+    setNewPersonName(req.full_name);
+    setNewPersonGender('male');
+    setNewPersonBirthDate(req.birth_date || '');
+    setNewPersonBranchId(data.branches[0]?.id || '');
+  };
+
+  const handleExecuteReview = async () => {
+    if (!selectedJoinReq) return;
+    if ((reviewActionType === 'NEED_INFO' || reviewActionType === 'REJECT') && !reviewerNote.trim()) {
+      alert('Vui lòng nhập lý do / phản hồi (không được để trống).');
+      return;
+    }
+
+    if (reviewActionType === 'APPROVE') {
+      if (linkPersonMode === 'existing' && !selectedPersonId) {
+        alert('Vui lòng chọn một Person trong cây để liên kết hồ sơ.');
+        return;
+      }
+      if (linkPersonMode === 'new' && !newPersonName.trim()) {
+        alert('Vui lòng nhập họ và tên của thành viên.');
+        return;
+      }
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      const payload: any = {
+        action: reviewActionType,
+        review_note: reviewerNote.trim() || undefined,
+      };
+
+      if (reviewActionType === 'APPROVE') {
+        if (linkPersonMode === 'existing') {
+          payload.person_id = selectedPersonId;
+        } else {
+          payload.new_person = {
+            full_name: newPersonName.trim(),
+            gender: newPersonGender,
+            birth_date: newPersonBirthDate || null,
+            branch_id: newPersonBranchId || null,
+            parent_id: selectedParentId || null,
+          };
+        }
+      }
+
+      await reviewClanJoinRequest(clanId, selectedJoinReq.request_id, payload);
+      setNotice({ text: 'Đã xử lý yêu cầu gia nhập thành công.', error: false });
+      setSelectedJoinReq(null);
+      await loadJoinRequests();
+      await syncFamilyAdminFromBackend(clanId);
+    } catch (err: any) {
+      console.error('Lỗi khi duyệt yêu cầu gia nhập:', err);
+      const detail = err.response?.data?.detail;
+      const msg =
+        (typeof detail === 'object' && detail?.message) ||
+        (typeof detail === 'string' ? detail : null) ||
+        err.response?.data?.message ||
+        err.message ||
+        'Không thể xử lý yêu cầu.';
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   const personName = (id: string) => data.persons.find((person) => person.id === id)?.fullName || 'Không tìm thấy';
   const branchName = (id: string) => data.branches.find((branch) => branch.id === id)?.name || 'Chưa phân chi';
@@ -244,7 +360,7 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
 
   return <section className="fa-workspace" aria-labelledby="fa-title">
     <header className="fa-header">
-      <div><span className="fa-eyebrow">FAMILY ADMIN · {data.familyName}</span><h1 id="fa-title">{title}</h1><p>Khu vực quản lý và phân quyền dòng họ chính thức.</p></div>
+      <div><span className="fa-eyebrow">FAMILY ADMIN · {clanDisplayName}</span><h1 id="fa-title">{title}</h1><p>Khu vực quản lý và phân quyền dòng họ chính thức.</p></div>
       <span className="fa-preview-tag" style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>HỆ THỐNG DÒNG HỌ</span>
     </header>
     {notice && <div className={`fa-notice ${notice.error ? 'error' : 'success'}`} role="status">{notice.text}<button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo">×</button></div>}
@@ -304,7 +420,7 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
       </div><div className="fa-modal-actions"><button type="button" onClick={() => setPersonForm(null)}>Hủy</button><button type="submit" className="fa-primary">Lưu Person</button></div></form></div></div>}
     </>}
 
-    {view === 'branches' && <div className="fa-panel"><div className="fa-panel-heading"><div><h2>Chi/Nhánh của {data.familyName}</h2><p>Quản lý tên chi, người lập chi và số Person trực thuộc.</p></div><button className="fa-primary" type="button" onClick={() => { setEditBranchId(undefined); setBranchForm({ ...emptyBranch }); }}>+ Thêm Chi/Nhánh</button></div><div className="fa-card-grid">{data.branches.map((branch) => <article className="fa-card" key={branch.id}><span className="fa-card-eyebrow">CHI/NHÁNH</span><h3>{branch.name}</h3><p>{branch.description || 'Chưa có mô tả'}</p><dl><div><dt>Người lập chi</dt><dd>{branch.founderId ? personName(branch.founderId) : 'Chưa chọn'}</dd></div><div><dt>Person</dt><dd>{data.persons.filter((person) => person.branchId === branch.id).length}</dd></div></dl><button type="button" onClick={() => { setEditBranchId(branch.id); setBranchForm({ ...branch }); }}>Chỉnh sửa</button></article>)}</div>
+    {view === 'branches' && <div className="fa-panel"><div className="fa-panel-heading"><div><h2>Chi/Nhánh của {clanDisplayName}</h2><p>Quản lý tên chi, người lập chi và số Person trực thuộc.</p></div><button className="fa-primary" type="button" onClick={() => { setEditBranchId(undefined); setBranchForm({ ...emptyBranch }); }}>+ Thêm Chi/Nhánh</button></div><div className="fa-card-grid">{data.branches.map((branch) => <article className="fa-card" key={branch.id}><span className="fa-card-eyebrow">CHI/NHÁNH</span><h3>{branch.name}</h3><p>{branch.description || 'Chưa có mô tả'}</p><dl><div><dt>Người lập chi</dt><dd>{branch.founderId ? personName(branch.founderId) : 'Chưa chọn'}</dd></div><div><dt>Person</dt><dd>{data.persons.filter((person) => person.branchId === branch.id).length}</dd></div></dl><button type="button" onClick={() => { setEditBranchId(branch.id); setBranchForm({ ...branch }); }}>Chỉnh sửa</button></article>)}</div>
       {branchForm && <div className="fa-modal-backdrop"><div className="fa-modal" role="dialog" aria-modal="true" aria-labelledby="fa-branch-form"><div className="fa-modal-title"><h2 id="fa-branch-form">{editBranchId ? 'Sửa Chi/Nhánh' : 'Thêm Chi/Nhánh'}</h2><button type="button" onClick={() => setBranchForm(null)} aria-label="Đóng">×</button></div><form onSubmit={(event) => { event.preventDefault(); try { saveBranch(branchForm, editBranchId); setBranchForm(null); setNotice({ text: 'Đã lưu Chi/Nhánh trong bản xem trước.', error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể lưu Chi/Nhánh.', error: true }); } }}><div className="fa-form-grid"><label>Tên Chi/Nhánh *<input required value={branchForm.name} onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })} /></label><label>Người lập chi<select value={branchForm.founderId} onChange={(event) => setBranchForm({ ...branchForm, founderId: event.target.value })}><option value="">Chưa chọn</option>{data.persons.map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label><label className="fa-wide">Mô tả<textarea rows={3} value={branchForm.description} onChange={(event) => setBranchForm({ ...branchForm, description: event.target.value })} /></label></div><div className="fa-modal-actions"><button type="button" onClick={() => setBranchForm(null)}>Hủy</button><button className="fa-primary" type="submit">Lưu Chi/Nhánh</button></div></form></div></div>}
     </div>}
 
@@ -332,7 +448,565 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
     {view === 'search' && <div className="fa-panel"><h2>Đường quan hệ giữa hai Person</h2><p className="fa-muted">Dựa trên các cạnh cha/mẹ–con, hôn nhân, con nuôi và con riêng đã được ghi.</p><div className="fa-form-grid"><label>Person thứ nhất<select value={searchFrom} onChange={(event) => setSearchFrom(event.target.value)}><option value="">Chọn Person</option>{data.persons.filter((person) => !person.hidden).map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label><label>Person thứ hai<select value={searchTo} onChange={(event) => setSearchTo(event.target.value)}><option value="">Chọn Person</option>{data.persons.filter((person) => !person.hidden).map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label></div>{relationshipPath && <div className="fa-result">{relationshipPath.length ? <><strong>Đường kết nối ngắn nhất: {relationshipPath.length - 1} bước</strong><ol>{relationshipPath.map((id, index) => <li key={`${id}-${index}`}>{personName(id)}{index < relationshipPath.length - 1 && <small>{(() => { const nextId = relationshipPath[index + 1]; const relation = data.relations.find((item) => item.fromId === id && item.toId === nextId || item.fromId === nextId && item.toId === id); return relation ? ` — ${relationLabels[relation.type]}` : ''; })()}</small>}</li>)}</ol></> : <p>Chưa xác định được quan hệ từ dữ liệu hiện có.</p>}</div>}</div>}
     {view === 'search' && relationshipHint && <div className="fa-panel"><h2>Gợi ý xưng hô</h2><p>{relationshipHint}</p><p className="fa-muted">Kết quả suy từ dữ liệu quan hệ đã ghi; cần người quản lý xác minh trước khi dùng chính thức.</p></div>}
 
-    {view === 'approvals' && <div className="fa-panel"><h2>Đề xuất chờ xử lý</h2><p className="fa-muted">Khi duyệt, thay đổi được áp dụng vào dữ liệu bản xem trước. Từ chối giữ nguyên dữ liệu.</p>{data.proposals.length ? <div className="fa-proposals">{data.proposals.map((proposal) => <article className="fa-proposal" key={proposal.id}><div className="fa-proposal-top"><div><span className="fa-card-eyebrow">{proposal.type === 'profile' ? 'HỒ SƠ' : 'QUAN HỆ'} · {proposal.proposer}</span><h3>{proposal.summary}</h3></div><span className={`fa-status ${proposal.status}`}>{proposal.status === 'pending' ? 'Chờ duyệt' : proposal.status === 'approved' ? 'Đã duyệt' : 'Từ chối'}</span></div><p>Person: <strong>{personName(proposal.personId)}</strong>{proposal.type === 'profile' ? ` · Giá trị đề xuất: ${proposal.proposedValue}` : proposal.relation ? ` · ${relationLabels[proposal.relation.type]}: ${personName(proposal.relation.fromId)} → ${personName(proposal.relation.toId)}` : ''}</p>{proposal.status === 'pending' ? <><label>Lý do / ghi chú<textarea rows={2} value={reviewNote[proposal.id] || ''} onChange={(event) => setReviewNote({ ...reviewNote, [proposal.id]: event.target.value })} placeholder="Bắt buộc khi từ chối" /></label><div className="fa-actions"><button type="button" className="fa-primary" onClick={() => run(() => reviewProposal(proposal.id, 'approved', reviewNote[proposal.id] || ''), 'Đã duyệt và cập nhật dữ liệu bản xem trước.')}>Phê duyệt</button><button type="button" onClick={() => run(() => reviewProposal(proposal.id, 'rejected', reviewNote[proposal.id] || ''), 'Đã từ chối đề xuất.')}>Từ chối</button></div></> : <small>{proposal.note || 'Không có ghi chú'}{proposal.reviewedAt ? ` · ${new Date(proposal.reviewedAt).toLocaleString('vi-VN')}` : ''}</small>}</article>)}</div> : <p>Chưa có đề xuất.</p>}</div>}
+    {view === 'approvals' && (
+      <>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button
+            type="button"
+            className={approvalsTab === 'join-requests' ? 'fa-primary' : ''}
+            onClick={() => setApprovalsTab('join-requests')}
+            style={{ padding: '8px 16px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Gia nhập dòng tộc ({joinRequests.filter((r) => r.status === 'PENDING' || r.status === 'NEED_INFO').length})
+          </button>
+          <button
+            type="button"
+            className={approvalsTab === 'proposals' ? 'fa-primary' : ''}
+            onClick={() => setApprovalsTab('proposals')}
+            style={{ padding: '8px 16px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Đề xuất chỉnh sửa gia phả ({data.proposals.filter((p) => p.status === 'pending').length})
+          </button>
+        </div>
+
+        {approvalsTab === 'join-requests' && (
+          <div className="fa-panel">
+            <div className="fa-panel-heading">
+              <div>
+                <h2>Xét duyệt hồ sơ xin gia nhập dòng tộc</h2>
+                <p className="fa-muted">
+                  Xác minh quan hệ huyết thống/hôn nhân của tài khoản xin gia nhập và liên kết với hồ sơ Person trong cây gia phả.
+                </p>
+              </div>
+              <button type="button" onClick={loadJoinRequests} disabled={loadingJoinReqs}>
+                {loadingJoinReqs ? 'Đang tải...' : 'Làm mới'}
+              </button>
+            </div>
+
+            {joinRequests.length === 0 ? (
+              <p className="fa-muted">Chưa có yêu cầu xin gia nhập nào gửi tới dòng họ này.</p>
+            ) : (
+              <div className="fa-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Người xin gia nhập</th>
+                      <th>Phía gia đình</th>
+                      <th>Người thân khai báo</th>
+                      <th>Ngày gửi</th>
+                      <th>Trạng thái</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {joinRequests.map((req) => (
+                      <tr key={req.request_id}>
+                        <td>
+                          <strong>{req.full_name}</strong>
+                          <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                            {req.user_display_name} ({req.user_email || 'Tài khoản'})
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              background: req.lineage_type === 'PATERNAL' ? '#e0f2fe' : '#fdf2f8',
+                              color: req.lineage_type === 'PATERNAL' ? '#0369a1' : '#be185d',
+                            }}
+                          >
+                            {req.lineage_type === 'PATERNAL' ? 'Bên nội' : 'Bên ngoại'}
+                          </span>
+                        </td>
+                        <td>
+                          <div>{req.relative_name}</div>
+                          <small style={{ color: '#64748b' }}>Quan hệ: {req.relative_relation}</small>
+                        </td>
+                        <td>{new Date(req.created_at).toLocaleDateString('vi-VN')}</td>
+                        <td>
+                          <span
+                            className={`fa-status ${
+                              req.status === 'APPROVED' ? 'approved' : req.status === 'REJECTED' ? 'rejected' : 'pending'
+                            }`}
+                          >
+                            {req.status === 'PENDING'
+                              ? 'Chờ xác minh'
+                              : req.status === 'NEED_INFO'
+                              ? 'Cần bổ sung'
+                              : req.status === 'APPROVED'
+                              ? 'Đã chấp thuận'
+                              : req.status === 'REJECTED'
+                              ? 'Đã từ chối'
+                              : 'Đã hủy'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="fa-actions">
+                            <button type="button" onClick={() => handleOpenReviewModal(req)}>
+                              {req.status === 'PENDING' || req.status === 'NEED_INFO' ? 'Xét duyệt' : 'Xem chi tiết'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {approvalsTab === 'proposals' && (
+          <div className="fa-panel">
+            <h2>Đề xuất chờ xử lý</h2>
+            <p className="fa-muted">Khi duyệt, thay đổi được áp dụng vào dữ liệu bản xem trước. Từ chối giữ nguyên dữ liệu.</p>
+            {data.proposals.length ? (
+              <div className="fa-proposals">
+                {data.proposals.map((proposal) => (
+                  <article className="fa-proposal" key={proposal.id}>
+                    <div className="fa-proposal-top">
+                      <div>
+                        <span className="fa-card-eyebrow">
+                          {proposal.type === 'profile' ? 'HỒ SƠ' : 'QUAN HỆ'} · {proposal.proposer}
+                        </span>
+                        <h3>{proposal.summary}</h3>
+                      </div>
+                      <span className={`fa-status ${proposal.status}`}>
+                        {proposal.status === 'pending'
+                          ? 'Chờ duyệt'
+                          : proposal.status === 'approved'
+                          ? 'Đã duyệt'
+                          : 'Từ chối'}
+                      </span>
+                    </div>
+                    <p>
+                      Person: <strong>{personName(proposal.personId)}</strong>
+                      {proposal.type === 'profile'
+                        ? ` · Giá trị đề xuất: ${proposal.proposedValue}`
+                        : proposal.relation
+                        ? ` · ${relationLabels[proposal.relation.type]}: ${personName(
+                            proposal.relation.fromId
+                          )} → ${personName(proposal.relation.toId)}`
+                        : ''}
+                    </p>
+                    {proposal.status === 'pending' ? (
+                      <>
+                        <label>
+                          Lý do / ghi chú
+                          <textarea
+                            rows={2}
+                            value={reviewNote[proposal.id] || ''}
+                            onChange={(event) =>
+                              setReviewNote({ ...reviewNote, [proposal.id]: event.target.value })
+                            }
+                            placeholder="Bắt buộc khi từ chối"
+                          />
+                        </label>
+                        <div className="fa-actions">
+                          <button
+                            type="button"
+                            className="fa-primary"
+                            onClick={() =>
+                              run(
+                                () => reviewProposal(proposal.id, 'approved', reviewNote[proposal.id] || ''),
+                                'Đã duyệt và cập nhật dữ liệu bản xem trước.'
+                              )
+                            }
+                          >
+                            Phê duyệt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              run(
+                                () => reviewProposal(proposal.id, 'rejected', reviewNote[proposal.id] || ''),
+                                'Đã từ chối đề xuất.'
+                              )
+                            }
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <small>
+                        {proposal.note || 'Không có ghi chú'}
+                        {proposal.reviewedAt ? ` · ${new Date(proposal.reviewedAt).toLocaleString('vi-VN')}` : ''}
+                      </small>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>Chưa có đề xuất.</p>
+            )}
+          </div>
+        )}
+
+        {/* MODAL XÉT DUYỆT HỒ SƠ XIN GIA NHẬP */}
+        {selectedJoinReq && (
+          <div className="fa-modal-backdrop">
+            <div className="fa-modal" role="dialog" aria-modal="true" style={{ maxWidth: '680px', borderRadius: '16px' }}>
+              <div className="fa-modal-title" style={{ paddingBottom: '12px', borderBottom: '1px solid #e2e8f0', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Xét duyệt hồ sơ xin gia nhập dòng họ</h2>
+                <button
+                  type="button"
+                  onClick={() => setSelectedJoinReq(null)}
+                  aria-label="Đóng"
+                  style={{ border: 0, background: 'transparent', fontSize: '24px', cursor: 'pointer', color: '#64748b' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ maxHeight: '72vh', overflowY: 'auto', paddingRight: '4px' }}>
+                {/* Thông tin người xin gia nhập */}
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', marginBottom: '16px', fontSize: '13.5px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '12px', fontWeight: 600 }}>Người xin gia nhập:</span>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>{selectedJoinReq.full_name}</div>
+                      <small style={{ color: '#64748b' }}>{selectedJoinReq.user_display_name} ({selectedJoinReq.user_email})</small>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '12px', fontWeight: 600 }}>Phía quan hệ:</span>
+                      <div style={{ marginTop: '2px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          background: selectedJoinReq.lineage_type === 'PATERNAL' ? '#e0f2fe' : '#fdf2f8',
+                          color: selectedJoinReq.lineage_type === 'PATERNAL' ? '#0369a1' : '#be185d',
+                        }}>
+                          {selectedJoinReq.lineage_type === 'PATERNAL' ? 'Bên nội (Họ cha)' : 'Bên ngoại (Họ mẹ)'}
+                        </span>
+                      </div>
+                      <small style={{ color: '#64748b', display: 'block', marginTop: '4px' }}>Ngày sinh: {selectedJoinReq.birth_date || 'Chưa rõ'}</small>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '10px', padding: '8px 12px', background: '#f1f5f9', borderRadius: '6px' }}>
+                    <span style={{ color: '#475569', fontSize: '12px', fontWeight: 600 }}>Người thân & quan hệ đã khai: </span>
+                    <strong style={{ color: '#0f172a' }}>{selectedJoinReq.relative_name}</strong> ({selectedJoinReq.relative_relation})
+                  </div>
+
+                  <div>
+                    <span style={{ color: '#64748b', fontSize: '12px', fontWeight: 600 }}>Lời khai xác minh:</span>
+                    <div style={{ whiteSpace: 'pre-wrap', background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', marginTop: '4px', color: '#1e293b', fontSize: '13px', lineHeight: '1.5' }}>
+                      {selectedJoinReq.verification_notes}
+                    </div>
+                  </div>
+
+                  {selectedJoinReq.review_note && (
+                    <div style={{ color: '#991b1b', marginTop: '8px', fontSize: '12.5px' }}>
+                      <strong>Ghi chú trước đó:</strong> {selectedJoinReq.review_note}
+                    </div>
+                  )}
+
+                  {selectedJoinReq.linked_person_name && (
+                    <div style={{ color: '#166534', marginTop: '8px', fontSize: '12.5px' }}>
+                      <strong>Hồ sơ Person đã liên kết:</strong> {selectedJoinReq.linked_person_name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Form thao tác nếu PENDING hoặc NEED_INFO */}
+                {(selectedJoinReq.status === 'PENDING' || selectedJoinReq.status === 'NEED_INFO') ? (
+                  <div>
+                    <h3 style={{ fontSize: '14px', margin: '0 0 10px 0', color: '#0f172a', fontWeight: 700 }}>
+                      Hành động xét duyệt:
+                    </h3>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setReviewActionType('APPROVE')}
+                        style={{
+                          flex: 1,
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '13.5px',
+                          border: reviewActionType === 'APPROVE' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                          background: reviewActionType === 'APPROVE' ? '#2563eb' : '#ffffff',
+                          color: reviewActionType === 'APPROVE' ? '#ffffff' : '#334155',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        Chấp thuận
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewActionType('NEED_INFO')}
+                        style={{
+                          flex: 1,
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '13.5px',
+                          border: reviewActionType === 'NEED_INFO' ? '1.5px solid #d97706' : '1px solid #cbd5e1',
+                          background: reviewActionType === 'NEED_INFO' ? '#d97706' : '#ffffff',
+                          color: reviewActionType === 'NEED_INFO' ? '#ffffff' : '#334155',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        Yêu cầu bổ sung
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewActionType('REJECT')}
+                        style={{
+                          flex: 1,
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '13.5px',
+                          border: reviewActionType === 'REJECT' ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+                          background: reviewActionType === 'REJECT' ? '#dc2626' : '#ffffff',
+                          color: reviewActionType === 'REJECT' ? '#ffffff' : '#334155',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        Từ chối
+                      </button>
+                    </div>
+
+                    {/* APPROVE Options */}
+                    {reviewActionType === 'APPROVE' && (
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                          <div
+                            onClick={() => setLinkPersonMode('new')}
+                            style={{
+                              border: linkPersonMode === 'new' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                              background: linkPersonMode === 'new' ? '#eff6ff' : '#ffffff',
+                              borderRadius: '8px',
+                              padding: '12px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, fontSize: '13.5px', color: linkPersonMode === 'new' ? '#1d4ed8' : '#0f172a', marginBottom: '4px' }}>
+                              1. Thêm mới vào Cây gia phả
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+                              Tạo hồ sơ thành viên và xuất hiện trên Cây gia phả (mặc định chưa nối phả hệ).
+                            </div>
+                          </div>
+
+                          <div
+                            onClick={() => setLinkPersonMode('existing')}
+                            style={{
+                              border: linkPersonMode === 'existing' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                              background: linkPersonMode === 'existing' ? '#eff6ff' : '#ffffff',
+                              borderRadius: '8px',
+                              padding: '12px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, fontSize: '13.5px', color: linkPersonMode === 'existing' ? '#1d4ed8' : '#0f172a', marginBottom: '4px' }}>
+                              2. Liên kết hồ sơ có sẵn
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+                              Gán tài khoản vào một hồ sơ Person đã có từ trước trong cây gia phả.
+                            </div>
+                          </div>
+                        </div>
+
+                        {linkPersonMode === 'new' && (
+                          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
+                            <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '10px' }}>
+                              Thông tin hồ sơ hiển thị trên cây:
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                              <label style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+                                Họ và tên *
+                                <input
+                                  type="text"
+                                  required
+                                  value={newPersonName}
+                                  onChange={(e) => setNewPersonName(e.target.value)}
+                                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                                />
+                              </label>
+                              <label style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+                                Giới tính
+                                <select
+                                  value={newPersonGender}
+                                  onChange={(e) => setNewPersonGender(e.target.value as any)}
+                                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                                >
+                                  <option value="male">Nam</option>
+                                  <option value="female">Nữ</option>
+                                  <option value="other">Khác</option>
+                                </select>
+                              </label>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                              <label style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+                                Ngày sinh
+                                <input
+                                  type="date"
+                                  value={newPersonBirthDate}
+                                  onChange={(e) => setNewPersonBirthDate(e.target.value)}
+                                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                                />
+                              </label>
+                              <label style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+                                Chi / Nhánh
+                                <select
+                                  value={newPersonBranchId}
+                                  onChange={(e) => setNewPersonBranchId(e.target.value)}
+                                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                                >
+                                  {data.branches.map((b) => (
+                                    <option key={b.id} value={b.id}>
+                                      {b.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
+
+                            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '10px', marginTop: '6px' }}>
+                              <label style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                                Xác nhận quan hệ ngay (Tùy chọn):
+                              </label>
+                              <small style={{ color: '#64748b', display: 'block', marginBottom: '6px' }}>
+                                Nếu đã xác minh được người thân ({selectedJoinReq.relative_name}), bạn có thể chọn Cha/Mẹ để nối đường phả hệ ngay khi duyệt. Nếu để trống, thành viên sẽ hiển thị ở trạng thái chưa nối để kết nối sau trên cây gia phả.
+                              </small>
+                              <select
+                                value={selectedParentId}
+                                onChange={(e) => setSelectedParentId(e.target.value)}
+                                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                              >
+                                <option value="">-- Để trống (Chưa nối phả hệ, xác nhận quan hệ sau) --</option>
+                                {data.persons
+                                  .filter((p) => !p.hidden)
+                                  .map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {p.fullName} (Đời {p.generation} · {genderLabels[p.gender]} · {branchName(p.branchId)})
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        {linkPersonMode === 'existing' && (
+                          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
+                            <input
+                              type="text"
+                              placeholder="Lọc theo tên thành viên có sẵn..."
+                              value={personSearchText}
+                              onChange={(e) => setPersonSearchText(e.target.value)}
+                              style={{ width: '100%', padding: '8px 10px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                            />
+                            <select
+                              required
+                              value={selectedPersonId}
+                              onChange={(e) => setSelectedPersonId(e.target.value)}
+                              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                            >
+                              <option value="">-- Chọn hồ sơ Person trong cây gia phả --</option>
+                              {data.persons
+                                .filter((p) => !p.hidden && (!personSearchText || p.fullName.toLowerCase().includes(personSearchText.toLowerCase())))
+                                .map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.fullName} (Đời {p.generation} · {genderLabels[p.gender]} · Sinh: {p.birthDate || 'Chưa rõ'} · {branchName(p.branchId)})
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: '12.5px', color: '#166534', background: '#dcfce7', padding: '8px 12px', borderRadius: '6px' }}>
+                          Người dùng sẽ nhận quyền <strong>Thành viên (Member)</strong> tại dòng họ này sau khi được phê duyệt.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reviewer Note Input */}
+                    <div className="fa-form-grid" style={{ gridTemplateColumns: '1fr', marginTop: '12px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                        {reviewActionType === 'APPROVE'
+                          ? 'Ghi chú duyệt (tùy chọn):'
+                          : reviewActionType === 'NEED_INFO'
+                          ? 'Nội dung phản hồi cần bổ sung * (Bắt buộc):'
+                          : 'Lý do từ chối * (Bắt buộc):'}
+                        <textarea
+                          rows={3}
+                          value={reviewerNote}
+                          onChange={(e) => setReviewerNote(e.target.value)}
+                          placeholder={
+                            reviewActionType === 'APPROVE'
+                              ? 'Ví dụ: Đã xác minh quan hệ với người thân đã khai...'
+                              : reviewActionType === 'NEED_INFO'
+                              ? 'Vui lòng nêu rõ chi nhánh gia đình hoặc tên bố mẹ để xác minh...'
+                              : 'Không tìm thấy thông tin phù hợp trong dòng họ...'
+                          }
+                          required={reviewActionType !== 'APPROVE'}
+                          style={{ marginTop: '4px', borderRadius: '6px', border: '1px solid #cbd5e1', padding: '8px 10px', fontSize: '13px' }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '16px', color: '#64748b', fontStyle: 'italic', background: '#f8fafc', borderRadius: '8px' }}>
+                    Yêu cầu này đã được kết thúc xử lý ({selectedJoinReq.status}).
+                  </div>
+                )}
+              </div>
+
+              <div className="fa-modal-actions" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedJoinReq(null)}
+                  disabled={isSubmittingReview}
+                  style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer' }}
+                >
+                  Đóng
+                </button>
+                {(selectedJoinReq.status === 'PENDING' || selectedJoinReq.status === 'NEED_INFO') && (
+                  <button
+                    type="button"
+                    className="fa-primary"
+                    onClick={handleExecuteReview}
+                    disabled={isSubmittingReview}
+                    style={{
+                      padding: '8px 20px',
+                      borderRadius: '6px',
+                      background: reviewActionType === 'APPROVE' ? '#2563eb' : reviewActionType === 'NEED_INFO' ? '#d97706' : '#dc2626',
+                      borderColor: reviewActionType === 'APPROVE' ? '#2563eb' : reviewActionType === 'NEED_INFO' ? '#d97706' : '#dc2626',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {isSubmittingReview
+                      ? 'Đang xử lý...'
+                      : reviewActionType === 'APPROVE'
+                      ? 'Xác nhận chấp thuận'
+                      : reviewActionType === 'NEED_INFO'
+                      ? 'Gửi yêu cầu bổ sung'
+                      : 'Xác nhận từ chối'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    )}
 
     {view === 'accounts' && <>
       <div className="fa-panel">
@@ -395,7 +1069,7 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
                             type="button"
                             style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #f87171' }}
                             disabled={!isLeader || actionUserId === u.user_id}
-                            onClick={() => handleRevokeFA(u.user_id, u.display_name)}
+                            onClick={() => setConfirmAction({ type: 'revoke', userId: u.user_id, userName: u.display_name })}
                           >
                             {actionUserId === u.user_id ? 'Đang xử lý...' : 'Thu hồi Family Admin'}
                           </button>
@@ -404,7 +1078,7 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
                             type="button"
                             className="fa-primary"
                             disabled={!isLeader || actionUserId === u.user_id}
-                            onClick={() => handleAssignFA(u.user_id, u.display_name)}
+                            onClick={() => setConfirmAction({ type: 'assign', userId: u.user_id, userName: u.display_name })}
                           >
                             {actionUserId === u.user_id ? 'Đang xử lý...' : 'Nâng quyền Family Admin'}
                           </button>
@@ -429,6 +1103,112 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
           <div className="fa-wide"><button className="fa-primary" type="submit">Tạo bản nháp tài khoản</button></div>
         </form>
       </div>
+
+      {confirmAction && (
+        <div className="fa-modal-backdrop" onClick={() => !actionUserId && setConfirmAction(null)}>
+          <div
+            className="fa-modal"
+            style={{
+              maxWidth: '460px',
+              padding: '24px',
+              borderRadius: '16px',
+              background: '#ffffff',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  background: confirmAction.type === 'assign' ? '#eff6ff' : '#fef2f2',
+                  color: confirmAction.type === 'assign' ? '#1d4ed8' : '#b91c1c',
+                  border: `1px solid ${confirmAction.type === 'assign' ? '#bfdbfe' : '#fecaca'}`,
+                }}
+              >
+                {confirmAction.type === 'assign' ? 'XÁC NHẬN BỔ NHIỆM' : 'XÁC NHẬN THU HỒI'}
+              </span>
+              <button
+                type="button"
+                onClick={() => !actionUserId && setConfirmAction(null)}
+                style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#0f172a', fontWeight: 700 }}>
+              {confirmAction.type === 'assign'
+                ? 'Bổ nhiệm Quản trị viên dòng họ'
+                : 'Thu hồi quyền Quản trị viên'}
+            </h3>
+
+            <div style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6', marginBottom: '20px' }}>
+              {confirmAction.type === 'assign' ? (
+                <>
+                  Bạn có chắc chắn muốn nâng quyền <strong>Quản trị viên dòng họ (Family Admin)</strong> cho thành viên <strong>{confirmAction.userName}</strong> không?
+                  <div style={{ marginTop: '10px', fontSize: '13px', color: '#475569', background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    Sau khi cấp quyền, thành viên này sẽ có quyền hỗ trợ quản lý phả hệ, thông tin Person và các đề xuất trong dòng họ.
+                  </div>
+                </>
+              ) : (
+                <>
+                  Bạn có chắc chắn muốn thu hồi quyền <strong>Family Admin</strong> của thành viên <strong>{confirmAction.userName}</strong> không?
+                  <div style={{ marginTop: '10px', fontSize: '13px', color: '#991b1b', background: '#fef2f2', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fee2e2' }}>
+                    Tài khoản sẽ quay về quyền Thành viên thông thường và không còn quyền quản lý dòng tộc.
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                disabled={!!actionUserId}
+                onClick={() => setConfirmAction(null)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  cursor: actionUserId ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={!!actionUserId}
+                onClick={handleExecuteConfirmAction}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: confirmAction.type === 'assign' ? '#2563eb' : '#dc2626',
+                  color: '#ffffff',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  cursor: actionUserId ? 'not-allowed' : 'pointer',
+                  boxShadow: confirmAction.type === 'assign' ? '0 2px 6px rgba(37, 99, 235, 0.25)' : '0 2px 6px rgba(220, 38, 38, 0.25)',
+                }}
+              >
+                {actionUserId ? 'Đang xử lý...' : confirmAction.type === 'assign' ? 'Xác nhận nâng quyền' : 'Xác nhận thu hồi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>}
 
     {view === 'links' && <><div className="fa-panel"><h2>Yêu cầu liên kết dòng họ</h2><p className="fa-muted">Yêu cầu và kết quả phê duyệt ở đây chỉ tồn tại trong bản xem trước; không chia sẻ dữ liệu với dòng họ khác.</p><form className="fa-form-grid" onSubmit={(event) => { event.preventDefault(); try { sendLinkRequest(linkForm.targetFamily, linkForm.reason); setLinkForm({ targetFamily: '', reason: '' }); setNotice({ text: 'Đã lưu bản nháp yêu cầu liên họ.', error: false }); } catch (error) { setNotice({ text: error instanceof Error ? error.message : 'Không thể tạo yêu cầu.', error: true }); } }}><label>Dòng họ đích *<input required value={linkForm.targetFamily} onChange={(event) => setLinkForm({ ...linkForm, targetFamily: event.target.value })} placeholder="Ví dụ: Dòng họ Trần" /></label><label>Lý do / quan hệ<input value={linkForm.reason} onChange={(event) => setLinkForm({ ...linkForm, reason: event.target.value })} placeholder="Thông gia, bên ngoại..." /></label><div className="fa-wide"><button className="fa-primary" type="submit">Gửi bản nháp yêu cầu</button></div></form></div><div className="fa-panel"><h2>Danh sách yêu cầu</h2>{data.linkRequests.length ? <div className="fa-table-wrap"><table><thead><tr><th>Dòng họ đích</th><th>Lý do</th><th>Ngày tạo</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{data.linkRequests.map((request) => <tr key={request.id}><td><strong>{request.targetFamily}</strong></td><td>{request.reason || '—'}</td><td>{new Date(request.createdAt).toLocaleDateString('vi-VN')}</td><td><span className={`fa-status ${request.status}`}>{request.status === 'pending' ? 'Chờ duyệt' : request.status === 'approved' ? 'Đã duyệt (mẫu)' : 'Từ chối'}</span></td><td>{request.status === 'pending' && <div className="fa-actions"><button type="button" onClick={() => run(() => reviewLinkRequest(request.id, 'approved'), 'Đã đổi trạng thái bản nháp; chưa tạo liên kết thật.')}>Duyệt mẫu</button><button type="button" onClick={() => run(() => reviewLinkRequest(request.id, 'rejected'), 'Đã từ chối bản nháp.')}>Từ chối</button></div>}</td></tr>)}</tbody></table></div> : <p className="fa-muted">Chưa có yêu cầu liên họ.</p>}</div></>}

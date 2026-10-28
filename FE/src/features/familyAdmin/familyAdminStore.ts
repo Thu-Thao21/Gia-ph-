@@ -134,10 +134,21 @@ const validDate = (value: string) => {
   return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
 };
 
-function load(): FamilyAdminState {
+let currentClanId = '';
+
+function getStorageKey(clanId?: string): string {
+  const cid = clanId !== undefined ? clanId : currentClanId;
+  return cid ? `mfgms.familyAdmin.${cid}.v2` : 'mfgms.familyAdmin.frontend.v2';
+}
+
+function load(clanId?: string): FamilyAdminState {
   if (typeof window === 'undefined') return clone(initialState);
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const key = getStorageKey(clanId);
+    let saved = window.localStorage.getItem(key);
+    if (!saved && !clanId) {
+      saved = window.localStorage.getItem('mfgms.familyAdmin.frontend.v2');
+    }
     if (!saved) return clone(initialState);
     const parsed = JSON.parse(saved) as FamilyAdminState;
     if (Array.isArray(parsed.persons) && Array.isArray(parsed.relations) && Array.isArray(parsed.branches) && Array.isArray(parsed.accounts) && Array.isArray(parsed.proposals) && Array.isArray(parsed.linkRequests) && Array.isArray(parsed.audit)) {
@@ -155,19 +166,28 @@ const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); };
 const getSnapshot = () => state;
 
+export function setClanScope(clanId: string): void {
+  if (currentClanId === clanId) return;
+  currentClanId = clanId;
+  state = load(clanId);
+  listeners.forEach((listener) => listener());
+}
+
 function commit(action: string, change: (draft: FamilyAdminState) => void): void {
   const next = clone(state);
   change(next);
   next.audit.unshift({ id: uid('audit'), at: now(), action });
   next.audit = next.audit.slice(0, 100);
   state = next;
-  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* The current tab still works. */ }
+  try {
+    window.localStorage.setItem(getStorageKey(currentClanId), JSON.stringify(next));
+  } catch { /* The current tab still works. */ }
   listeners.forEach((listener) => listener());
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) {
+    if (event.key === getStorageKey(currentClanId)) {
       state = load();
       listeners.forEach((listener) => listener());
     }
@@ -333,12 +353,21 @@ export function importPersons(rows: Array<Pick<FamilyPerson, 'fullName' | 'gende
   return validated.length;
 }
 
+let latestSyncClanId = '';
+
 export async function syncFamilyAdminFromBackend(clanId: string): Promise<void> {
+  if (!clanId) return;
+  latestSyncClanId = clanId;
+  setClanScope(clanId);
+
   try {
     const [persons, tree] = await Promise.all([
       fetchFamilyPersons(clanId).catch(() => []),
       fetchFamilyTreeData(clanId).catch(() => ({ nodes: [], edges: [] })),
     ]);
+
+    // Nếu người dùng đã chuyển sang clan khác trong khi fetch, không ghi đè dữ liệu
+    if (latestSyncClanId !== clanId) return;
 
     commit('Đồng bộ dữ liệu từ Backend', (draft) => {
       if (Array.isArray(persons) && persons.length > 0) {

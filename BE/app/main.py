@@ -12,6 +12,7 @@ from app.controllers.auth_access.router import router as auth_router
 from app.controllers.auth_access.user_admin_router import router as user_admin_router
 from app.controllers.family_management.public_router import router as public_router
 from app.controllers.family_management.clan_admin_router import router as clan_admin_router
+from app.controllers.family_management.clan_join_router import router as clan_join_router
 from app.controllers.family_management.owner_admin_router import router as owner_admin_router
 from app.controllers.family_management.registration_admin_router import (
     router as registration_admin_router,
@@ -116,6 +117,7 @@ app.include_router(public_router, prefix=API_PREFIX)
 app.include_router(registration_admin_router, prefix=API_PREFIX)
 app.include_router(owner_admin_router, prefix=API_PREFIX)
 app.include_router(clan_admin_router, prefix=API_PREFIX)
+app.include_router(clan_join_router, prefix=API_PREFIX)
 
 # Also mount at root for seamless compatibility with FE calls
 app.include_router(auth_router)
@@ -124,6 +126,7 @@ app.include_router(public_router)
 app.include_router(registration_admin_router)
 app.include_router(owner_admin_router)
 app.include_router(clan_admin_router)
+app.include_router(clan_join_router)
 app.include_router(inter_family_router, prefix=API_PREFIX)
 app.include_router(inter_family_router)
 

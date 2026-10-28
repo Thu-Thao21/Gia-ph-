@@ -227,3 +227,416 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* ===== Clan Card with Members List ===== */
+.network-clans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.network-clan-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.network-clan-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
+}
+
+.network-clan-card-header {
+  padding: 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.network-clan-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.network-clan-title-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.network-clan-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.network-clan-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.network-clan-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.network-clan-tag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.tag-paternal {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.tag-maternal {
+  background: #fdf2f8;
+  color: #be185d;
+  border: 1px solid #fbcfe8;
+}
+
+.tag-connected {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.network-clan-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px 20px;
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+}
+
+.network-clan-info-item {
+  display: flex;
+  gap: 8px;
+  font-size: 13.5px;
+  align-items: baseline;
+}
+
+.network-clan-info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.network-clan-info-item .info-label {
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.network-clan-info-item .info-value {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.network-clan-info-item .info-value.highlight {
+  color: #0369a1;
+  font-weight: 700;
+}
+
+.network-clan-history {
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 14px 0;
+}
+
+.network-clan-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.network-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.network-meta-pill.count-pill {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.network-meta-pill.place-pill {
+  background: #f8fafc;
+  color: #334155;
+}
+
+.network-meta-pill.branch-pill {
+  background: #faf5ff;
+  color: #7c3aed;
+  border-color: #e9d5ff;
+}
+
+/* Members Section */
+.network-clan-members-section {
+  padding: 20px 24px;
+  background: #fafbfc;
+}
+
+.network-members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.network-members-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.network-members-counter {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.network-member-search-input {
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+  min-width: 220px;
+  transition: all 0.2s ease;
+}
+
+.network-member-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.network-members-empty {
+  text-align: center;
+  padding: 28px 16px;
+  color: #94a3b8;
+  font-size: 13.5px;
+  font-style: italic;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px dashed #cbd5e1;
+}
+
+.network-members-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+}
+
+.network-members-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.network-members-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.network-member-row {
+  transition: background-color 0.15s ease;
+}
+
+.network-member-row:hover {
+  background-color: #f8fafc;
+}
+
+.network-members-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.network-members-table tr:last-child td {
+  border-bottom: none;
+}
+
+.member-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.member-avatar-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.member-avatar-badge.male {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.member-avatar-badge.female {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.member-name-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-full-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.member-branch-text {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.gen-pill {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.gen-pill.gen-1 {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.gen-pill.gen-2 {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.gen-pill.gen-3 {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.gen-pill.gen-4 {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+}
+
+.gender-text.male {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.gender-text.female {
+  color: #be185d;
+  font-weight: 600;
+}
+
+.birth-date-text {
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+.living-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.living-badge.alive {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.living-badge.deceased {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.network-members-toggle-row {
+  margin-top: 14px;
+  text-align: center;
+}
+
+.btn-toggle-members {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.btn-toggle-members:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+}

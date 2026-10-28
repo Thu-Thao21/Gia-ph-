@@ -10,6 +10,7 @@ interface TreeActionModalsProps {
   type: ModalType;
   node: ErgoTreeNode | null;
   familyId?: string;
+  familyName?: string;
   allMembers?: Member[];
   canManageTree?: boolean;
   isSelf?: boolean;
@@ -21,6 +22,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   type,
   node,
   familyId,
+  familyName,
   allMembers = [],
   canManageTree = false,
   isSelf = false,
@@ -190,12 +192,12 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
   // 5. Submit Relocate
   const handleRelocateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canManageTree) {
-      setError('Chức năng di chuyển nhánh chỉ dành cho Ban quản trị dòng họ.');
+    if (!canManageTree && !isSelf) {
+      setError('Chức năng nối phả hệ / di chuyển nhánh chỉ dành cho Ban quản trị dòng họ hoặc chính thành viên.');
       return;
     }
     if (!selectedParentId) {
-      setError('Vui lòng chọn cha/mẹ mới để chuyển nhánh');
+      setError('Vui lòng chọn cha/mẹ trong dòng họ để kết nối');
       return;
     }
     setLoading(true);
@@ -204,7 +206,11 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
       await apiClient.post(`/members/${node.id}/relocate`, {
         newParentId: selectedParentId,
       });
-      onSuccess(`Đã di chuyển nhánh cho '${node.fullName}' thành công!`);
+      onSuccess(
+        node.isUnconnected
+          ? `Đã xác nhận quan hệ và nối '${node.fullName}' vào phả hệ thành công!`
+          : `Đã di chuyển nhánh cho '${node.fullName}' thành công!`
+      );
       onClose();
     } catch (err: any) {
       setError(err?.response?.data?.detail || err?.message || 'Có lỗi xảy ra khi di chuyển nhánh.');
@@ -322,7 +328,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
             <div className="tree-action-modal-body">
               {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
               <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>
-                Bạn có chắc chắn muốn xóa thành viên <strong>{node.fullName}</strong> (Đời thứ {node.generation || 1}) khỏi hệ thống không?
+                Bạn có chắc chắn muốn xóa thành viên <strong>{node.fullName}</strong> (Đời thứ {node.generation || 1}) khỏi dòng họ <strong>{familyName || 'này'}</strong> không?
               </p>
               <div className="tree-action-helper-box" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>
                 <strong>Cảnh báo:</strong> Thao tác này sẽ xóa vĩnh viễn nhân vật và tự động giải phóng các liên kết cha-con, vợ-chồng liên quan trong cơ sở dữ liệu Neon.
@@ -461,18 +467,30 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
         {type === 'relocate' && (
           <form onSubmit={handleRelocateSubmit}>
             <div className="tree-action-modal-header">
-              <h3 className="tree-action-modal-title">Di chuyển nhánh / Đổi cha mẹ</h3>
+              <h3 className="tree-action-modal-title">
+                {node.isUnconnected ? 'Xác nhận quan hệ / Nối vào cây phả hệ' : 'Di chuyển nhánh / Đổi cha mẹ'}
+              </h3>
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
               {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
               
               <div className="tree-action-helper-box">
-                Chọn người cha/mẹ mới trong dòng họ để chuyển nhánh phả hệ cho <strong>{node.fullName}</strong>.
+                {node.isUnconnected ? (
+                  <span>
+                    Chọn cha hoặc mẹ trong dòng họ để kết nối thành viên <strong>{node.fullName}</strong> vào nhánh gia phả. Sau khi lưu, đường nối liên kết quan hệ trong cây sẽ tự động hiển thị.
+                  </span>
+                ) : (
+                  <span>
+                    Chọn người cha/mẹ mới trong dòng họ để chuyển nhánh phả hệ cho <strong>{node.fullName}</strong>.
+                  </span>
+                )}
               </div>
 
               <div className="tree-action-form-group">
-                <label className="tree-action-form-label">Chọn Cha/Mẹ mới *</label>
+                <label className="tree-action-form-label">
+                  {node.isUnconnected ? 'Chọn Cha/Mẹ trong dòng tộc để nối *' : 'Chọn Cha/Mẹ mới *'}
+                </label>
                 <select
                   className="tree-action-form-select"
                   value={selectedParentId}
@@ -492,7 +510,9 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
             <div className="tree-action-modal-footer">
               <button type="button" className="tree-action-btn-secondary" onClick={onClose} disabled={loading}>Hủy</button>
               <button type="submit" className="tree-action-btn-primary" disabled={loading}>
-                {loading ? 'Đang chuyển...' : 'Xác nhận di chuyển'}
+                {loading
+                  ? (node.isUnconnected ? 'Đang kết nối...' : 'Đang chuyển...')
+                  : (node.isUnconnected ? 'Xác nhận nối quan hệ' : 'Xác nhận di chuyển')}
               </button>
             </div>
           </form>

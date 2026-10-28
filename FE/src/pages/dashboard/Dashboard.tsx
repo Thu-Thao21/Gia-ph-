@@ -5,6 +5,7 @@ import { Sidebar } from '../../components/dashboard/Sidebar';
 import { MemberList } from '../../components/profile/MemberList';
 import { ProfileLayout } from '../../components/profile/ProfileLayout';
 import { ClanProfilePage } from '../../components/clan/ClanProfilePage';
+import { MyClans } from '../../components/profile/MyClans/MyClans';
 import { fetchMembers } from '../../services/member.service';
 import { PrivacySettingsTab } from '../../components/profile/PrivacySettingsTab';
 import { RelationshipFinder } from '../../components/member/RelationshipFinder';
@@ -43,6 +44,7 @@ import {
 } from '../../components/admin/PlatformAdmin';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useClanContext } from '../../context/ClanContext';
 import { ROUTES } from '../../config/routes';
 import type { TreeViewMode } from '../../types/tree';
 import './Dashboard.css';
@@ -162,6 +164,14 @@ export interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const { account } = useAuth();
+  const {
+    activeClanId,
+    activeClanName,
+    activeMembership,
+    activeClanRole,
+    activeClanRoleLabel,
+    clanSwitchCount,
+  } = useClanContext();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -174,17 +184,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
 
   const displayUserName = account?.display_name || account?.username || userName || 'Người dùng';
   const primaryRole = account?.primary_role || 'member';
-  const isClanAdminRole = primaryRole === 'clan_admin' || primaryRole === 'family_head' || Boolean(account?.roles?.some((role) => (role.role === 'family_head' || role.role === 'clan_admin' || role.role === 'business_owner') && role.status === 'active'));
-  const isFamilyManager = (Boolean(account?.roles?.some((role) => (role.role === 'manager' || role.role === 'family_admin') && role.status === 'active')) || primaryRole === 'family_admin') && !isClanAdminRole;
-  const userRole = primaryRole === 'admin' ? 'Admin' : isClanAdminRole ? 'Trưởng tộc' : (primaryRole === 'family_admin' || isFamilyManager) ? 'Family Admin' : 'Thành viên';
-  const basePath = primaryRole === 'admin' ? ROUTES.ADMIN.ROOT : ROUTES.USER.ROOT;
-  const effectiveClanId = account?.clan_id || account?.memberships?.[0]?.clan_id;
+  const isSystemAdmin = primaryRole === 'admin';
+
+  // Vai trò tại cây đang chọn (hoặc System Admin nếu là admin)
+  const isClanAdminRole = !isSystemAdmin && activeClanRole === 'clan_admin';
+  const isFamilyManager = !isSystemAdmin && activeClanRole === 'family_admin';
+  const userRole = isSystemAdmin ? 'Admin' : (activeClanRoleLabel || 'Thành viên');
+  const basePath = isSystemAdmin ? ROUTES.ADMIN.ROOT : ROUTES.USER.ROOT;
+  const effectiveClanId = isSystemAdmin ? (adminSelectedFamilyId || account?.clan_id || null) : activeClanId;
   const [resolvedMyMemberId, setResolvedMyMemberId] = useState<string | null>(null);
+
+  // Khi chuyển cây: reset thành viên đang xem và đưa về màn hợp lệ nếu mất quyền
+  useEffect(() => {
+    setSelectedMemberId(null);
+    setResolvedMyMemberId(null);
+
+    if (isSystemAdmin) return;
+
+    const isFamilyHead = activeClanRole === 'clan_admin';
+    const canManageFamily = isFamilyHead || activeClanRole === 'family_admin';
+
+    // Nếu đang ở màn quản lý nhưng cây mới chỉ có quyền Thành viên -> chuyển về màn hợp lệ
+    if (activeTab.startsWith('family-') && !canManageFamily) {
+      setActiveTab('dashboard');
+      navigate(ROUTES.USER.ROOT, { replace: false });
+    } else if (activeTab === 'family-accounts' && !isFamilyHead) {
+      setActiveTab('dashboard');
+      navigate(ROUTES.USER.ROOT, { replace: false });
+    }
+  }, [activeClanId, clanSwitchCount, activeClanRole, isSystemAdmin]);
 
   useEffect(() => {
     if (!effectiveClanId) return;
+    let isCancelled = false;
+
     fetchMembers({ familyId: effectiveClanId, limit: 1000 })
       .then((res) => {
+        if (isCancelled) return;
         if (res?.items && res.items.length > 0) {
           const myName = (displayUserName || '').trim().toLowerCase();
           const me = res.items.find(
@@ -199,7 +235,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
           }
         }
       })
-      .catch(console.error);
+      .catch((err) => {
+        if (!isCancelled) console.error(err);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [effectiveClanId, displayUserName, account?.id]);
 
   // [L-17] A restricted session never reaches the dashboard: ProtectedRoute sends it to /change-password.
@@ -345,7 +387,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       if (familyViews[activeTab] === 'tree') {
         return (
           <TreeLayout
-            familyId={account?.clan_id || account?.memberships?.[0]?.clan_id}
+            familyId={effectiveClanId || undefined}
             onSelectMemberProfile={(memberId) => {
               setSelectedMemberId(memberId);
               setActiveTab('member-profile');
@@ -379,7 +421,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
           : 'vertical';
       return (
         <TreeLayout
-          familyId={account?.clan_id || account?.memberships?.[0]?.clan_id}
+          familyId={effectiveClanId || undefined}
           initialMode={mode}
           onSelectMemberProfile={(memberId) => {
             setSelectedMemberId(memberId);
@@ -391,17 +433,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     }
 
     if (activeTab === 'clan-profile') {
-      return <ClanProfilePage clanId={effectiveClanId} />;
+      return <ClanProfilePage clanId={effectiveClanId || undefined} />;
+    }
+
+    if (activeTab === 'my-clans') {
+      return <MyClans />;
     }
 
     // Profile & Member List
     if (activeTab === 'my-profile') {
-      const targetMemberId = (account as any)?.person_id || resolvedMyMemberId || selectedMemberId;
+      const targetMemberId = activeMembership?.person_id || (account as any)?.person_id;
       if (!targetMemberId) {
         return (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-            Đang tìm kiếm hồ sơ thành viên của bạn trong gia tộc...
-          </div>
+          <section className="dashboard-permission-page">
+            <div className="dashboard-permission-icon">📋</div>
+            <span>HỒ SƠ CÁ NHÂN GIA TỘC</span>
+            <h1>Chưa liên kết hồ sơ thành viên</h1>
+            <p>
+              Tài khoản của bạn chưa được liên kết với hồ sơ Person cụ thể nào trong cây gia phả{' '}
+              <strong>{activeClanName || 'đang chọn'}</strong>.
+            </p>
+            <p style={{ fontSize: '13.5px', color: '#64748b', marginTop: '6px' }}>
+              Mỗi dòng họ có hồ sơ thành viên riêng biệt. Vui lòng liên hệ Trưởng tộc hoặc Family Admin để được gắn hồ sơ.
+            </p>
+            <button type="button" onClick={() => handleSelectTab('dashboard')} style={{ marginTop: '16px' }}>
+              Quay lại Trang chủ
+            </button>
+          </section>
         );
       }
       return (

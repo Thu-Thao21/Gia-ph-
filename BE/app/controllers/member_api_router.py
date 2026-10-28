@@ -28,8 +28,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.postgres import get_db
 from app.dependencies.auth import get_current_account
-from app.models.family.entities import Clan, ClanProfile
+from app.models.family.entities import Clan, ClanProfile, ClanMembership, PersonAccountLink
 from app.models.genealogy.entities import Person, Relationship, FamilyBranch
+from app.models.user_access.entities import User
 from app.models.postgres import Account
 from app.services.auth_access.access_service import AccessService
 
@@ -97,16 +98,59 @@ async def list_members(
 
     With family_id: person.view in that family. Without: persons of EVERY clan, SA only."""
     # Build query on persons
-    stmt = select(Person)
     if family_id:
         try:
             f_uuid = uuid.UUID(family_id)
+            # Tự động đồng bộ các tài khoản thành viên (ClanMembership) chưa có Person trong dòng họ này
+            active_mems_stmt = (
+                select(ClanMembership, User)
+                .join(User, User.user_id == ClanMembership.user_id)
+                .outerjoin(
+                    PersonAccountLink,
+                    and_(
+                        PersonAccountLink.user_id == ClanMembership.user_id,
+                        PersonAccountLink.clan_id == f_uuid,
+                        PersonAccountLink.status == "ACTIVE",
+                        PersonAccountLink.revoked_at.is_(None),
+                    ),
+                )
+                .where(
+                    ClanMembership.clan_id == f_uuid,
+                    ClanMembership.status == "ACTIVE",
+                    PersonAccountLink.link_id.is_(None),
+                )
+            )
+            missing_links = (await db.execute(active_mems_stmt)).all()
+            for mem_row, user_row in missing_links:
+                new_p = Person(
+                    family_id=f_uuid,
+                    full_name=user_row.display_name or (user_row.email.split("@")[0] if user_row.email else "Thành viên mới"),
+                    gender="MALE",
+                    is_alive=True,
+                    generation=1,
+                    created_by=user_row.user_id,
+                )
+                db.add(new_p)
+                await db.flush()
+                new_link = PersonAccountLink(
+                    person_id=new_p.id,
+                    user_id=user_row.user_id,
+                    clan_id=f_uuid,
+                    status="ACTIVE",
+                    linked_by=user_row.user_id,
+                )
+                db.add(new_link)
+            if missing_links:
+                await db.commit()
         except ValueError:
             return {"items": [], "total": 0, "page": page, "limit": limit, "totalPages": 0}
         await _require(db, account, f_uuid, "person.view")
-        stmt = stmt.where(Person.family_id == f_uuid)
     else:
         await AccessService(db).require_system_admin(account)
+
+    stmt = select(Person)
+    if family_id:
+        stmt = stmt.where(Person.family_id == f_uuid)
 
     if search:
         s = f"%{search.strip()}%"
@@ -121,6 +165,15 @@ async def list_members(
 
     person_ids = [p.id for p in persons]
 
+    # Pre-fetch person account links (to identify linked user accounts)
+    link_stmt = select(PersonAccountLink.person_id, PersonAccountLink.user_id).where(
+        PersonAccountLink.person_id.in_(person_ids),
+        PersonAccountLink.status == "ACTIVE",
+        PersonAccountLink.revoked_at.is_(None),
+    )
+    link_res = await db.execute(link_stmt)
+    person_user_map = {row[0]: str(row[1]) for row in link_res.all()}
+
     # Pre-fetch relationships for these persons
     rel_stmt = select(Relationship).where(
         or_(
@@ -134,15 +187,17 @@ async def list_members(
     # Pre-fetch genders for parent mapping
     person_gender_map = {p.id: (p.gender or "MALE").upper() for p in persons}
 
-    # Map relationships: fatherId, motherId, spouseId
+    # Map relationships: fatherId, motherId, spouseId, children
     father_map: Dict[uuid.UUID, uuid.UUID] = {}
     mother_map: Dict[uuid.UUID, uuid.UUID] = {}
     spouse_map: Dict[uuid.UUID, uuid.UUID] = {}
+    parent_with_children_set = set()
 
     for r in relationships:
         if r.relationship_type == "PARENT_CHILD":
             child_id = r.to_member_id
             parent_id = r.from_member_id
+            parent_with_children_set.add(parent_id)
             p_gender = person_gender_map.get(parent_id, "MALE")
             if p_gender == "MALE":
                 father_map[child_id] = parent_id
@@ -155,6 +210,12 @@ async def list_members(
     items = []
     for p in persons:
         g = (p.gender or "MALE").lower()
+        has_father = p.id in father_map
+        has_mother = p.id in mother_map
+        has_spouse = p.id in spouse_map
+        has_children = p.id in parent_with_children_set
+        is_unconnected = not (has_father or has_mother or has_spouse or has_children)
+
         items.append({
             "id": str(p.id),
             "familyId": str(p.family_id),
@@ -170,6 +231,8 @@ async def list_members(
             "education": "Đại học",
             "avatarUrl": p.avatar_url,
             "status": p.status,
+            "userId": person_user_map.get(p.id),
+            "isUnconnected": is_unconnected,
             "fatherId": str(father_map[p.id]) if p.id in father_map else None,
             "motherId": str(mother_map[p.id]) if p.id in mother_map else None,
             "spouseId": str(spouse_map[p.id]) if p.id in spouse_map else None,

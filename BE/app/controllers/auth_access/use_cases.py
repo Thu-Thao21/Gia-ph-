@@ -329,12 +329,22 @@ async def build_membership_summaries(
             if await is_active_owner(user_id, clan.clan_id, users, family):
                 permissions.update(owner_actions())
             permissions.update(await family.list_fa_permission_codes(clan.clan_id, user_id))
+
+        person_link = await family.get_person_link_by_user(clan.clan_id, user_id)
+        person_id = (
+            person_link.person_id
+            if person_link and person_link.status == "ACTIVE" and person_link.revoked_at is None
+            else None
+        )
+
         memberships.append(
             MembershipSummary(
                 clan_id=clan.clan_id,
                 clan_name=clan.name,
                 clan_status=clan.status,
                 membership_status=membership.status,
+                lineage_type=getattr(membership, "lineage_type", None),
+                person_id=person_id,
                 roles=sorted({code for code, cid in grants if cid == clan.clan_id}),
                 permissions=sorted(permissions),
             )

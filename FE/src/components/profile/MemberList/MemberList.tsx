@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useClanContext } from '../../../context/ClanContext';
 import { fetchFamilies, fetchMembers } from '../../../services/member.service';
 import type { Family, Member } from '../../../types/member';
 import { GenderAvatar } from '../../common/GenderAvatar';
@@ -7,12 +8,14 @@ import './MemberList.css';
 
 export interface MemberListProps {
   onSelectMember: (memberId: string) => void;
+  initialFamilyId?: string;
 }
 
-export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
+export const MemberList: React.FC<MemberListProps> = ({ onSelectMember, initialFamilyId }) => {
   const { account } = useAuth();
+  const { activeClanId, availableClans } = useClanContext();
   const isAdmin = account?.primary_role === 'admin';
-  const userClanId = account?.clan_id || account?.memberships?.[0]?.clan_id;
+  const userClanId = initialFamilyId || activeClanId || account?.clan_id || account?.memberships?.[0]?.clan_id;
 
   const [members, setMembers] = useState<Member[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
@@ -20,13 +23,19 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Đồng bộ selectedFamilyId khi activeClanId thay đổi từ TopBar
+  useEffect(() => {
+    if (activeClanId && !isAdmin) {
+      setSelectedFamilyId(activeClanId);
+    }
+  }, [activeClanId, isAdmin]);
+
   useEffect(() => {
     fetchFamilies().then((data) => {
+      const allowedClanIds = availableClans.map((c) => c.clan_id);
       const allowedFams = isAdmin
         ? data
-        : userClanId
-        ? data.filter((f) => f.id === userClanId)
-        : data;
+        : data.filter((f) => allowedClanIds.includes(f.id) || f.id === userClanId);
       setFamilies(allowedFams);
       if (userClanId && data.some((f) => f.id === userClanId)) {
         setSelectedFamilyId(userClanId);
@@ -34,14 +43,20 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember }) => {
         setSelectedFamilyId(allowedFams[0].id);
       }
     });
-  }, [isAdmin, userClanId]);
+  }, [isAdmin, userClanId, availableClans]);
 
   useEffect(() => {
+    let isCancelled = false;
     setLoading(true);
     fetchMembers({ familyId: selectedFamilyId || undefined, search: searchTerm }).then((res) => {
-      setMembers(res.items);
-      setLoading(false);
+      if (!isCancelled) {
+        setMembers(res.items);
+        setLoading(false);
+      }
     });
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedFamilyId, searchTerm]);
 
   return (
