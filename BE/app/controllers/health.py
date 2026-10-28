@@ -20,7 +20,7 @@ from app.db.postgres import check_db
 logger = logging.getLogger("mfg.health")
 router = APIRouter()
 
-READY_TIMEOUT_SECONDS = 2.0
+READY_TIMEOUT_SECONDS = 6.0
 NO_STORE = {"Cache-Control": "no-store"}
 
 
