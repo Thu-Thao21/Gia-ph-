@@ -177,13 +177,13 @@ export const RelationshipFinder: React.FC = () => {
             className={`rel-tab-btn ${activeTab === 'finder' ? 'active' : ''}`}
             onClick={() => setActiveTab('finder')}
           >
-            🔍 Xác định quan hệ A → B & Xưng hô
+            Xác định quan hệ A → B & Xưng hô
           </button>
           <button
             className={`rel-tab-btn ${activeTab === 'lineage' ? 'active' : ''}`}
             onClick={() => setActiveTab('lineage')}
           >
-            📜 Tra cứu Tổ tiên & Hậu duệ
+            Tra cứu Tổ tiên & Hậu duệ
           </button>
         </div>
       </div>
@@ -285,7 +285,7 @@ export const RelationshipFinder: React.FC = () => {
             <div className="rel-lineage-results-grid">
               <div className="lineage-column">
                 <h3 className="lineage-col-title blue">
-                  🏛️ Danh sách Tổ tiên ({ancestors.length})
+                  Danh sách Tổ tiên ({ancestors.length})
                 </h3>
                 <div className="lineage-list">
                   {ancestors.length === 0 ? (
@@ -303,7 +303,7 @@ export const RelationshipFinder: React.FC = () => {
 
               <div className="lineage-column">
                 <h3 className="lineage-col-title purple">
-                  🌱 Danh sách Hậu duệ ({descendants.length})
+                  Danh sách Hậu duệ ({descendants.length})
                 </h3>
                 <div className="lineage-list">
                   {descendants.length === 0 ? (

@@ -19,7 +19,7 @@ interface ToastItemProps {
 const TOAST_ICONS: Record<ToastType, string> = {
   success: '✓',
   error: '✕',
-  warning: '⚠',
+  warning: '!',
   info: 'ℹ',
   loading: '',
 };

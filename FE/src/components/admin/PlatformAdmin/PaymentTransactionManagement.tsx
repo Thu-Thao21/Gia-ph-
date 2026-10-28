@@ -17,7 +17,7 @@ import {
   formatVnd,
   useAdminToast,
 } from './shared';
-import './Sprint6Admin.css';
+import './PlatformAdmin.css';
 
 const PAGE_SIZE = 5;
 

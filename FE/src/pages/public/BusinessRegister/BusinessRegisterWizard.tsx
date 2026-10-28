@@ -316,7 +316,7 @@ export const BusinessRegisterWizard: React.FC = () => {
         {isSubmitted ? (
           /* Receipt Card after successful submission */
           <div className="wiz-receipt-card">
-            <div className="receipt-icon">🎉</div>
+            <div className="receipt-icon">✓</div>
             <h2 className="receipt-title">Đăng Ký Khởi Tạo Business Thành Công!</h2>
             <p className="receipt-desc">
               Yêu cầu của bạn đã được ghi nhận vào hệ thống. Quản trị viên sẽ tiến hành thẩm định và phản hồi trong thời gian sớm nhất.
@@ -351,14 +351,14 @@ export const BusinessRegisterWizard: React.FC = () => {
                     transition: 'background 0.2s',
                   }}
                 >
-                  {copied ? '✓ Đã sao chép!' : '📋 Sao chép mã'}
+                  {copied ? '✓ Đã sao chép!' : 'Sao chép mã'}
                 </button>
               </div>
               <span className="code-label">Mã chỉ hiển thị một lần, hãy lưu lại.</span>
             </div>
 
             <div className="receipt-warning">
-              ⚠️ <strong>Lưu ý quan trọng:</strong> Gửi đăng ký Business hoặc chọn gói chưa đồng nghĩa với việc được cấp quyền Business Owner ngay lập tức. Quyền sẽ được kích hoạt sau khi yêu cầu được duyệt chính thức.
+              <strong>Lưu ý quan trọng:</strong> Gửi đăng ký Business hoặc chọn gói chưa đồng nghĩa với việc được cấp quyền Business Owner ngay lập tức. Quyền sẽ được kích hoạt sau khi yêu cầu được duyệt chính thức.
             </div>
 
             <div className="receipt-actions">
@@ -540,7 +540,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                       data-testid="clan-name-error"
                       style={{ color: '#dc2626', fontSize: '13px', marginTop: '6px', display: 'block', fontWeight: 600 }}
                     >
-                      ⚠️ {clanNameError}
+                      {clanNameError}
                     </span>
                   )}
                 </div>
@@ -607,7 +607,7 @@ export const BusinessRegisterWizard: React.FC = () => {
                       data-testid="clan-logo-error"
                       style={{ color: '#dc2626', fontSize: '13px', marginTop: '6px', display: 'block', fontWeight: 600 }}
                     >
-                      ⚠️ {logoError}
+                      {logoError}
                     </span>
                   )}
                   <small style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', display: 'block' }}>

@@ -502,6 +502,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
           </div>
         </div>
       </div>
+
       {/* Canvas Area */}
       {loading ? (
         <div className="tree-canvas-prompt-loading">

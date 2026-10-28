@@ -41,7 +41,7 @@ import {
   PaymentTransactionManagement,
   ModerationManagement,
   RolePermissionManagement
-} from '../../components/admin/Sprint6Admin';
+} from '../../components/admin/PlatformAdmin';
 
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../config/routes';
@@ -294,7 +294,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     const isFamilyHead = isClanAdminRole;
     const canManageFamily = isFamilyHead || isFamilyManager;
 
-    if (activeTab === 'notifications') return <NotificationCenterModule />;
+    if (activeTab === 'notifications') {
+      return (
+        <NotificationCenterModule
+          canManage={canManageFamily}
+          clanName={account?.clan_name || 'Dòng Họ Võ Đại Tộc'}
+          userRole={userRole}
+        />
+      );
+    }
     if (activeTab === 'relationship-finder') return canManageFamily ? <FamilyAdminModule view="search" /> : <RelationshipFinder />;
     if (activeTab === 'my-proposals') return <MyProposalsModule />;
     if (activeTab === 'anniversaries') return <AnniversariesModule />;
@@ -311,7 +319,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     if (activeTab.startsWith('family-') && !canManageFamily) {
       return (
         <section className="dashboard-permission-page">
-          <div className="dashboard-permission-icon">🔒</div>
+          <div className="dashboard-permission-icon">!</div>
           <span>QUYỀN TRUY CẬP DỮ LIỆU</span>
           <h1>Chức năng dành cho Quản trị viên dòng họ</h1>
           <p>Tài khoản Thành viên có thể xem dữ liệu được chia sẻ nhưng không thể mở khu vực quản lý, phê duyệt hoặc xuất nhập dữ liệu.</p>
@@ -324,7 +332,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     if (activeTab === 'family-accounts' && !isFamilyHead) {
       return (
         <section className="dashboard-permission-page">
-          <div className="dashboard-permission-icon">👑</div>
+          <div className="dashboard-permission-icon">!</div>
           <span>QUYỀN HẠN TRƯỞNG TỘC</span>
           <h1>Chức năng dành riêng cho Trưởng tộc (Clan Admin)</h1>
           <p>Chỉ Trưởng tộc mới có quyền phân quyền, nâng cấp hoặc thu hồi quyền của Family Admin và quản lý tài khoản thành viên.</p>

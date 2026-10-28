@@ -172,8 +172,9 @@
 
 .s6a-metric-grid {
   display: grid;
-  gap: 16px;
-  margin-bottom: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .s6a-metric-grid.three {
@@ -189,34 +190,67 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 132px;
-  padding: 20px 22px;
-  border: 1px solid #e0e7f0;
-  border-radius: 18px;
+  min-height: 88px;
+  padding: 14px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 10px 30px rgba(28, 49, 85, 0.055);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 3px 10px rgba(15, 23, 42, 0.02);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+.s6a-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 20px -3px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+}
+
+
+.s6a-metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.s6a-metric-title,
 .s6a-metric-card > span {
-  color: #68778d;
-  font-size: 0.8rem;
+  color: #64748b;
+  font-size: 0.76rem;
   font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
 }
 
+.s6a-metric-val,
 .s6a-metric-card > strong {
   overflow-wrap: anywhere;
-  margin: 9px 0;
-  color: #14213a;
+  margin: 3px 0 2px 0;
+  color: #0f172a;
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: clamp(1.25rem, 1.8vw, 1.72rem);
-  line-height: 1.2;
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
+.s6a-metric-sub,
 .s6a-metric-card > small {
-  padding-top: 10px;
-  border-top: 1px solid #edf1f6;
-  color: #8a98aa;
-  font-size: 0.72rem;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 500;
+  padding-top: 0;
+  border-top: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .s6a-content-card,
@@ -370,7 +404,7 @@
 
 .s6a-table {
   width: 100%;
-  min-width: 960px;
+  min-width: 720px;
   border-collapse: collapse;
   text-align: left;
   color: #344157;
@@ -404,24 +438,38 @@
   background: #fbfdff;
 }
 
+.s6a-table tbody tr.s6a-row-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.s6a-table tbody tr.s6a-row-clickable:hover td {
+  background: #f8fafc;
+}
+
+.s6a-table tbody tr.s6a-row-clickable:hover .s6a-primary-cell strong {
+  color: #2563eb;
+}
+
 .s6a-actions-column {
   text-align: right !important;
 }
 
 .s6a-primary-cell {
-  min-width: 170px;
+  min-width: 140px;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
 .s6a-primary-cell.compact {
-  min-width: 118px;
+  min-width: 90px;
 }
 
 .s6a-primary-cell strong {
   color: #1d2a40;
   font-size: 0.82rem;
+  transition: color 0.15s ease;
 }
 
 .s6a-primary-cell span,
@@ -438,37 +486,91 @@
 
 .s6a-table-id,
 .s6a-link-button {
-  padding: 0;
-  border: none;
-  color: #2c68dd;
-  background: transparent;
+  padding: 4px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #2563eb;
+  background: #ffffff;
   font: inherit;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .s6a-table-id:hover,
 .s6a-link-button:hover:not(:disabled) {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  text-decoration: none;
 }
 
 .s6a-row-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 11px;
+  gap: 6px;
   white-space: nowrap;
 }
 
 .s6a-link-button.danger-text,
 .s6a-danger-text {
-  color: #cf3848;
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.s6a-link-button.danger-text:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  text-decoration: none;
 }
 
 .s6a-link-button.success-text,
 .s6a-success-text {
-  color: #168158;
+  color: #16a34a;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.s6a-link-button.success-text:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: #86efac;
+  text-decoration: none;
+}
+
+.s6a-modal-nav-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  margin: -6px 0 16px 0;
+  background: #f8fafc;
+  border-radius: 8px 8px 0 0;
+  padding: 0 12px;
+}
+
+.s6a-modal-tab {
+  padding: 9px 16px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s ease;
+}
+
+.s6a-modal-tab:hover {
+  color: #0f172a;
+}
+
+.s6a-modal-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  background: #ffffff;
 }
 
 .s6a-status {
@@ -1307,9 +1409,12 @@
     width: 100%;
   }
 
-  .s6a-metric-grid.three,
-  .s6a-metric-grid.four {
+  .s6a-metric-grid.three {
     grid-template-columns: 1fr;
+  }
+
+  .s6a-metric-grid.four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .s6a-metric-grid.three .s6a-metric-card:last-child {
@@ -1317,7 +1422,8 @@
   }
 
   .s6a-metric-card {
-    min-height: 112px;
+    min-height: 82px;
+    padding: 12px 14px;
   }
 
   .s6a-content-card {
@@ -1412,6 +1518,13 @@
     right: 16px;
     left: 16px;
     max-width: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .s6a-metric-grid,
+  .s6a-metric-grid.four {
+    grid-template-columns: 1fr;
   }
 }
 

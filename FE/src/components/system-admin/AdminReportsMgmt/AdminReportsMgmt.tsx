@@ -211,7 +211,7 @@ export const AdminReportsMgmt: React.FC = () => {
                       className="btn-action-view"
                       onClick={() => handleOpenDecisionModal(rpt)}
                     >
-                      {rpt.status === 'PENDING' ? '⚖️ Xử Lý' : 'Chi Tiết'}
+                      {rpt.status === 'PENDING' ? 'Xử Lý' : 'Chi Tiết'}
                     </button>
                   </td>
                 </tr>

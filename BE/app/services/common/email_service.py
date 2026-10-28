@@ -32,7 +32,7 @@ def send_otp_email(to_email: str, otp_code: str) -> bool:
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"🔑 Mã OTP khôi phục mật khẩu: {otp_code}"
+        msg["Subject"] = f"Mã OTP khôi phục mật khẩu: {otp_code}"
         msg["From"] = f"Hệ thống Gia phả Liên họ <{smtp_user}>"
         msg["To"] = to_email
 

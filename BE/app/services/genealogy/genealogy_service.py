@@ -73,18 +73,20 @@ class GenealogyService:
 
     @staticmethod
     def _to_person_response(person: Person) -> PersonResponse:
+        gender_val = (person.gender or "unknown").lower()
+        status_val = (person.status or "active").lower()
         return PersonResponse(
             id=str(person.id),
             familyId=str(person.family_id),
             branchId=str(person.branch_id) if person.branch_id else None,
             fullName=person.full_name,
-            gender=person.gender or "unknown",
+            gender=gender_val,
             birthDate=person.birth_date,
             deathDate=person.death_date,
             generation=person.generation or 1,
             avatarUrl=person.avatar_url,
             isLiving=True if person.is_alive is None else person.is_alive,
-            status=person.status,
+            status=status_val,
         )
 
     async def _get_person_for_family(self, family_id: str, person_id: str) -> Person:
@@ -152,18 +154,35 @@ class GenealogyService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
         await self._validate_branch(family_id, data.branch_id)
 
+        # Normalize gender to uppercase ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN') for Postgres check constraint
+        raw_gender = (data.gender or "").strip().upper()
+        if raw_gender in {"MALE", "NAM"}:
+            gender_val = "MALE"
+        elif raw_gender in {"FEMALE", "NU", "NỮ"}:
+            gender_val = "FEMALE"
+        elif raw_gender in {"OTHER", "KHAC", "KHÁC"}:
+            gender_val = "OTHER"
+        else:
+            gender_val = "UNKNOWN"
+
+        raw_status = (data.status or "").strip().upper()
+        if raw_status in {"ACTIVE", "HIDDEN", "MERGED", "DELETED"}:
+            status_val = raw_status
+        else:
+            status_val = "ACTIVE"
+
         person = Person(
             id=str(uuid4()),
             family_id=family_id,
             branch_id=data.branch_id,
             full_name=data.full_name,
-            gender=data.gender,
+            gender=gender_val,
             birth_date=data.birth_date,
             death_date=data.death_date,
             avatar_url=data.avatar_url,
             is_alive=data.is_alive,
-            status=data.status,
-            generation=1,
+            status=status_val,
+            generation=data.generation if data.generation and data.generation > 0 else 1,
             created_by=account.id,
         )
         try:
@@ -187,6 +206,24 @@ class GenealogyService:
         update_data = data.model_dump(exclude_unset=True)
         if "branch_id" in update_data:
             await self._validate_branch(family_id, update_data["branch_id"])
+        if "gender" in update_data and update_data["gender"] is not None:
+            raw_g = str(update_data["gender"]).strip().upper()
+            if raw_g in {"MALE", "NAM"}:
+                update_data["gender"] = "MALE"
+            elif raw_g in {"FEMALE", "NU", "NỮ"}:
+                update_data["gender"] = "FEMALE"
+            elif raw_g in {"OTHER", "KHAC", "KHÁC"}:
+                update_data["gender"] = "OTHER"
+            else:
+                update_data["gender"] = "UNKNOWN"
+        if "status" in update_data and update_data["status"] is not None:
+            raw_s = str(update_data["status"]).strip().upper()
+            if raw_s in {"ACTIVE", "HIDDEN", "MERGED", "DELETED"}:
+                update_data["status"] = raw_s
+            else:
+                update_data["status"] = "ACTIVE"
+        if "generation" in update_data and (not update_data["generation"] or update_data["generation"] < 1):
+            update_data["generation"] = 1
         if not update_data:
             return self._to_person_response(person)
 

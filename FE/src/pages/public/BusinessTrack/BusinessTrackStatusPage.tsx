@@ -174,7 +174,7 @@ export const BusinessTrackStatusPage: React.FC = () => {
             ) : !currentResult ? (
               <div className="track-empty">
                 {/* [L-09] Sử dụng searchedCode thay cho inputCode */}
-                ❌ Không tìm thấy yêu cầu đăng ký nào khớp với mã <strong>{searchedCode}</strong>.
+                Không tìm thấy yêu cầu đăng ký nào khớp với mã <strong>{searchedCode}</strong>.
                 Vui lòng kiểm tra lại chính xác mã tra cứu đã cấp.
               </div>
             ) : (
@@ -188,17 +188,17 @@ export const BusinessTrackStatusPage: React.FC = () => {
                   <span className={`status-pill ${currentResult.status}`}>
                     {currentResult.status === 'pending' && '⏳ Đang chờ duyệt'}
                     {currentResult.status === 'approved' && '✓ Đã chấp thuận'}
-                    {currentResult.status === 'needs_info' && '⚠️ Cần bổ sung thông tin'}
+                    {currentResult.status === 'needs_info' && 'Cần bổ sung thông tin'}
                     {currentResult.status === 'rejected' && '✕ Từ chối'}
                     {currentResult.status === 'cancelled' && '✕ Đã hủy'}
                   </span>
                 </div>
 
                 <div className="req-meta-grid">
-                  {currentResult.repName && <div>👤 <strong>Người đại diện:</strong> {currentResult.repName}</div>}
-                  {currentResult.tierName && <div>📦 <strong>Gói đăng ký:</strong> {currentResult.tierName}</div>}
-                  <div>📅 <strong>Thời điểm gửi:</strong> {currentResult.submittedAt}</div>
-                  <div>🕒 <strong>Cập nhật lần cuối:</strong> {currentResult.updatedAt}</div>
+                  {currentResult.repName && <div><strong>Người đại diện:</strong> {currentResult.repName}</div>}
+                  {currentResult.tierName && <div><strong>Gói đăng ký:</strong> {currentResult.tierName}</div>}
+                  <div><strong>Thời điểm gửi:</strong> {currentResult.submittedAt}</div>
+                  <div><strong>Cập nhật lần cuối:</strong> {currentResult.updatedAt}</div>
                 </div>
 
                 {currentResult.adminNotes && (

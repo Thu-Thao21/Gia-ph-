@@ -159,7 +159,7 @@ export const AdminAuditLogsMgmt: React.FC = () => {
                       className="btn-action-view"
                       onClick={() => setSelectedLog(log)}
                     >
-                      🔍 Xem Diff
+                      Xem Diff
                     </button>
                   </td>
                 </tr>

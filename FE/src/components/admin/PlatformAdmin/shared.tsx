@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import './Sprint6Admin.css';
+import './PlatformAdmin.css';
 
 export type ToastTone = 'success' | 'error' | 'info';
 

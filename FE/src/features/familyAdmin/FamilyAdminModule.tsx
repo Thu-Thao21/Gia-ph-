@@ -342,7 +342,7 @@ export const FamilyAdminModule: React.FC<Props> = ({ view, onNavigate }) => {
             <p className="fa-muted">Trưởng tộc bổ nhiệm và phân quyền Family Admin từ các thành viên chính thức thuộc dòng họ.</p>
           </div>
           <button type="button" onClick={loadClanUsers} disabled={loadingUsers}>
-            {loadingUsers ? 'Đang tải...' : '🔄 Làm mới'}
+            {loadingUsers ? 'Đang tải...' : 'Làm mới'}
           </button>
         </div>
 

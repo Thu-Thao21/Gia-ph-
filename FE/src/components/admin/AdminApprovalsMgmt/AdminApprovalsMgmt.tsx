@@ -17,8 +17,8 @@ import {
   AdminStatusBadge,
   AdminToast,
   useAdminToast,
-} from '../Sprint6Admin/shared';
-import '../Sprint6Admin/Sprint6Admin.css';
+} from '../PlatformAdmin/shared';
+import '../PlatformAdmin/PlatformAdmin.css';
 
 const PAGE_SIZE = 6;
 const statusLabels: Record<string, string> = {
@@ -391,7 +391,7 @@ export const AdminApprovalsMgmt: React.FC = () => {
               fontSize: '14px',
               lineHeight: 1.5,
             }}>
-              <strong>{provisionResult.email_sent ? '✅ Đã gửi email thông tin tài khoản thành công!' : '⚠️ Thông báo email:'}</strong>
+              <strong>{provisionResult.email_sent ? 'Đã gửi email thông tin tài khoản thành công!' : 'Thông báo email:'}</strong>
               <div style={{ marginTop: '4px' }}>{provisionResult.message}</div>
             </div>
 

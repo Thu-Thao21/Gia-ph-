@@ -31,6 +31,7 @@ class PersonCreate(BaseModel):
     gender: str = "unknown"
     birth_date: Optional[date] = Field(None, alias="birthDate")
     death_date: Optional[date] = Field(None, alias="deathDate")
+    generation: Optional[int] = Field(None, alias="generation")
     avatar_url: Optional[str] = Field(None, alias="avatarUrl")
     is_alive: bool = Field(True, alias="isLiving")
     status: str = "active"
@@ -53,6 +54,7 @@ class PersonUpdate(BaseModel):
     gender: Optional[str] = None
     birth_date: Optional[date] = Field(None, alias="birthDate")
     death_date: Optional[date] = Field(None, alias="deathDate")
+    generation: Optional[int] = Field(None, alias="generation")
     avatar_url: Optional[str] = Field(None, alias="avatarUrl")
     is_alive: Optional[bool] = Field(None, alias="isLiving")
     status: Optional[str] = None

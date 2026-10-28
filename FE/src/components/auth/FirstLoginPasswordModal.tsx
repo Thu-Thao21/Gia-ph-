@@ -58,7 +58,7 @@ export const FirstLoginPasswordModal: React.FC<FirstLoginPasswordModalProps> = (
     <div className="first-pwd-modal-overlay">
       <div className="first-pwd-modal-card">
         <div className="first-pwd-header">
-          <div className="first-pwd-icon">🔒</div>
+          <div className="first-pwd-icon">!</div>
           <h2 className="first-pwd-title">Yêu cầu đổi mật khẩu lần đầu</h2>
           <p className="first-pwd-subtitle">
             Tài khoản của bạn đang sử dụng mật khẩu tạm thời do Quản trị viên cấp.

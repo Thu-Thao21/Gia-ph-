@@ -88,7 +88,7 @@ export const ClanAIAssistantModule: React.FC = () => {
           <div className="chat-messages-box">
             {messages.map((m) => (
               <div key={m.id} className={`chat-message-item ${m.sender}`}>
-                <div className="chat-avatar">{m.sender === 'ai' ? '🤖' : '👤'}</div>
+                <div className="chat-avatar">{m.sender === 'ai' ? 'AI' : 'Bạn'}</div>
                 <div className="chat-bubble">
                   <div className="chat-text">{m.text}</div>
 
@@ -97,7 +97,7 @@ export const ClanAIAssistantModule: React.FC = () => {
                       <span className="citation-label">Trích dẫn nguồn liên quan:</span>
                       {m.citations.map((c, idx) => (
                         <div key={idx} className="citation-item">
-                          📌 <strong>{c.title}</strong> — {c.source}
+                          <strong>{c.title}</strong> — {c.source}
                         </div>
                       ))}
                     </div>
@@ -110,7 +110,7 @@ export const ClanAIAssistantModule: React.FC = () => {
 
             {isThinking && (
               <div className="chat-message-item ai">
-                <div className="chat-avatar">🤖</div>
+                <div className="chat-avatar">AI</div>
                 <div className="chat-bubble thinking">
                   <span className="dot-pulse">Đang tạo phản hồi mẫu...</span>
                 </div>
@@ -141,7 +141,7 @@ export const ClanAIAssistantModule: React.FC = () => {
 
         {/* Right Column: AI Stats & Suggestions (FR-ME-32) */}
         <div className="ai-stats-card">
-          <h3 className="ai-side-title">📊 Gợi Ý & Thống Kê AI (FR-ME-32)</h3>
+          <h3 className="ai-side-title">Gợi Ý & Thống Kê AI (FR-ME-32)</h3>
 
           <div className="suggestions-box">
             <span className="suggestions-label">Câu hỏi gợi ý thường gặp:</span>
@@ -153,7 +153,7 @@ export const ClanAIAssistantModule: React.FC = () => {
                   className="suggestion-pill"
                   onClick={() => handleSend(sug)}
                 >
-                  💡 {sug}
+                  {sug}
                 </button>
               ))}
             </div>

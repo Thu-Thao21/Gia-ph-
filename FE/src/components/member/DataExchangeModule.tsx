@@ -460,7 +460,7 @@ export const DataExchangeModule: React.FC = () => {
           </div>
 
           <div className="export-scope-summary">
-            <span aria-hidden="true">🛡️</span>
+            
             <p><strong>Tự động áp dụng quyền dữ liệu</strong> Tệp chỉ chứa những trường mà vai trò hiện tại được phép xem.</p>
           </div>
 

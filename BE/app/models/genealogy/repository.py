@@ -41,7 +41,7 @@ class GenealogyRepository:
             escaped = str(search).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             stmt = stmt.where(Person.full_name.ilike(f"%{escaped}%"))
         if gender:
-            stmt = stmt.where(Person.gender == gender)
+            stmt = stmt.where(Person.gender.ilike(gender))
         if branch_id:
             stmt = stmt.where(Person.branch_id == branch_id)
         if is_living is not None:

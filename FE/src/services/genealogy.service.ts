@@ -20,6 +20,7 @@ export interface PersonCreatePayload {
   gender?: string;
   birthDate?: string | null;
   deathDate?: string | null;
+  generation?: number | null;
   avatarUrl?: string | null;
   isLiving?: boolean;
   status?: string;
@@ -31,6 +32,7 @@ export interface PersonUpdatePayload {
   gender?: string;
   birthDate?: string | null;
   deathDate?: string | null;
+  generation?: number | null;
   avatarUrl?: string | null;
   isLiving?: boolean;
   status?: string;

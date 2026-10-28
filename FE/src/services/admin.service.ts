@@ -10,12 +10,23 @@ export interface AdminUserItem {
   created_at: string;
 }
 
+export interface AdminUserClanMembership {
+  clan_id: string;
+  clan_name: string;
+  clan_status?: string;
+  membership_status?: string;
+  roles?: string[];
+  permissions?: string[];
+}
+
 export interface AdminUserDetail extends AdminUserItem {
   username?: string | null;
   phone?: string | null;
   email_verified: boolean;
   phone_verified: boolean;
   requires_password_change: boolean;
+  updated_at?: string;
+  memberships?: AdminUserClanMembership[];
 }
 
 export interface AdminRegistrationSummary {

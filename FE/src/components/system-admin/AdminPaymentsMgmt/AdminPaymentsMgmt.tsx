@@ -176,7 +176,7 @@ export const AdminPaymentsMgmt: React.FC = () => {
                         title="Xem hóa đơn điện tử"
                         onClick={() => handleOpenInvoice(txn)}
                       >
-                        📄 Hóa Đơn
+                        Hóa Đơn
                       </button>
                     ) : (
                       <span className="admin-sub-info">—</span>
@@ -272,7 +272,7 @@ export const AdminPaymentsMgmt: React.FC = () => {
                 Đóng
               </button>
               <button className="btn-modal-approve" onClick={handlePrintInvoice}>
-                🖨️ In / Tải Hóa Đơn PDF
+                In / Tải Hóa Đơn PDF
               </button>
             </div>
           </div>

@@ -310,7 +310,7 @@ export const AdminDataBackupMgmt: React.FC = () => {
                 </div>
 
                 <div className="admin-backup-tip-box">
-                  💡 <strong>Thông tin kỹ thuật:</strong> Quá trình snapshot được thực hiện ở chế độ Non-blocking read lock. Người dùng vẫn xem dữ liệu bình thường mà không bị gián đoạn.
+                  <strong>Thông tin kỹ thuật:</strong> Quá trình snapshot được thực hiện ở chế độ Non-blocking read lock. Người dùng vẫn xem dữ liệu bình thường mà không bị gián đoạn.
                 </div>
               </div>
 
