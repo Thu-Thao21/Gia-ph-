@@ -95,6 +95,35 @@
   white-space: nowrap;
 }
 
+.clan-lineage-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 6px;
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.clan-lineage-badge.paternal {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.clan-lineage-badge.maternal {
+  background: #fdf2f8;
+  color: #be185d;
+  border: 1px solid #fbcfe8;
+}
+
+.clan-item-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Trigger Button */
 .clan-selector-trigger {
   display: flex;

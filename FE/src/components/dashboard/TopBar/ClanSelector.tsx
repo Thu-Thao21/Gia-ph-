@@ -12,6 +12,15 @@ function getRoleLabel(roles: string[] = []): string {
   return 'Thành viên';
 }
 
+function getLineageLabel(lineageType?: string | null): string {
+  if (!lineageType) return 'Bên Nội';
+  return lineageType.toUpperCase() === 'MATERNAL' ? 'Bên Ngoại' : 'Bên Nội';
+}
+
+function getLineageClass(lineageType?: string | null): string {
+  return (lineageType || '').toUpperCase() === 'MATERNAL' ? 'maternal' : 'paternal';
+}
+
 export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) => {
   const {
     activeClanId,
@@ -96,6 +105,9 @@ export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) =
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
           <span className="clan-name-text">{singleClan.clan_name}</span>
+          <span className={`clan-lineage-badge ${getLineageClass(singleClan.lineage_type)}`}>
+            {getLineageLabel(singleClan.lineage_type)}
+          </span>
           <span className="clan-role-separator">—</span>
           <span className="clan-role-text">{roleLabel}</span>
         </div>
@@ -123,6 +135,9 @@ export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) =
           </svg>
           <div className="clan-selector-trigger-labels">
             <span className="clan-name-text">{activeClanName || 'Chọn dòng họ'}</span>
+            <span className={`clan-lineage-badge ${getLineageClass(activeMembership?.lineage_type)}`}>
+              {getLineageLabel(activeMembership?.lineage_type)}
+            </span>
             <span className="clan-role-separator">—</span>
             <span className="clan-role-text">{activeClanRoleLabel || 'Thành viên'}</span>
           </div>
@@ -155,7 +170,12 @@ export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) =
                   data-testid={`clan-item-${clan.clan_id}`}
                 >
                   <div className="clan-item-content">
-                    <div className="clan-item-name">{clan.clan_name}</div>
+                    <div className="clan-item-header-row">
+                      <span className="clan-item-name">{clan.clan_name}</span>
+                      <span className={`clan-lineage-badge ${getLineageClass(clan.lineage_type)}`}>
+                        {getLineageLabel(clan.lineage_type)}
+                      </span>
+                    </div>
                     <div className="clan-item-role">{roleText}</div>
                   </div>
                   {isSelected && (

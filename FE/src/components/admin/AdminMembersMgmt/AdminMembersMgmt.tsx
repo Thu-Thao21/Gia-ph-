@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import apiClient from '../../../api/axios';
+import { useAuth } from '../../../context/AuthContext';
+import { useClanContext } from '../../../context/ClanContext';
 import { fetchFamilyPersons, createFamilyPerson, updateFamilyPerson } from '../../../services/genealogy.service';
 import { GenderAvatar } from '../../common/GenderAvatar';
 import './AdminMembersMgmt.css';
@@ -58,6 +60,10 @@ const getAge = (date?: string) => {
 };
 
 export const AdminMembersMgmt: React.FC = () => {
+  const { activeClanId } = useClanContext();
+  const { account } = useAuth();
+  const initialClanId = activeClanId || account?.clan_id || account?.memberships?.[0]?.clan_id || '';
+
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,21 +73,23 @@ export const AdminMembersMgmt: React.FC = () => {
   const [selectedMember, setSelectedMember] = useState<MemberItem | null>(null);
   const [formData, setFormData] = useState<MemberFormData>(EMPTY_FORM);
   const [toast, setToast] = useState('');
-  const [clanId, setClanId] = useState<string>('c9a59088-7ad7-4b21-8cba-19e2ea46d15a');
+  const [clanId, setClanId] = useState<string>(initialClanId);
+
+  useEffect(() => {
+    if (activeClanId && activeClanId !== clanId) {
+      setClanId(activeClanId);
+    }
+  }, [activeClanId, clanId]);
 
   const loadMembers = useCallback(async (targetClanId: string) => {
+    if (!targetClanId) {
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       let effectiveClanId = targetClanId;
-      try {
-        const clansRes = await apiClient.get<any[]>('/admin/clans');
-        if (Array.isArray(clansRes.data) && clansRes.data.length > 0) {
-          effectiveClanId = clansRes.data[0].id || clansRes.data[0].clan_id;
-          setClanId(effectiveClanId);
-        }
-      } catch {
-        // Fall back to targetClanId
-      }
 
       const persons = await fetchFamilyPersons(effectiveClanId);
       if (Array.isArray(persons)) {

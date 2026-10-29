@@ -97,8 +97,23 @@ async def search_public_families(
     db=Depends(get_db),
 ):
     from app.repositories.family_repository import FamilyRepository as RealFamilyRepo
+    from sqlalchemy import select, func
+    from app.models.genealogy.entities import Person
+
     repo = RealFamilyRepo(db)
     families = await repo.search_public_families(search=search, limit=limit, offset=offset)
+
+    clan_ids = [f.clan_id for f in families]
+    count_map = {}
+    if clan_ids:
+        counts_stmt = (
+            select(Person.family_id, func.count(Person.id))
+            .where(Person.family_id.in_(clan_ids))
+            .group_by(Person.family_id)
+        )
+        counts_res = await db.execute(counts_stmt)
+        count_map = {row[0]: row[1] for row in counts_res.all()}
+
     return [
         {
             "id": str(f.clan_id),
@@ -106,6 +121,8 @@ async def search_public_families(
             "clan_code": f.clan_code,
             "status": f.status,
             "activated_at": f.activated_at,
+            "memberCount": count_map.get(f.clan_id, 0),
+            "member_count": count_map.get(f.clan_id, 0),
         }
         for f in families
     ]

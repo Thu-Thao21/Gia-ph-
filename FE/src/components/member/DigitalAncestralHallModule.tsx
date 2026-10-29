@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useClanContext } from '../../context/ClanContext';
+import { fetchFamilyPersons } from '../../services/genealogy.service';
 import {
   ANCESTOR_RECORDS,
   ANCESTRAL_MEDIA,
@@ -52,13 +54,59 @@ const PortraitPlaceholder: React.FC<{ ancestor: AncestorRecord; compact?: boolea
 );
 
 export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProps> = ({ onOpenLibrary }) => {
+  const { activeClanId, activeClanName } = useClanContext();
+  const [ancestors, setAncestors] = useState<AncestorRecord[]>([]);
+  const [loadingAncestors, setLoadingAncestors] = useState(true);
+
+  useEffect(() => {
+    if (!activeClanId) {
+      setAncestors([]);
+      setLoadingAncestors(false);
+      return;
+    }
+    setLoadingAncestors(true);
+    fetchFamilyPersons(activeClanId)
+      .then((persons) => {
+        const deceased = (Array.isArray(persons) ? persons : []).filter(
+          (p) => !p.isLiving || p.deathDate
+        );
+        const mapped: AncestorRecord[] = deceased.map((p) => {
+          const parts = p.fullName.trim().split(/\s+/);
+          const initials = parts.length >= 2
+            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+            : p.fullName.slice(0, 2).toUpperCase();
+          const birthYear = p.birthDate ? p.birthDate.slice(0, 4) : '—';
+          const deathYear = p.deathDate ? p.deathDate.slice(0, 4) : '—';
+          const gen = p.generation || 1;
+
+          return {
+            id: p.id,
+            name: p.fullName,
+            initials,
+            title: gen === 1 ? 'Cụ Khởi Tổ' : `Tiền nhân đời thứ ${gen}`,
+            generation: gen,
+            branch: p.branchId || 'Trực hệ',
+            relationship: gen === 1 ? 'Thủy tổ dòng họ' : `Tiền nhân đời thứ ${gen}`,
+            birthYear,
+            deathYear,
+            lifespan: p.birthDate && p.deathDate ? `Sinh ${birthYear} · Mất ${deathYear}` : 'Đã khuất',
+            memorialDate: p.deathDate ? `Ngày ${p.deathDate}` : 'Chưa cập nhật ngày giỗ',
+            memorialPlace: `Từ đường ${activeClanName || 'dòng tộc'}`,
+            restingPlace: 'Khu lăng mộ gia tộc',
+            biography: `Hồ sơ tiền nhân thuộc ${activeClanName || 'dòng tộc'}.`,
+            legacy: 'Đức trọng lưu quang · Gia phong trường tồn',
+            portraitTone: (['indigo', 'teal', 'amber', 'rose'] as const)[gen % 4],
+            incenseCount: 0,
+          };
+        });
+        setAncestors(mapped);
+      })
+      .catch(() => setAncestors([]))
+      .finally(() => setLoadingAncestors(false));
+  }, [activeClanId, activeClanName]);
+
   const [selectedAncestorIndex, setSelectedAncestorIndex] = useState(0);
-  const [incenseCounts, setIncenseCounts] = useLocalPreviewState<Record<string, number>>('incense-counts',
-    ANCESTOR_RECORDS.reduce<Record<string, number>>((counts, ancestor) => {
-      counts[ancestor.id] = ancestor.incenseCount;
-      return counts;
-    }, {})
-  );
+  const [incenseCounts, setIncenseCounts] = useLocalPreviewState<Record<string, number>>('incense-counts', {});
   const [burningAncestorId, setBurningAncestorId] = useState<string | null>(null);
   const [lastOffering, setLastOffering] = useState<LastOffering | null>(null);
   const [toast, setToast] = useState('');
@@ -67,9 +115,9 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
   const [incenseType, setIncenseType] = useState<IncenseType>('Hương trầm');
   const [incenseNote, setIncenseNote] = useState('');
 
-  const [messages, setMessages] = useLocalPreviewState<MemorialMessageRecord[]>('worship-messages', INITIAL_MEMORIAL_MESSAGES);
+  const [messages, setMessages] = useLocalPreviewState<MemorialMessageRecord[]>('worship-messages', []);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [messageTargetId, setMessageTargetId] = useState(ANCESTOR_RECORDS[0].id);
+  const [messageTargetId, setMessageTargetId] = useState('');
   const [messageContent, setMessageContent] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [pendingDeleteMessage, setPendingDeleteMessage] = useState<MemorialMessageRecord | null>(null);
@@ -80,16 +128,22 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
   const burnTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
-  const selectedAncestor = ANCESTOR_RECORDS[selectedAncestorIndex];
+  useEffect(() => {
+    if (ancestors.length > 0 && (!messageTargetId || !ancestors.some((a) => a.id === messageTargetId))) {
+      setMessageTargetId(ancestors[0].id);
+    }
+  }, [ancestors, messageTargetId]);
+
+  const selectedAncestor = ancestors[selectedAncestorIndex] || null;
   const selectedMessages = useMemo(
-    () => messages.filter((message) => message.ancestorId === selectedAncestor.id),
-    [messages, selectedAncestor.id]
+    () => (selectedAncestor ? messages.filter((message) => message.ancestorId === selectedAncestor.id) : []),
+    [messages, selectedAncestor]
   );
   const selectedMedia = useMemo(
-    () => ANCESTRAL_MEDIA.filter((item) => item.ancestorId === selectedAncestor.id),
-    [selectedAncestor.id]
+    () => (selectedAncestor ? ANCESTRAL_MEDIA.filter((item) => item.ancestorId === selectedAncestor.id) : []),
+    [selectedAncestor]
   );
-  const isSelectedAncestorBurning = burningAncestorId === selectedAncestor.id;
+  const isSelectedAncestorBurning = selectedAncestor ? burningAncestorId === selectedAncestor.id : false;
 
   useEffect(() => {
     return () => {
@@ -105,7 +159,8 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
   };
 
   const selectAncestor = (index: number) => {
-    const normalizedIndex = (index + ANCESTOR_RECORDS.length) % ANCESTOR_RECORDS.length;
+    if (ancestors.length === 0) return;
+    const normalizedIndex = (index + ancestors.length) % ancestors.length;
     setSelectedAncestorIndex(normalizedIndex);
   };
 
@@ -185,7 +240,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
     setEditingMessageId(null);
     setMessageContent('');
 
-    const targetIndex = ANCESTOR_RECORDS.findIndex((ancestor) => ancestor.id === messageTargetId);
+    const targetIndex = ancestors.findIndex((ancestor) => ancestor.id === messageTargetId);
     if (targetIndex >= 0) setSelectedAncestorIndex(targetIndex);
   };
 
@@ -197,12 +252,39 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
   };
 
   const openAncestralMedia = () => {
+    if (!selectedAncestor) return;
     if (onOpenLibrary) {
       onOpenLibrary(selectedAncestor.id);
       return;
     }
     setIsMediaModalOpen(true);
   };
+
+  if (loadingAncestors) {
+    return <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Đang tải dữ liệu tiền nhân dòng họ...</div>;
+  }
+
+  if (ancestors.length === 0 || !selectedAncestor) {
+    return (
+      <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
+        <header className="ancestral-hall-header">
+          <div>
+            <span className="ancestral-hall-eyebrow">KHÔNG GIAN TƯỞNG NIỆM GIA TỘC</span>
+            <h1 id="ancestral-hall-title">Phòng Thờ Số · {activeClanName || 'Dòng Họ'}</h1>
+            <p>Thành kính tưởng nhớ tiền nhân, gìn giữ ký ức và kết nối lòng tri ân của con cháu.</p>
+          </div>
+        </header>
+        <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '24px 0' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🕯️</div>
+          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có thông tin Tiền nhân đã khuất</h3>
+          <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '560px', margin: '0 auto' }}>
+            Không gian Phòng Thờ Số kết nối trực tiếp với các vị tiền nhân đã khuất trong cơ sở dữ liệu gia phả của {activeClanName || 'dòng họ'}.
+            Hãy cập nhật trạng thái đã mất hoặc ngày mất cho thành viên trong Cây Gia Phả để đưa vào tưởng niệm.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
@@ -214,7 +296,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
         </div>
         <div className="ancestral-hall-position" aria-label="Vị trí trong danh sách tổ tiên">
           <strong>{String(selectedAncestorIndex + 1).padStart(2, '0')}</strong>
-          <span>/ {String(ANCESTOR_RECORDS.length).padStart(2, '0')}</span>
+          <span>/ {String(ancestors.length).padStart(2, '0')}</span>
         </div>
       </header>
 
@@ -277,7 +359,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
       </article>
 
       <div className="ancestor-selector" role="tablist" aria-label="Chọn vị tiền nhân">
-        {ANCESTOR_RECORDS.map((ancestor, index) => (
+        {ancestors.map((ancestor, index) => (
           <button
             key={ancestor.id}
             type="button"
@@ -301,7 +383,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
         <div className="altar-lantern altar-lantern-right" aria-hidden="true"><span /></div>
 
         <div className="digital-altar-content">
-          <span className="digital-altar-kicker">TỪ ĐƯỜNG TỘC HỌ NGUYỄN</span>
+          <span className="digital-altar-kicker">TỪ ĐƯỜNG {activeClanName ? activeClanName.toUpperCase() : 'GIA TỘC'}</span>
           <h2 id="digital-altar-title">Bài Vị Tiền Nhân</h2>
 
           <div className="digital-altar-tablet" aria-label={`Bài vị của ${selectedAncestor.name}`}>
@@ -477,7 +559,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
               <label className="ancestral-form-field">
                 <span>Kính gửi vị tiền nhân <b>*</b></span>
                 <select value={messageTargetId} onChange={(event) => setMessageTargetId(event.target.value)}>
-                  {ANCESTOR_RECORDS.map((ancestor) => (
+                  {ancestors.map((ancestor) => (
                     <option key={ancestor.id} value={ancestor.id}>{ancestor.title} {ancestor.name} · Đời {ancestor.generation}</option>
                   ))}
                 </select>

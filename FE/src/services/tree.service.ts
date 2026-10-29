@@ -199,19 +199,29 @@ export async function buildErgoTreeFromDB(
       if (!parentM) return [];
 
       let directChildren: Member[] = [];
+      const spouses = getSpouses(parentM);
+      const spouseIds = new Set(spouses.map((s) => s.id));
 
       if (parentM.gender === 'male') {
-        directChildren = allMembers.filter((m) => (m as any).fatherId === parentId);
+        // Con của người cha HOẶC con của người vợ trong cặp hôn phối này
+        directChildren = allMembers.filter(
+          (m) => (m as any).fatherId === parentId || ((m as any).motherId && spouseIds.has((m as any).motherId))
+        );
       } else {
         const husbandExists = allMembers.some(
           (m) => m.gender === 'male' && getSpouses(m).some((s) => s.id === parentId)
         );
         if (!husbandExists) {
-          directChildren = allMembers.filter((m) => (m as any).motherId === parentId);
+          directChildren = allMembers.filter(
+            (m) => (m as any).motherId === parentId || ((m as any).fatherId && spouseIds.has((m as any).fatherId))
+          );
         }
       }
 
-      return directChildren.map((c) => {
+      // Loại bỏ trùng lặp nếu có
+      const uniqueChildren = Array.from(new Map(directChildren.map((c) => [c.id, c])).values());
+
+      return uniqueChildren.map((c) => {
         visitedInTree.add(c.id);
         const node = convertNode(c);
         node.children = buildChildrenRecursive(c.id, new Set(visited));
@@ -271,22 +281,17 @@ export async function buildErgoTreeFromDB(
     });
 
     // 3. Tìm tất cả các thành viên chưa được kết nối vào cây phả hệ (Unconnected Members)
-    // Bao gồm các tài khoản thành viên mới vào họ chưa được nối phả hệ hoặc những người chưa có cha/mẹ/vợ/chồng/con
-    const unconnectedMembers = allMembers.filter((m) => {
-      if (visitedInTree.has(m.id)) return false;
-      const hasParents = Boolean((m as any).fatherId || (m as any).motherId);
-      const hasSpouses = getSpouses(m).length > 0;
-      const hasChildren = allMembers.some(
-        (c) => (c as any).fatherId === m.id || (c as any).motherId === m.id
-      );
-      return !hasParents && !hasSpouses && !hasChildren;
-    });
+    // Đảm bảo không ai bị sót khỏi giao diện cây dù thiếu liên kết phả hệ trực tiếp từ cụ tổ
+    const unconnectedMembers = allMembers.filter((m) => !visitedInTree.has(m.id));
 
     unconnectedMembers.forEach((um) => {
+      if (visitedInTree.has(um.id)) return;
       visitedInTree.add(um.id);
+      getSpouses(um).forEach((s) => visitedInTree.add(s.id));
       const unNode = convertNode(um);
       unNode.isUnconnected = true;
-      unNode.focusRole = 'Chưa nối phả hệ';
+      unNode.focusRole = 'Chưa nối cụ tổ';
+      unNode.children = buildChildrenRecursive(um.id, new Set());
       rootNodes.push(unNode);
     });
 

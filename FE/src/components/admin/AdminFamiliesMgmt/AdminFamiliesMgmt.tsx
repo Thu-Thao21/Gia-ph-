@@ -90,7 +90,7 @@ export const AdminFamiliesMgmt: React.FC<AdminFamiliesMgmtProps> = ({ onViewTree
             ancestral_house_address: f.ancestral_house_address || f.address || 'Chưa cập nhật',
             history: f.history || '',
             description: cleanDesc,
-            branches: f.branches && f.branches.length > 0 ? f.branches : ['Chi Trưởng', 'Chi Thứ'],
+            branches: f.branches && f.branches.length > 0 ? f.branches : [],
             status: f.status || 'active',
           };
         });

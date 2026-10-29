@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useClanContext } from '../../context/ClanContext';
 import {
   ANCESTOR_RECORDS,
   ANCESTRAL_MEDIA,
@@ -113,6 +114,33 @@ export const AncestralLibraryModule: React.FC<AncestralLibraryModuleProps> = ({
   initialAncestorId,
   onOpenWorship,
 }) => {
+  const { activeClanName } = useClanContext();
+
+  if (!ANCESTRAL_MEDIA || ANCESTRAL_MEDIA.length === 0) {
+    return (
+      <section className="ancestral-library-page" aria-labelledby="ancestral-library-title">
+        <header className="ancestral-library-header">
+          <div>
+            <span>DI SẢN SỐ GIA TỘC</span>
+            <h1 id="ancestral-library-title">Thư Viện Tổ Tiên · {activeClanName || 'Dòng Họ'}</h1>
+            <p>Khám phá không gian, hình ảnh và tư liệu tiền nhân qua trình xem tương tác.</p>
+          </div>
+          <div className="ancestral-library-summary">
+            <div><strong>0</strong><span>Tư liệu</span></div>
+            <div><strong>0</strong><span>Tiền nhân</span></div>
+          </div>
+        </header>
+        <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '24px 0' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏛️</div>
+          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có tư liệu hoặc hiện vật số nào</h3>
+          <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '560px', margin: '0 auto' }}>
+            Dòng tộc {activeClanName || 'hiện tại'} chưa có tư liệu, tranh ảnh hoặc hiện vật số nào được tải lên từ cơ sở dữ liệu.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const initialMedia = ANCESTRAL_MEDIA.find((item) => item.ancestorId === initialAncestorId) || ANCESTRAL_MEDIA[0];
   const [selectedMediaId, setSelectedMediaId] = useState(initialMedia.id);
   const [searchTerm, setSearchTerm] = useState('');
@@ -126,12 +154,12 @@ export const AncestralLibraryModule: React.FC<AncestralLibraryModuleProps> = ({
 
   const viewerRef = useRef<HTMLElement | null>(null);
   const selectedMedia = ANCESTRAL_MEDIA.find((item) => item.id === selectedMediaId) || ANCESTRAL_MEDIA[0];
-  const selectedAncestor = getAncestorById(selectedMedia.ancestorId);
+  const selectedAncestor = getAncestorById(selectedMedia.ancestorId) || { initials: 'TN', name: 'Tiền nhân' };
 
   const filteredMedia = useMemo(() => {
     const needle = searchTerm.trim().toLocaleLowerCase('vi-VN');
     return ANCESTRAL_MEDIA.filter((item) => {
-      const ancestor = getAncestorById(item.ancestorId);
+      const ancestor = getAncestorById(item.ancestorId) || { name: '' };
       const matchesType = typeFilter === 'Tất cả' || item.type === typeFilter;
       const haystack = `${item.title} ${item.description} ${item.source} ${ancestor.name}`.toLocaleLowerCase('vi-VN');
       return matchesType && (!needle || haystack.includes(needle));

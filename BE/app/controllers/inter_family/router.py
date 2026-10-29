@@ -227,22 +227,43 @@ async def get_network_families(
     links = await repo.list_links(clan_ids=caller.scope(), status="ACTIVE")
     linked_clans = {c for l in links for c in (l.clan_a_id, l.clan_b_id)}
 
+    user_memberships = []
     maternal_clan_ids: set[uuid.UUID] = set()
+    paternal_clan_ids: set[uuid.UUID] = set()
+
     if hasattr(db, "execute") and hasattr(caller.account, "user_id"):
         try:
             user_memberships_res = await db.execute(
                 select(ClanMembership).where(
                     ClanMembership.user_id == caller.account.user_id,
                     ClanMembership.status == "ACTIVE",
-                )
+                ).order_by(ClanMembership.joined_at.asc())
             )
-            for m in user_memberships_res.scalars().all():
-                if (m.lineage_type or "").upper() == "MATERNAL":
+            user_memberships = list(user_memberships_res.scalars().all())
+            for m in user_memberships:
+                lt = (m.lineage_type or "").upper()
+                if lt == "MATERNAL":
                     maternal_clan_ids.add(m.clan_id)
+                elif lt == "PATERNAL":
+                    paternal_clan_ids.add(m.clan_id)
         except Exception:
             pass
 
-    paternal_clan_ids = user_clan_ids - maternal_clan_ids
+    # Smart deduction for users with 2 clans (1 Noi, 1 Ngoai):
+    if len(user_memberships) >= 2:
+        if not paternal_clan_ids:
+            first_clan = user_memberships[0].clan_id
+            paternal_clan_ids.add(first_clan)
+            maternal_clan_ids.discard(first_clan)
+        for m in user_memberships:
+            if m.clan_id not in paternal_clan_ids:
+                maternal_clan_ids.add(m.clan_id)
+    elif len(user_memberships) == 1:
+        if not maternal_clan_ids and not paternal_clan_ids:
+            paternal_clan_ids.add(user_memberships[0].clan_id)
+    else:
+        paternal_clan_ids = user_clan_ids - maternal_clan_ids
+
     all_clans = await repo.list_active_clans()
 
     cat_filter = category.lower().strip()
@@ -268,14 +289,20 @@ async def get_network_families(
             clan_cat = "noi"
 
         if cat_filter == "noi":
-            if clan_cat == "noi":
-                if is_user_paternal or (c_id in user_clan_ids) or len(user_clan_ids) == 0:
-                    selected_clans.append((clan, "noi", 0 if is_user_paternal else 1))
+            if is_user_paternal:
+                selected_clans.append((clan, "noi", 0))
+            elif clan_cat == "noi" and (caller.is_sa or len(user_clan_ids) == 0):
+                selected_clans.append((clan, "noi", 1))
         elif cat_filter == "ngoai":
-            if clan_cat == "ngoai":
-                selected_clans.append((clan, "ngoai", 0 if is_user_maternal else 1))
+            if is_user_maternal:
+                selected_clans.append((clan, "ngoai", 0))
+            elif is_linked_to_user_paternal and not is_user_paternal:
+                selected_clans.append((clan, "ngoai", 1))
+            elif clan_cat == "ngoai" and (caller.is_sa or len(user_clan_ids) == 0):
+                selected_clans.append((clan, "ngoai", 2))
         else:
-            selected_clans.append((clan, clan_cat, 0 if (is_user_paternal or is_user_maternal) else 1))
+            priority = 0 if (is_user_paternal or is_user_maternal) else 1
+            selected_clans.append((clan, clan_cat, priority))
 
     # Sort so user's direct clans appear first
     selected_clans.sort(key=lambda x: (x[2], x[0].name))
