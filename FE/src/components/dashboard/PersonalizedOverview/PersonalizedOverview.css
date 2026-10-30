@@ -81,6 +81,40 @@
   border-radius: 999px;
 }
 
+.personalized-overview-card-tag.maternal {
+  color: #7c3aed;
+  background-color: #f5f3ff;
+}
+
+.personalized-overview-card-tag.paternal {
+  color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.personalized-lineage-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.personalized-lineage-badge.paternal {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.personalized-lineage-badge.maternal {
+  background: rgba(233, 213, 255, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(233, 213, 255, 0.55);
+}
+
 .personalized-overview-card-value {
   font-size: 20px;
   font-weight: 800;

@@ -338,7 +338,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
         />
       );
     }
-    if (activeTab === 'relationship-finder') return canManageFamily ? <FamilyAdminModule view="search" /> : <RelationshipFinder />;
+    if (activeTab === 'relationship-finder') {
+      return (
+        <RelationshipFinder
+          key={effectiveClanId || 'default-clan'}
+          familyId={effectiveClanId || undefined}
+          canManage={canManageFamily}
+          onNavigateTab={handleSelectTab}
+        />
+      );
+    }
     if (activeTab === 'my-proposals') return <MyProposalsModule />;
     if (activeTab === 'anniversaries') return <AnniversariesModule />;
     if (activeTab === 'events') return <ClanEventsModule canManage={canManageFamily} />;
@@ -495,7 +504,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     }
 
     if (activeTab === 'member-list') {
-      return <MemberList onSelectMember={handleSelectMember} />;
+      return (
+        <MemberList
+          key={effectiveClanId || 'default-clan'}
+          initialFamilyId={effectiveClanId || undefined}
+          onSelectMember={handleSelectMember}
+        />
+      );
     }
 
 
@@ -503,6 +518,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     // Default Member Dashboard
     return (
       <MemberDashboard
+        key={effectiveClanId || 'default-clan'}
         userName={displayUserName}
         userRole={userRole}
         onNavigateTab={handleSelectTab}

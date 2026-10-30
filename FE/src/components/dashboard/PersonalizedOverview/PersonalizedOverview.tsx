@@ -8,6 +8,7 @@ export interface PersonalizedOverviewProps {
   totalMembers?: number;
   linkedFamiliesCount?: number;
   userRole?: string;
+  lineageType?: string | null;
   onRequestRole?: () => void;
 }
 
@@ -18,15 +19,31 @@ export const PersonalizedOverview: React.FC<PersonalizedOverviewProps> = ({
   totalMembers = 0,
   linkedFamiliesCount = 0,
   userRole = 'Thành viên',
+  lineageType,
   onRequestRole,
 }) => {
+  const isMaternal = (lineageType || '').toUpperCase() === 'MATERNAL';
+  const lineageLabel = lineageType ? (isMaternal ? 'Bên Ngoại' : 'Bên Nội') : null;
+  const lineageTag = lineageType ? (isMaternal ? 'Bên Ngoại' : 'Bên Nội') : 'Chính Tộc';
+  const lineageTitle = lineageType
+    ? isMaternal
+      ? 'Dòng họ bên Ngoại'
+      : 'Dòng họ bên Nội'
+    : 'Dòng họ chính của bạn';
+  const lineageSubtext = lineageType
+    ? isMaternal
+      ? 'Chi hệ ngoại tộc'
+      : 'Trực hệ nội tộc'
+    : 'Trực hệ chính tộc';
+
   const metricCards = [
     {
       id: 1,
-      title: 'Dòng họ chính của bạn',
+      title: lineageTitle,
       value: familyBranch,
-      subtext: 'Trực hệ chính tộc',
-      tag: 'Chính Tộc',
+      subtext: lineageSubtext,
+      tag: lineageTag,
+      tagClass: isMaternal ? 'maternal' : 'paternal',
     },
     {
       id: 2,
@@ -34,6 +51,7 @@ export const PersonalizedOverview: React.FC<PersonalizedOverviewProps> = ({
       value: generationLevel,
       subtext: 'Vị trí trong cây trực hệ',
       tag: 'Hiện tại',
+      tagClass: 'default',
     },
     {
       id: 3,
@@ -41,6 +59,7 @@ export const PersonalizedOverview: React.FC<PersonalizedOverviewProps> = ({
       value: `${totalMembers} Thành viên`,
       subtext: 'Thống kê theo dữ liệu thực',
       tag: 'Gia phả',
+      tagClass: 'default',
     },
     {
       id: 4,
@@ -48,6 +67,7 @@ export const PersonalizedOverview: React.FC<PersonalizedOverviewProps> = ({
       value: `${linkedFamiliesCount} Dòng họ`,
       subtext: 'Nội • Ngoại • Thông gia',
       tag: 'Mạng lưới',
+      tagClass: 'default',
     },
   ];
 
@@ -60,7 +80,13 @@ export const PersonalizedOverview: React.FC<PersonalizedOverviewProps> = ({
             Xin chào {userName}, chúc bạn một ngày an lành!
           </h1>
           <p className="personalized-overview-subtext">
-            Chào mừng bạn quay trở lại với không gian gia tộc <strong>{familyBranch}</strong> thuộc <strong>{generationLevel}</strong>.
+            Chào mừng bạn quay trở lại với không gian gia tộc <strong>{familyBranch}</strong>
+            {lineageLabel && (
+              <span className={`personalized-lineage-badge ${isMaternal ? 'maternal' : 'paternal'}`}>
+                {lineageLabel}
+              </span>
+            )}{' '}
+            thuộc <strong>{generationLevel}</strong>.
           </p>
         </div>
       </div>
@@ -71,7 +97,7 @@ export const PersonalizedOverview: React.FC<PersonalizedOverviewProps> = ({
             <div>
               <div className="personalized-overview-card-header">
                 <span className="personalized-overview-card-title">{card.title}</span>
-                <span className="personalized-overview-card-tag">{card.tag}</span>
+                <span className={`personalized-overview-card-tag ${card.tagClass}`}>{card.tag}</span>
               </div>
               <div className="personalized-overview-card-value">{card.value}</div>
             </div>

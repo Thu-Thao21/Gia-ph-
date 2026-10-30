@@ -245,9 +245,10 @@ export async function fetchRelationshipCalculation(
     `/families/${familyId}/relationship-path`,
     {
       params: {
-        source_person_id: fromPersonId,
-        target_person_id: toPersonId,
+        fromPersonId,
         toPersonId,
+        from_person_id: fromPersonId,
+        to_person_id: toPersonId,
       },
     }
   );
