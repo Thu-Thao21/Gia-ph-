@@ -6,6 +6,10 @@ import {
   updateFamilyPerson,
   createFamilyRelationship,
   deleteFamilyRelationship,
+  fetchFamilyBranches,
+  createFamilyBranch,
+  updateFamilyBranch,
+  deleteFamilyBranch,
 } from '../../services/genealogy.service';
 
 export type PersonVisibility = 'family' | 'admin' | 'private';
@@ -340,6 +344,106 @@ export function importPersons(rows: Array<Pick<FamilyPerson, 'fullName' | 'gende
   return validated.length;
 }
 
+
+export async function savePersonToBackend(clanId: string, input: Omit<FamilyPerson, 'id'>, id?: string): Promise<void> {
+  savePerson(input, id);
+  if (!clanId) return;
+  try {
+    if (id && !id.startsWith('person-')) {
+      await updateFamilyPerson(clanId, id, {
+        fullName: input.fullName,
+        gender: input.gender,
+        birthDate: input.birthDate || null,
+        deathDate: input.deathDate || null,
+        branchId: input.branchId || null,
+        generation: input.generation || 1,
+        isLiving: !input.deathDate,
+      });
+    } else {
+      const created = await createFamilyPerson(clanId, {
+        fullName: input.fullName,
+        gender: input.gender,
+        birthDate: input.birthDate || null,
+        deathDate: input.deathDate || null,
+        branchId: input.branchId || null,
+        generation: input.generation || 1,
+        isLiving: !input.deathDate,
+      });
+      if (created && created.id) {
+        commit('Cập nhật ID Backend cho Person mới', (draft) => {
+          const p = draft.persons.find((item) => item.fullName === input.fullName && item.birthDate === input.birthDate);
+          if (p) p.id = created.id;
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi lưu Person lên backend:', err);
+  }
+}
+
+export async function saveBranchToBackend(clanId: string, input: Omit<FamilyBranch, 'id'>, id?: string): Promise<void> {
+  saveBranch(input, id);
+  if (!clanId) return;
+  try {
+    if (id && !id.startsWith('branch-')) {
+      await updateFamilyBranch(clanId, id, {
+        name: input.name,
+        description: input.description,
+      });
+    } else {
+      const created = await createFamilyBranch(clanId, {
+        name: input.name,
+        description: input.description,
+      });
+      if (created && created.id) {
+        commit('Cập nhật ID Backend cho Chi/Nhánh', (draft) => {
+          const b = draft.branches.find((item) => item.name === input.name);
+          if (b) b.id = created.id;
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi lưu Chi/Nhánh lên backend:', err);
+  }
+}
+
+export async function saveRelationToBackend(clanId: string, input: Omit<FamilyRelation, 'id'>, id?: string): Promise<void> {
+  saveRelation(input, id);
+  if (!clanId) return;
+  try {
+    const relTypeMap: Record<RelationType, string> = {
+      father: 'FATHER',
+      mother: 'MOTHER',
+      spouse: 'SPOUSE',
+      adoptive_parent: 'ADOPTIVE_PARENT',
+      step_parent: 'STEP_PARENT',
+    };
+    const created = await createFamilyRelationship(clanId, {
+      fromMemberId: input.fromId,
+      toMemberId: input.toId,
+      relationshipType: relTypeMap[input.type] || 'FATHER',
+    });
+    if (created && created.id) {
+      commit('Cập nhật ID Backend cho quan hệ', (draft) => {
+        const r = draft.relations.find((item) => item.fromId === input.fromId && item.toId === input.toId && item.type === input.type);
+        if (r) r.id = created.id;
+      });
+    }
+  } catch (err) {
+    console.warn('Lỗi lưu quan hệ lên backend:', err);
+  }
+}
+
+export async function removeRelationFromBackend(clanId: string, relationId: string): Promise<void> {
+  removeRelation(relationId);
+  if (!clanId || relationId.startsWith('relation-')) return;
+  try {
+    await deleteFamilyRelationship(clanId, relationId);
+  } catch (err) {
+    console.warn('Lỗi xóa quan hệ trên backend:', err);
+  }
+}
+
 let latestSyncClanId = '';
 
 export async function syncFamilyAdminFromBackend(clanId: string): Promise<void> {
@@ -348,15 +452,24 @@ export async function syncFamilyAdminFromBackend(clanId: string): Promise<void> 
   setClanScope(clanId);
 
   try {
-    const [persons, tree] = await Promise.all([
+    const [persons, tree, branches] = await Promise.all([
       fetchFamilyPersons(clanId).catch(() => []),
       fetchFamilyTreeData(clanId).catch(() => ({ nodes: [], edges: [] })),
+      fetchFamilyBranches(clanId).catch(() => []),
     ]);
 
     // Nếu người dùng đã chuyển sang clan khác trong khi fetch, không ghi đè dữ liệu
     if (latestSyncClanId !== clanId) return;
 
     commit('Đồng bộ dữ liệu từ Backend', (draft) => {
+      if (Array.isArray(branches) && branches.length > 0) {
+        draft.branches = branches.map((b) => ({
+          id: b.id,
+          name: b.name,
+          founderId: b.founderId || '',
+          description: b.description || '',
+        }));
+      }
       draft.persons = (Array.isArray(persons) ? persons : []).map((p) => ({
         id: p.id,
         fullName: p.fullName,
@@ -368,7 +481,7 @@ export async function syncFamilyAdminFromBackend(clanId: string): Promise<void> 
         phone: '',
         email: '',
         bio: '',
-        hidden: !p.isLiving,
+        hidden: false,
         visibility: 'family',
       }));
 

@@ -95,6 +95,60 @@ async def startup_event():
     try:
         await init_db()
         logger.info("Database connectivity check passed.")
+        from app.db.postgres import engine
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            await conn.execute(text("""
+                ALTER TABLE inter_clan_requests 
+                ADD COLUMN IF NOT EXISTS connection_type VARCHAR(30) DEFAULT 'IN_LAW';
+            """))
+            await conn.execute(text("""
+                ALTER TABLE inter_clan_links 
+                ADD COLUMN IF NOT EXISTS connection_type VARCHAR(30) DEFAULT 'IN_LAW',
+                ADD COLUMN IF NOT EXISTS terminated_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+                ADD COLUMN IF NOT EXISTS termination_reason TEXT;
+            """))
+            await conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_inter_clan_requests_pending_symmetric 
+                ON inter_clan_requests (
+                    LEAST(source_clan_id, target_clan_id), 
+                    GREATEST(source_clan_id, target_clan_id)
+                ) WHERE status = 'PENDING';
+            """))
+            await conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_inter_clan_links_active_symmetric 
+                ON inter_clan_links (
+                    LEAST(clan_a_id, clan_b_id), 
+                    GREATEST(clan_a_id, clan_b_id)
+                ) WHERE status = 'ACTIVE';
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS inter_clan_person_mappings (
+                    mapping_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    link_id UUID NOT NULL REFERENCES inter_clan_links(link_id) ON DELETE CASCADE,
+                    clan_a_id UUID NOT NULL REFERENCES clans(clan_id) ON DELETE CASCADE,
+                    person_a_id UUID NOT NULL REFERENCES persons(person_id) ON DELETE CASCADE,
+                    clan_b_id UUID NOT NULL REFERENCES clans(clan_id) ON DELETE CASCADE,
+                    person_b_id UUID NOT NULL REFERENCES persons(person_id) ON DELETE CASCADE,
+                    relationship_type VARCHAR(30) NOT NULL DEFAULT 'SPOUSE',
+                    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                    requested_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+                    requested_clan_id UUID NOT NULL REFERENCES clans(clan_id) ON DELETE CASCADE,
+                    verified_by UUID REFERENCES users(user_id) ON DELETE SET NULL,
+                    verified_at TIMESTAMPTZ,
+                    review_notes TEXT,
+                    notes TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                );
+            """))
+            await conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_inter_clan_person_mappings_symmetric
+                ON inter_clan_person_mappings (
+                    LEAST(person_a_id, person_b_id),
+                    GREATEST(person_a_id, person_b_id)
+                ) WHERE status IN ('PENDING', 'VERIFIED');
+            """))
+        logger.info("Inter-family Phase 1 and 2 schema migration completed.")
     except Exception as exc:
         # The class only: a connection error's text and traceback can carry the database host.
         logger.error(
@@ -135,5 +189,9 @@ from app.controllers.member_api_router import router as member_api_router
 app.include_router(genealogy_router)
 app.include_router(member_api_router)
 app.include_router(member_api_router, prefix=API_PREFIX)
+
+from app.controllers.ancestral_portrait import router as ancestral_portrait_router
+
+app.include_router(ancestral_portrait_router)
 
 # To run: uvicorn app.main:app --reload --port 8001

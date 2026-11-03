@@ -47,6 +47,7 @@ export interface Member {
   education?: string;
   avatarUrl?: string;
   status: string;
+  userId?: string;
 }
 
 export interface MemberDetail extends Member {

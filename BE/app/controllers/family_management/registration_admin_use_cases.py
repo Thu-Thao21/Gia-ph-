@@ -351,7 +351,7 @@ async def _provision_owner_via_firebase_rest(
                             update_url,
                             json={
                                 "idToken": id_token,
-                                "displayName": applicant_name,
+                                "displayName": clan_name,
                                 "returnSecureToken": False,
                             },
                         )
@@ -381,7 +381,7 @@ async def _provision_owner_via_firebase_rest(
             user_id=user_id,
             firebase_uid=firebase_uid,
             email=clan_leader_email,
-            display_name=applicant_name,
+            display_name=clan_name,
             phone=applicant_phone,
             status="PENDING",
             first_login_required=True,
@@ -395,6 +395,8 @@ async def _provision_owner_via_firebase_rest(
             contact_email=applicant_email, actor_id=principal.user_id, clan_id=clan_id, now=now,
         )
         cred = await users.add_credential_metadata(user_id, now=now)
+        from app.core.security.password_hash import hash_password
+        cred.password_hash = await asyncio.to_thread(hash_password, temp_pass)
         cred.must_change_password = True
         cred.temporary_password_issued_at = now
         cred.temporary_password_expires_at = expires_at
@@ -533,7 +535,7 @@ async def approve_and_provision_registration(
                     clan_id=clan.clan_id,
                     body=OwnerProvisionRequest(
                         email=clan_leader_email,
-                        display_name=rep_name,
+                        display_name=clan.name,
                         phone=rep_phone,
                     ),
                     key=owner_key,
@@ -567,7 +569,7 @@ async def approve_and_provision_registration(
                 sender=sender,
                 clan_code=clan.clan_code,
             )
-            owner_name = rep_name
+            owner_name = clan.name
     else:
         owner_user = await users.get_user_by_id(existing_owner.user_id)
         owner_email = owner_user.email if owner_user else rep_email

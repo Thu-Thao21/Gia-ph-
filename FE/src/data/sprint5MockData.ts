@@ -76,18 +76,20 @@ export interface FundTransactionRecord {
 
 export const fundTransactionMockData: FundTransactionRecord[] = [];
 
-export type ArchiveFileType = 'image' | 'document' | 'video' | 'audio';
+export type ArchiveFileType = 'photo' | 'document' | 'video' | 'audio' | 'record';
 
 export interface ArchiveRecord {
   id: string;
   name: string;
   type: ArchiveFileType;
-  category: string;
+  owner: string;
   uploadDate: string;
-  fileSize: string;
-  uploader: string;
-  url: string;
+  size: string;
+  tags: string[];
   description: string;
+  url?: string;
+  fileName?: string;
+  fileVersion?: string;
 }
 
 export const archiveMockData: ArchiveRecord[] = [];

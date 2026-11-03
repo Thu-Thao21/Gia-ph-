@@ -1416,3 +1416,9 @@
     transition-duration: 1ms !important;
   }
 }
+
+.ancestor-portrait-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}

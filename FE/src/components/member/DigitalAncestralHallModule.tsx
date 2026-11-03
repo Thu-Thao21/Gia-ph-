@@ -1,10 +1,10 @@
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useClanContext } from '../../context/ClanContext';
 import { fetchFamilyPersons } from '../../services/genealogy.service';
+import { AncestorPortraitUpload } from './AncestorPortraitUpload';
 import {
-  ANCESTOR_RECORDS,
   ANCESTRAL_MEDIA,
-  INITIAL_MEMORIAL_MESSAGES,
   type AncestorRecord,
   type MemorialMessageRecord,
 } from './ancestralExperience.data';
@@ -43,18 +43,27 @@ const PortraitPlaceholder: React.FC<{ ancestor: AncestorRecord; compact?: boolea
     role="img"
     aria-label={`Ảnh chân dung lưu trữ của ${ancestor.name}`}
   >
-    <div className="ancestor-portrait-halo" aria-hidden="true" />
-    <div className="ancestor-portrait-silhouette" aria-hidden="true">
-      <span className="ancestor-portrait-head" />
-      <span className="ancestor-portrait-shoulders" />
-    </div>
-    <span className="ancestor-portrait-initials">{ancestor.initials}</span>
-    {!compact && <small>Ảnh chân dung lưu trữ</small>}
+    {ancestor.portraitUrl ? (
+      <img src={ancestor.portraitUrl} alt={`Ảnh thờ của ${ancestor.name}`} />
+    ) : (
+      <>
+        <div className="ancestor-portrait-halo" aria-hidden="true" />
+        <div className="ancestor-portrait-silhouette" aria-hidden="true">
+          <span className="ancestor-portrait-head" />
+          <span className="ancestor-portrait-shoulders" />
+        </div>
+        <span className="ancestor-portrait-initials">{ancestor.initials}</span>
+        {!compact && <small>Ảnh chân dung lưu trữ</small>}
+      </>
+    )}
   </div>
 );
 
 export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProps> = ({ onOpenLibrary }) => {
-  const { activeClanId, activeClanName } = useClanContext();
+  const { account } = useAuth();
+  const { activeClanId, activeClanName, activeClanRole } = useClanContext();
+  const canUploadPortrait = account?.primary_role === 'admin' ||
+    activeClanRole === 'clan_admin' || activeClanRole === 'family_admin';
   const [ancestors, setAncestors] = useState<AncestorRecord[]>([]);
   const [loadingAncestors, setLoadingAncestors] = useState(true);
 
@@ -64,6 +73,9 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
       setLoadingAncestors(false);
       return;
     }
+    let cancelled = false;
+    setAncestors([]);
+    setSelectedAncestorIndex(0);
     setLoadingAncestors(true);
     fetchFamilyPersons(activeClanId)
       .then((persons) => {
@@ -95,14 +107,16 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
             restingPlace: 'Khu lăng mộ gia tộc',
             biography: `Hồ sơ tiền nhân thuộc ${activeClanName || 'dòng tộc'}.`,
             legacy: 'Đức trọng lưu quang · Gia phong trường tồn',
+            portraitUrl: p.avatarUrl,
             portraitTone: (['indigo', 'teal', 'amber', 'rose'] as const)[gen % 4],
             incenseCount: 0,
           };
         });
-        setAncestors(mapped);
+        if (!cancelled) setAncestors(mapped);
       })
-      .catch(() => setAncestors([]))
-      .finally(() => setLoadingAncestors(false));
+      .catch(() => { if (!cancelled) setAncestors([]); })
+      .finally(() => { if (!cancelled) setLoadingAncestors(false); });
+    return () => { cancelled = true; };
   }, [activeClanId, activeClanName]);
 
   const [selectedAncestorIndex, setSelectedAncestorIndex] = useState(0);
@@ -222,12 +236,14 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
       );
       showToast('Đã cập nhật lời tưởng niệm của bạn.');
     } else {
+      const senderName = account?.display_name || 'Thành viên dòng họ';
+      const senderInitials = senderName.split(' ').map((s) => s[0]).slice(-2).join('').toUpperCase() || 'TV';
       const newMessage: MemorialMessageRecord = {
         id: `message-${Date.now()}`,
         ancestorId: messageTargetId,
-        sender: 'Võ Văn Thắng',
-        initials: 'VT',
-        relationship: 'Hậu duệ thông gia · Đời thứ 5',
+        sender: senderName,
+        initials: senderInitials,
+        relationship: 'Thành viên gia tộc',
         message: cleanMessage,
         createdAt: 'Vừa xong',
         isOwn: true,
@@ -275,7 +291,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
           </div>
         </header>
         <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '24px 0' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🕯️</div>
+          <div style={{ marginBottom: '16px' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2c1 2 2 3.5 2 5a2 2 0 1 1-4 0c0-1.5 1-3 2-5zM9 11h6v11H9z" /></svg></div>
           <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có thông tin Tiền nhân đã khuất</h3>
           <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '560px', margin: '0 auto' }}>
             Không gian Phòng Thờ Số kết nối trực tiếp với các vị tiền nhân đã khuất trong cơ sở dữ liệu gia phả của {activeClanName || 'dòng họ'}.
@@ -311,7 +327,22 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
         </button>
 
         <div className="ancestor-focus-portrait">
-          <PortraitPlaceholder ancestor={selectedAncestor} />
+          <div className="ancestor-portrait-content">
+            <PortraitPlaceholder ancestor={selectedAncestor} />
+            {canUploadPortrait && activeClanId && (
+              <AncestorPortraitUpload
+                key={`${activeClanId}:${selectedAncestor.id}`}
+                familyId={activeClanId}
+                ancestor={selectedAncestor}
+                onSaved={(personId, portraitUrl) => {
+                  setAncestors((current) => current.map((ancestor) =>
+                    ancestor.id === personId ? { ...ancestor, portraitUrl } : ancestor
+                  ));
+                  showToast(portraitUrl ? 'Đã lưu ảnh thờ thành công.' : 'Đã xóa ảnh thờ.');
+                }}
+              />
+            )}
+          </div>
         </div>
 
         <div className="ancestor-focus-copy">

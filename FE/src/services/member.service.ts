@@ -43,17 +43,9 @@ export async function fetchMemberDetail(memberId: string): Promise<MemberDetail 
 export async function fetchFamilies(): Promise<Family[]> {
   try {
     const res = await apiClient.get('/families');
-    const fams = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.items) ? res.data.items : [];
-    if (fams.length > 0) return fams;
-    const fallbackRes = await apiClient.get('/api/v1/families');
-    return Array.isArray(fallbackRes.data) ? fallbackRes.data : Array.isArray(fallbackRes.data?.items) ? fallbackRes.data.items : [];
+    return Array.isArray(res.data) ? res.data : Array.isArray(res.data?.items) ? res.data.items : [];
   } catch {
-    try {
-      const fallbackRes = await apiClient.get('/api/v1/families');
-      return Array.isArray(fallbackRes.data) ? fallbackRes.data : Array.isArray(fallbackRes.data?.items) ? fallbackRes.data.items : [];
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 

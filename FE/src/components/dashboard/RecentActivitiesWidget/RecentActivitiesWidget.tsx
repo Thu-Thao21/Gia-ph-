@@ -1,5 +1,6 @@
 import React from 'react';
 import './RecentActivitiesWidget.css';
+import { EmptyState } from '../../../shared/Feedback/EmptyState';
 
 export interface RecentActivitiesWidgetProps {
   activities?: Array<{ id: number; user: string; action: string; time: string }>;
@@ -15,7 +16,12 @@ export const RecentActivitiesWidget: React.FC<RecentActivitiesWidgetProps> = ({ 
 
       <div className="recent-activities-list">
         {activities.length === 0 ? (
-          <div className="recent-activities-empty">Chưa có hoạt động mới nào.</div>
+          <EmptyState
+            variant="history"
+            compact
+            title="Chưa có hoạt động mới được ghi nhận"
+            subMessage="Nhật ký các thao tác chỉnh sửa phả hệ và sự kiện dòng tộc sẽ lưu lại trang trọng tại đây."
+          />
         ) : (
           activities.map((act) => (
             <div key={act.id} className="recent-activities-item">

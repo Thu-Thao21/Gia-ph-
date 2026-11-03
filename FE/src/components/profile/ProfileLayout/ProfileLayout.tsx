@@ -137,7 +137,7 @@ export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack }
             </h1>
 
             <div className="profile-subtext">
-              <span>{member.familyName || 'Dòng tộc Họ Võ'}</span>
+              <span>{member.familyName || account?.clan_name || 'Dòng họ'}</span>
               {member.branch && <span>• {member.branch}</span>}
               {member.subBranch && <span>• {member.subBranch}</span>}
             </div>

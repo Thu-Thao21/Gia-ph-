@@ -92,10 +92,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </svg>
       ),
       items: [
-        { id: 'net-noi', label: 'Dòng họ Nội' },
-        { id: 'net-ngoai', label: 'Dòng họ Ngoại' },
+        { id: 'net-ngoai', label: 'Dòng họ liên kết' },
         { id: 'net-dau-re', label: 'Dâu & Rể liên họ' },
-        { id: 'net-thong-gia', label: 'Họ Thông gia' },
+        { id: 'net-noi', label: 'Dòng họ Nội tộc' },
       ],
     },
     {
@@ -130,6 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'events', label: 'Sự kiện dòng họ' },
         { id: 'funds', label: 'Quỹ & Đóng góp' },
         { id: 'ancestral-hall', label: 'Phòng thờ số' },
+        { id: 'clan-locations', label: 'Bản đồ & Địa điểm dòng họ' },
       ],
     },
     {
@@ -191,8 +191,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'family-members', label: 'Quản lý thành viên' },
     { id: 'family-relations', label: 'Quan hệ gia phả' },
     { id: 'family-tree', label: 'Cây theo quan hệ' },
-    { id: 'family-search', label: 'Tìm đường quan hệ' },
     { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
+    { id: 'family-locations', label: 'Bản đồ & Địa điểm dòng họ' },
     { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
     { id: 'family-accounts', label: 'Phân quyền & Tài khoản' },
     { id: 'family-links', label: 'Yêu cầu liên họ' },
@@ -206,8 +206,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'family-members', label: 'Quản lý thành viên' },
     { id: 'family-relations', label: 'Quan hệ gia phả' },
     { id: 'family-tree', label: 'Cây theo quan hệ' },
-    { id: 'family-search', label: 'Tìm đường quan hệ' },
     { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
+    { id: 'family-locations', label: 'Bản đồ & Địa điểm dòng họ' },
     { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
     { id: 'family-links', label: 'Yêu cầu liên họ' },
     { id: 'family-import-export', label: 'Nhập xuất dữ liệu' },

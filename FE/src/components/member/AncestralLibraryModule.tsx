@@ -131,7 +131,7 @@ export const AncestralLibraryModule: React.FC<AncestralLibraryModuleProps> = ({
           </div>
         </header>
         <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '24px 0' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏛️</div>
+          <div style={{ marginBottom: '16px' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 2l9 8H3l9-8z" /></svg></div>
           <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có tư liệu hoặc hiện vật số nào</h3>
           <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '560px', margin: '0 auto' }}>
             Dòng tộc {activeClanName || 'hiện tại'} chưa có tư liệu, tranh ảnh hoặc hiện vật số nào được tải lên từ cơ sở dữ liệu.

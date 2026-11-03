@@ -345,7 +345,7 @@ async def _owner_info(family: FamilyRepository, clan, body: OwnerProvisionReques
         await family.get_registration_by_id(clan.registration_id) if clan.registration_id else None
     )
     email = body.email or (registration.representative_email if registration else None)
-    display_name = body.display_name or (registration.representative_name if registration else None)
+    display_name = body.display_name or (clan.name if clan else None) or (registration.name if registration else None) or (registration.representative_name if registration else None)
     phone = body.phone or (registration.representative_phone if registration else None)
     missing = [name for name, value in (("email", email), ("display_name", display_name)) if not value]
     if missing:
@@ -583,6 +583,8 @@ async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock):
                 clan_id=run.clan_id, now=now,
             )
         cred = await users.add_credential_metadata(user_id, now=now)
+        from app.core.security.password_hash import hash_password
+        cred.password_hash = await asyncio.to_thread(hash_password, password)
         cred.must_change_password = True
         cred.temporary_password_issued_at = now
         cred.temporary_password_expires_at = expires_at

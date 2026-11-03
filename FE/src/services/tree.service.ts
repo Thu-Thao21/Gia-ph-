@@ -1,5 +1,6 @@
 import apiClient from '../api/axios';
 import { fetchMembers } from './member.service';
+import { fetchInLawMarriages } from './network.service';
 import type { Member } from '../types/member';
 import type { ErgoTreeNode, SpouseNode } from '../types/tree';
 
@@ -23,6 +24,53 @@ export async function buildErgoTreeFromDB(
     const memberMap = new Map<string, Member>();
     allMembers.forEach((m) => memberMap.set(m.id, m));
 
+    // Fetch verified cross-clan marriages for this family
+    let crossClanMarriages: any[] = [];
+    try {
+      crossClanMarriages = await fetchInLawMarriages(familyId);
+    } catch {
+      crossClanMarriages = [];
+    }
+
+    const crossSpousesByPersonId = new Map<string, SpouseNode[]>();
+    crossClanMarriages.forEach((cm) => {
+      if (!cm.isCrossClan) return;
+      const hId = cm.husbandPersonId;
+      const wId = cm.wifePersonId;
+
+      if (hId && memberMap.has(hId)) {
+        const cur = crossSpousesByPersonId.get(hId) || [];
+        cur.push({
+          id: wId || ('cross-wife-' + cm.id),
+          fullName: cm.wifeName,
+          gender: 'female',
+          isAlive: true,
+          isCrossClan: true,
+          clanName: cm.wifeFamily,
+          clanId: cm.wifeClanId,
+          inLawRole: `Dâu họ ${cm.wifeFamily}`,
+          linkId: cm.linkId,
+        });
+        crossSpousesByPersonId.set(hId, cur);
+      }
+
+      if (wId && memberMap.has(wId)) {
+        const cur = crossSpousesByPersonId.get(wId) || [];
+        cur.push({
+          id: hId || ('cross-husband-' + cm.id),
+          fullName: cm.husbandName,
+          gender: 'male',
+          isAlive: true,
+          isCrossClan: true,
+          clanName: cm.husbandFamily,
+          clanId: cm.husbandClanId,
+          inLawRole: `Rể họ ${cm.husbandFamily}`,
+          linkId: cm.linkId,
+        });
+        crossSpousesByPersonId.set(wId, cur);
+      }
+    });
+
     // Helper to find true spouses (wives/husbands)
     const getSpouses = (m: Member): SpouseNode[] => {
       const spouses: SpouseNode[] = [];
@@ -37,8 +85,9 @@ export async function buildErgoTreeFromDB(
           avatarUrl: sp.avatarUrl,
           isAlive: sp.isAlive,
           occupation: sp.occupation,
+          userId: sp.userId || (sp as any).user_id,
         });
-        return spouses;
+
       }
 
       allMembers.forEach((w) => {
@@ -79,7 +128,16 @@ export async function buildErgoTreeFromDB(
             avatarUrl: w.avatarUrl,
             isAlive: w.isAlive,
             occupation: w.occupation,
+            userId: w.userId || (w as any).user_id,
           });
+        }
+      });
+
+      // Inject cross-clan verified in-law spouses
+      const crossList = crossSpousesByPersonId.get(m.id) || [];
+      crossList.forEach((cs) => {
+        if (!spouses.some((s) => s.id === cs.id || s.fullName === cs.fullName)) {
+          spouses.push(cs);
         }
       });
 
@@ -110,7 +168,7 @@ export async function buildErgoTreeFromDB(
         branch: m.branch,
         occupation: m.occupation,
         bio: (m as any).bio,
-        userId: (m as any).userId || (m as any).user_id,
+        userId: m.userId || (m as any).user_id,
         isPrivate,
         isUnconnected,
         spouses,
@@ -170,6 +228,7 @@ export async function buildErgoTreeFromDB(
               avatarUrl: motherM.avatarUrl,
               isAlive: motherM.isAlive,
               occupation: motherM.occupation,
+              userId: motherM.userId || (motherM as any).user_id,
               focusRole: 'Mẹ',
             },
           ];
@@ -223,6 +282,7 @@ export async function buildErgoTreeFromDB(
 
       return uniqueChildren.map((c) => {
         visitedInTree.add(c.id);
+        getSpouses(c).forEach((s) => visitedInTree.add(s.id));
         const node = convertNode(c);
         node.children = buildChildrenRecursive(c.id, new Set(visited));
         return node;
@@ -282,7 +342,19 @@ export async function buildErgoTreeFromDB(
 
     // 3. Tìm tất cả các thành viên chưa được kết nối vào cây phả hệ (Unconnected Members)
     // Đảm bảo không ai bị sót khỏi giao diện cây dù thiếu liên kết phả hệ trực tiếp từ cụ tổ
-    const unconnectedMembers = allMembers.filter((m) => !visitedInTree.has(m.id));
+    const unconnectedMembers = allMembers.filter((m) => {
+      if (visitedInTree.has(m.id)) return false;
+      // Nếu là vợ/chồng của bất kỳ ai đã có trong cây thì họ đã được hiển thị trên card của người đó
+      const isSpouseOfVisited = Array.from(visitedInTree).some((vid) => {
+        const vm = memberMap.get(vid);
+        return vm ? getSpouses(vm).some((s) => s.id === m.id) : false;
+      });
+      if (isSpouseOfVisited) {
+        visitedInTree.add(m.id);
+        return false;
+      }
+      return true;
+    });
 
     unconnectedMembers.forEach((um) => {
       if (visitedInTree.has(um.id)) return;

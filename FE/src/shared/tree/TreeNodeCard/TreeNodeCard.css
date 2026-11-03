@@ -14,7 +14,8 @@
 /* Individual Framed Card for EACH Person */
 .tree-person-card {
   width: 140px;
-  height: 160px;
+  min-height: 172px;
+  height: auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -207,7 +208,8 @@
   align-items: center;
   justify-content: center;
   width: 36px;
-  height: 160px;
+  min-height: 172px;
+  height: auto;
   position: relative;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -361,3 +363,48 @@
 
 
 
+
+
+/* Account linkage status badge */
+.tree-person-account-badge {
+  margin-top: 4px;
+  margin-bottom: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: all 0.2s ease;
+  max-width: 95%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-person-account-badge.is-linked {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.tree-person-account-badge.is-unlinked {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Current user card highlight */
+.tree-person-card.is-current-user {
+  border: 2px solid #059669 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25), 0 8px 24px rgba(16, 185, 129, 0.2) !important;
+}
+
+.tree-person-card.is-current-user .tree-person-account-badge.is-linked {
+  background: #059669;
+  color: #ffffff;
+  border-color: #047857;
+  font-weight: 800;
+}

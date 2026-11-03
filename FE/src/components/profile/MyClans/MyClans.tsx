@@ -22,7 +22,7 @@ const RELATION_OPTIONS = [
 ];
 
 export const MyClans: React.FC = () => {
-  const { account, refreshAccount } = useAuth();
+  const { account, refreshAccount, loading: authLoading } = useAuth();
   const { activeClanId, selectClan, setActiveClanId } = useClanContext();
 
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export const MyClans: React.FC = () => {
 
   // Step 2: Form Data
   const [lineageType, setLineageType] = useState<'PATERNAL' | 'MATERNAL'>('PATERNAL');
-  const [fullName, setFullName] = useState(account?.name || '');
+  const [fullName, setFullName] = useState(account?.display_name || account?.username || '');
   const [birthDate, setBirthDate] = useState('');
   const [relativeName, setRelativeName] = useState('');
   const [relativeRelation, setRelativeRelation] = useState('Con');
@@ -130,8 +130,11 @@ export const MyClans: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (authLoading) return;
+    if (account) {
+      loadData();
+    }
+  }, [account?.id, authLoading, loadData]);
 
   // Handle Search in Step 1
   useEffect(() => {
@@ -155,7 +158,7 @@ export const MyClans: React.FC = () => {
     setSelectedClan(null);
     setSearchQuery('');
     setLineageType('PATERNAL');
-    setFullName(account?.name || '');
+    setFullName(account?.display_name || account?.username || '');
     setBirthDate('');
     setRelativeName('');
     setRelativeRelation('Con');
@@ -525,7 +528,7 @@ export const MyClans: React.FC = () => {
         <div className="modal-backdrop-clan">
           <div className="modal-dialog-clan wide">
             <div className="modal-header-clan">
-              <h3>Xin gia nhập dòng tộc thứ hai</h3>
+              <h3>{joinedClans.length === 0 ? 'Xin gia nhập dòng họ' : 'Xin gia nhập thêm dòng họ'}</h3>
               <button type="button" className="btn-close-modal" onClick={() => setShowJoinModal(false)}>
                 ×
               </button>
@@ -557,7 +560,7 @@ export const MyClans: React.FC = () => {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Ví dụ: Họ Võ, Họ Mai, CLAN-VO..."
+                      placeholder="Ví dụ: Dòng họ Nguyễn, Dòng họ Dương, CLAN-01..."
                       autoFocus
                     />
                   </div>

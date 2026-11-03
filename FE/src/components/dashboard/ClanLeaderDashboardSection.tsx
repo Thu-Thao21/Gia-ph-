@@ -1,3 +1,4 @@
+import { EmptyState } from '../../shared/Feedback/EmptyState';
 import React, { useMemo } from 'react';
 import {
   BarChart,
@@ -197,9 +198,12 @@ export const ClanLeaderDashboardSection: React.FC<ClanLeaderDashboardSectionProp
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="clan-chart-empty">
-              <p>Chưa có dữ liệu thành viên để lập sơ đồ thống kê.</p>
-            </div>
+            <EmptyState
+              variant="chart"
+              compact
+              title="Chưa đủ dữ liệu thành viên để lập sơ đồ thống kê"
+              subMessage="Khi gia tộc cập nhật thêm thông tin nhân khẩu và thế hệ, sơ đồ phân bổ độ tuổi và giới tính sẽ hiển thị trang trọng tại đây."
+            />
           )}
         </div>
       </div>
@@ -229,6 +233,17 @@ export const ClanLeaderDashboardSection: React.FC<ClanLeaderDashboardSectionProp
             <div className="btn-text">
               <strong>Quản Lý Thành Viên</strong>
               <small>Danh sách và nhân khẩu</small>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="clan-action-btn"
+            onClick={() => onNavigateTab && onNavigateTab('family-locations')}
+          >
+            <div className="btn-text">
+              <strong>Bản Đồ & Địa Điểm</strong>
+              <small>Nhà thờ họ, từ đường & mộ phần</small>
             </div>
           </button>
 

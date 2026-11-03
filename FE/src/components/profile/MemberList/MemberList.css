@@ -181,3 +181,34 @@
   font-size: 12.5px;
   cursor: pointer;
 }
+
+
+.member-status-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.member-badge-account {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.member-badge-account.is-linked {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.member-badge-account.is-unlinked {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}

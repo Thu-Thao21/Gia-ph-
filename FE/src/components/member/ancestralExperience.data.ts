@@ -16,6 +16,7 @@ export interface AncestorRecord {
   restingPlace: string;
   biography: string;
   legacy: string;
+  portraitUrl?: string | null;
   portraitTone: 'indigo' | 'teal' | 'amber' | 'rose';
   incenseCount: number;
 }

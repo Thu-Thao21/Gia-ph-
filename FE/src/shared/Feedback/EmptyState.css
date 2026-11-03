@@ -1,31 +1,83 @@
-.empty-state-container {
+.genealogy-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px dashed #cbd5e1;
   text-align: center;
-  margin: 16px 0;
+  padding: 36px 24px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 14px;
+  margin: 12px 0;
+  transition: all 0.2s ease-in-out;
 }
 
-.empty-state-icon {
-  color: #94a3b8;
-  margin-bottom: 16px;
+.genealogy-empty-state:hover {
+  border-color: #94a3b8;
+  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
 }
 
-.empty-state-message {
-  font-size: 1.125rem;
+.genealogy-empty-state.is-compact {
+  padding: 24px 16px;
+  margin: 6px 0;
+  border-radius: 10px;
+}
+
+.genealogy-empty-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.genealogy-empty-state.is-compact .genealogy-empty-icon-wrap {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 10px;
+}
+
+.genealogy-empty-state.is-compact .genealogy-empty-icon-wrap svg {
+  width: 24px;
+  height: 24px;
+}
+
+.genealogy-empty-title {
+  font-size: 15px;
   font-weight: 600;
-  color: #334155;
-  margin: 0 0 8px 0;
+  color: #1e293b;
+  margin: 0 0 6px 0;
+  line-height: 1.45;
 }
 
-.empty-state-submessage {
-  font-size: 0.95rem;
+.genealogy-empty-state.is-compact .genealogy-empty-title {
+  font-size: 13.5px;
+  margin-bottom: 4px;
+}
+
+.genealogy-empty-desc {
+  font-size: 13px;
   color: #64748b;
+  max-width: 480px;
   margin: 0;
-  max-width: 400px;
+  line-height: 1.55;
+}
+
+.genealogy-empty-state.is-compact .genealogy-empty-desc {
+  font-size: 12px;
+  max-width: 360px;
+}
+
+.genealogy-empty-action {
+  margin-top: 14px;
+}
+
+.genealogy-empty-state.is-compact .genealogy-empty-action {
+  margin-top: 10px;
 }
