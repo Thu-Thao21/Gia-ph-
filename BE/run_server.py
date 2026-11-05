@@ -1,5 +1,10 @@
 import asyncio
+import os
 import sys
+from dotenv import load_dotenv
+
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(env_path)
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

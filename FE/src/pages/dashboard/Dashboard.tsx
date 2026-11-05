@@ -1,3 +1,4 @@
+import { LoadingState } from '../../shared/Feedback/LoadingState';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TopBar } from '../../components/dashboard/TopBar';
@@ -16,6 +17,7 @@ import { ClanFundsModule } from '../../components/member/ClanFundsModule';
 import { ClanDocumentsModule } from '../../components/member/ClanDocumentsModule';
 import { ClanAIAssistantModule } from '../../components/member/ClanAIAssistantModule';
 import { DigitalAncestralHallModule } from '../../components/member/DigitalAncestralHallModule';
+import { ClanLocationsModule } from '../../components/clan/ClanLocationsModule';
 import { NotificationCenterModule } from '../../components/member/NotificationCenterModule';
 import { AIConsentModule } from '../../components/member/AIConsentModule';
 import { AncestralLibraryModule } from '../../components/member/AncestralLibraryModule';
@@ -36,6 +38,8 @@ import AdminApprovalsMgmt from '../../components/admin/AdminApprovalsMgmt/AdminA
 import AdminAuditLogsMgmt from '../../components/admin/AdminAuditLogsMgmt/AdminAuditLogsMgmt';
 import AdminDataBackupMgmt from '../../components/admin/AdminDataBackupMgmt/AdminDataBackupMgmt';
 import { FamilyAdminModule, type FamilyAdminView } from '../../features/familyAdmin/FamilyAdminModule';
+import { ClanAISettingsPage } from '../../components/clan/ClanAISettingsPage';
+import { ClanDataQualityModule } from '../../components/clan/ClanDataQualityModule';
 import {
   ServicePackageManagement,
   PaymentTransactionManagement,
@@ -86,6 +90,8 @@ const TAB_TO_ROUTE: Record<string, string> = {
   'family-accounts':      ROUTES.USER.FAMILY_ACCOUNTS,
   'family-links':         ROUTES.USER.FAMILY_LINKS,
   'family-privacy':       ROUTES.USER.PRIVACY_SETTINGS,
+  'family-ai-settings':   ROUTES.CLAN_ADMIN.AI_SETTINGS,
+  'family-quality':       ROUTES.CLAN_ADMIN.DATA_QUALITY,
   'family-import-export': ROUTES.USER.FAMILY_IMPORT_EXPORT,
   'family-statistics':    ROUTES.USER.FAMILY_MANAGEMENT,
   'family-logs':          ROUTES.USER.FAMILY_LOGS,
@@ -107,7 +113,36 @@ const TAB_TO_ROUTE: Record<string, string> = {
   'admin-roles':          ROUTES.ADMIN.ROLES,
 };
 
+const CLAN_ADMIN_TAB_TO_ROUTE: Record<string, string> = {
+  'dashboard': ROUTES.CLAN_ADMIN.DASHBOARD,
+  'family-locations': ROUTES.CLAN_ADMIN.LOCATIONS,
+  'family-members': ROUTES.CLAN_ADMIN.MEMBERS,
+  'family-approvals': ROUTES.CLAN_ADMIN.APPROVALS,
+  'family-branches': ROUTES.CLAN_ADMIN.BRANCHES,
+  'family-accounts': ROUTES.CLAN_ADMIN.ACCOUNTS,
+  'family-relations': ROUTES.CLAN_ADMIN.RELATIONS,
+  'family-tree': ROUTES.CLAN_ADMIN.TREE,
+  'family-import-export': ROUTES.CLAN_ADMIN.IMPORT_EXPORT,
+  'family-logs': ROUTES.CLAN_ADMIN.LOGS,
+  'family-ai-settings': ROUTES.CLAN_ADMIN.AI_SETTINGS,
+  'family-quality': ROUTES.CLAN_ADMIN.DATA_QUALITY,
+};
+
 const ROUTE_TO_TAB: Array<[string, string]> = [
+  [ROUTES.CLAN_ADMIN.LOCATIONS,     'family-locations'],
+  [ROUTES.CLAN_ADMIN.MEMBERS,       'family-members'],
+  [ROUTES.CLAN_ADMIN.APPROVALS,     'family-approvals'],
+  [ROUTES.CLAN_ADMIN.BRANCHES,      'family-branches'],
+  [ROUTES.CLAN_ADMIN.ACCOUNTS,      'family-accounts'],
+  [ROUTES.CLAN_ADMIN.RELATIONS,     'family-relations'],
+  [ROUTES.CLAN_ADMIN.TREE,          'family-tree'],
+  [ROUTES.CLAN_ADMIN.IMPORT_EXPORT, 'family-import-export'],
+  [ROUTES.CLAN_ADMIN.LOGS,          'family-logs'],
+  [ROUTES.CLAN_ADMIN.AI_SETTINGS,   'family-ai-settings'],
+  [ROUTES.CLAN_ADMIN.DATA_QUALITY, 'family-quality'],
+  [ROUTES.USER.DATA_QUALITY,       'family-quality'],
+  [ROUTES.CLAN_ADMIN.DASHBOARD,     'dashboard'],
+  [ROUTES.CLAN_ADMIN.ROOT,          'dashboard'],
   [ROUTES.ADMIN.TREE,              'admin-tree'],
   [ROUTES.ADMIN.ACCOUNTS,          'admin-permissions'],
   [ROUTES.ADMIN.FAMILIES,          'admin-families-mgmt'],
@@ -182,7 +217,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const [selectedAncestorId, setSelectedAncestorId] = useState<string | undefined>();
   const [adminSelectedFamilyId, setAdminSelectedFamilyId] = useState<string | undefined>();
 
-  const displayUserName = account?.display_name || account?.username || userName || 'Người dùng';
   const primaryRole = account?.primary_role || 'member';
   const isSystemAdmin = primaryRole === 'admin';
 
@@ -190,7 +224,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const isClanAdminRole = !isSystemAdmin && activeClanRole === 'clan_admin';
   const isFamilyManager = !isSystemAdmin && activeClanRole === 'family_admin';
   const userRole = isSystemAdmin ? 'Admin' : (activeClanRoleLabel || 'Thành viên');
-  const basePath = isSystemAdmin ? ROUTES.ADMIN.ROOT : ROUTES.USER.ROOT;
+  const displayUserName = (isClanAdminRole && activeClanName)
+    ? activeClanName
+    : (account?.display_name || account?.username || userName || 'Người dùng');
+  const basePath = isSystemAdmin ? ROUTES.ADMIN.ROOT : (isClanAdminRole ? ROUTES.CLAN_ADMIN.ROOT : ROUTES.USER.ROOT);
   const effectiveClanId = isSystemAdmin ? (adminSelectedFamilyId || account?.clan_id || null) : activeClanId;
   const [resolvedMyMemberId, setResolvedMyMemberId] = useState<string | null>(null);
 
@@ -208,7 +245,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     if (activeTab.startsWith('family-') && !canManageFamily) {
       setActiveTab('dashboard');
       navigate(ROUTES.USER.ROOT, { replace: false });
-    } else if (activeTab === 'family-accounts' && !isFamilyHead) {
+    } else if ((activeTab === 'family-accounts' || activeTab === 'family-ai-settings') && !isFamilyHead) {
       setActiveTab('dashboard');
       navigate(ROUTES.USER.ROOT, { replace: false });
     }
@@ -228,10 +265,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
               ((m as any).userId && (m as any).userId === account?.id) ||
               m.fullName.trim().toLowerCase() === myName
           );
-          if (me) {
+          if (activeMembership?.person_id) {
+            setResolvedMyMemberId(activeMembership.person_id);
+          } else if (me) {
             setResolvedMyMemberId(me.id);
           } else {
-            setResolvedMyMemberId(res.items[0].id);
+            setResolvedMyMemberId(null);
           }
         }
       })
@@ -267,7 +306,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       setSelectedMemberId(null);
     }
 
-    const route = TAB_TO_ROUTE[tabId];
+    const route = isClanAdminRole && CLAN_ADMIN_TAB_TO_ROUTE[tabId]
+      ? CLAN_ADMIN_TAB_TO_ROUTE[tabId]
+      : TAB_TO_ROUTE[tabId];
     if (route) {
       navigate(route, { replace: false });
     } else if (tabId === 'dashboard') {
@@ -326,28 +367,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     }
 
     // ===== Branch for Clan Member / Family Admin / Clan Admin =====
-    const isFamilyHead = isClanAdminRole;
+    const isClanAdminRoute = location.pathname.startsWith('/clan-admin');
+    const isFamilyHead = isClanAdminRole || isClanAdminRoute;
     const canManageFamily = isFamilyHead || isFamilyManager;
 
     if (activeTab === 'notifications') {
       return (
         <NotificationCenterModule
           canManage={canManageFamily}
-          clanName={account?.clan_name || 'Dòng Họ Võ Đại Tộc'}
+          clanName={activeClanName || account?.clan_name || 'Dòng họ'}
           userRole={userRole}
         />
       );
     }
-    if (activeTab === 'relationship-finder') return canManageFamily ? <FamilyAdminModule view="search" /> : <RelationshipFinder />;
+    if (activeTab === 'relationship-finder') {
+      return (
+        <RelationshipFinder
+          key={effectiveClanId || 'default-clan'}
+          familyId={effectiveClanId || undefined}
+          canManage={canManageFamily}
+          onNavigateTab={handleSelectTab}
+        />
+      );
+    }
     if (activeTab === 'my-proposals') return <MyProposalsModule />;
     if (activeTab === 'anniversaries') return <AnniversariesModule />;
     if (activeTab === 'events') return <ClanEventsModule canManage={canManageFamily} />;
-    if (activeTab === 'funds') return <ClanFundsModule canManage={canManageFamily} />;
+    if (activeTab === 'funds') {
+      return (
+        <ClanFundsModule
+          canManage={canManageFamily}
+          clanId={effectiveClanId || undefined}
+          isClanLeader={isClanAdminRole || isSystemAdmin}
+          isFamilyAdmin={isFamilyManager}
+        />
+      );
+    }
     if (activeTab === 'documents') return <ClanDocumentsModule canManage={canManageFamily} />;
-    if (activeTab === 'ai-assistant') return <ClanAIAssistantModule />;
+    if (activeTab === 'ai-assistant') return <ClanAIAssistantModule clanId={effectiveClanId || undefined} />;
     if (activeTab === 'ai-consent') return <AIConsentModule />;
     if (activeTab === 'ancestral-hall') return <DigitalAncestralHallModule onOpenLibrary={(ancestorId) => { setSelectedAncestorId(ancestorId); handleSelectTab('ancestral-library'); }} />;
     if (activeTab === 'ancestral-library') return <AncestralLibraryModule initialAncestorId={selectedAncestorId} onOpenWorship={(ancestorId) => { setSelectedAncestorId(ancestorId); handleSelectTab('ancestral-hall'); }} />;
+    if (activeTab === 'clan-locations' || activeTab === 'family-locations') return <ClanLocationsModule clanId={effectiveClanId || undefined} canManage={canManageFamily} />;
     if (activeTab === 'privacy-settings' || activeTab === 'privacy-preview' || activeTab === 'family-privacy') return <PrivacySettingsTab />;
 
     // Chặn quyền nếu là Thành viên thông thường cố vào các tab quản lý dòng họ
@@ -364,6 +425,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     }
 
     // Chặn quyền độc quyền của Trưởng tộc nếu Family Admin cố truy cập vào phân quyền tài khoản
+    if (activeTab === 'family-quality' || activeTab === 'clan-quality') {
+      return (
+        <ClanDataQualityModule
+          clanId={effectiveClanId || undefined}
+          canManage={canManageFamily}
+          onNavigateTab={handleSelectTab}
+        />
+      );
+    }
+
+    if (activeTab === 'family-ai-settings') {
+      if (!isFamilyHead) {
+        return (
+          <section className="dashboard-permission-page">
+            <div className="dashboard-permission-icon">!</div>
+            <span>QUYỀN HẠN TRƯỞNG TỘC</span>
+            <h1>Chức năng dành riêng cho Trưởng tộc (Clan Admin)</h1>
+            <p>Chỉ Trưởng tộc mới có quyền cấu hình tính năng AI và quản lý quyền gửi dữ liệu của toàn dòng họ.</p>
+            <button type="button" onClick={() => handleSelectTab('dashboard')}>Quay lại Trang chủ</button>
+          </section>
+        );
+      }
+      return <ClanAISettingsPage clanId={effectiveClanId || ''} />;
+    }
+
+
+
     if (activeTab === 'family-accounts' && !isFamilyHead) {
       return (
         <section className="dashboard-permission-page">
@@ -377,11 +465,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     }
 
     const familyViews: Record<string, FamilyAdminView> = {
-      'family-members': 'members', 'family-relations': 'relations', 'family-tree': 'tree',
+      'family-relations': 'relations', 'family-tree': 'tree',
       'family-search': 'search', 'family-branches': 'branches', 'family-approvals': 'approvals',
       'family-accounts': 'accounts', 'family-links': 'links',
       'family-import-export': 'exchange', 'family-logs': 'audit',
       'family-statistics': 'overview',
+      'family-locations': 'locations',
     };
     if (familyViews[activeTab]) {
       if (familyViews[activeTab] === 'tree') {
@@ -397,10 +486,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
         );
       }
       const tabs: Record<FamilyAdminView, string> = {
-        overview: 'dashboard', members: 'family-members', relations: 'family-relations',
-        tree: 'family-tree', search: 'family-search', branches: 'family-branches',
+        overview: 'dashboard', members: 'member-list', relations: 'family-relations',
+        tree: 'tree', search: 'family-search', branches: 'family-branches',
         approvals: 'family-approvals', accounts: 'family-accounts', links: 'family-links',
-        exchange: 'family-import-export', audit: 'family-logs',
+        exchange: 'family-import-export', audit: 'family-logs', locations: 'clan-locations',
       };
       return <FamilyAdminModule view={familyViews[activeTab]} onNavigate={(view) => handleSelectTab(tabs[view])} />;
     }
@@ -446,7 +535,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       if (!targetMemberId) {
         return (
           <section className="dashboard-permission-page">
-            <div className="dashboard-permission-icon">📋</div>
+            <div className="dashboard-permission-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" /></svg></div>
             <span>HỒ SƠ CÁ NHÂN GIA TỘC</span>
             <h1>Chưa liên kết hồ sơ thành viên</h1>
             <p>
@@ -477,8 +566,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       const targetMemberId = selectedMemberId || resolvedMyMemberId;
       if (!targetMemberId) {
         return (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-            Đang tải dữ liệu hồ sơ thành viên...
+          <div style={{ padding: '40px', background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+            <LoadingState
+              message="Đang truy xuất dữ liệu hồ sơ nhân khẩu..."
+              subMessage="Hệ thống đang chuẩn bị thông tin phả ký chi tiết từ máy chủ gia tộc."
+            />
           </div>
         );
       }
@@ -494,7 +586,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       );
     }
 
-    if (activeTab === 'member-list') {
+    if (activeTab === 'member-list' || activeTab === 'family-members') {
+      if (canManageFamily) {
+        const tabs: Record<FamilyAdminView, string> = {
+          overview: 'dashboard', members: 'member-list', relations: 'family-relations',
+          tree: 'tree', search: 'family-search', branches: 'family-branches',
+          approvals: 'family-approvals', accounts: 'family-accounts', links: 'family-links',
+          exchange: 'family-import-export', audit: 'family-logs', locations: 'clan-locations',
+        };
+        return <FamilyAdminModule view="members" onNavigate={(view) => handleSelectTab(tabs[view])} />;
+      }
       return <MemberList onSelectMember={handleSelectMember} />;
     }
 

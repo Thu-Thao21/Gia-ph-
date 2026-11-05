@@ -1,5 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useClanContext } from '../../context/ClanContext';
+import {
+  fetchClanAnnouncements,
+  publishClanAnnouncement,
+  deleteClanAnnouncement,
+  fetchUserNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '../../services/notification.service';
 import './NotificationCenterModule.css';
 
 export type NotificationCategory = 'memorial' | 'event' | 'proposal' | 'fund' | 'system' | 'security' | 'ai';
@@ -150,11 +159,11 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 const INITIAL_BROADCASTS: ClanBroadcastItem[] = [
   {
     id: 'broadcast-01',
-    clanName: 'Họ Võ Đại Tộc',
-    senderName: 'Trưởng Tộc Võ Đại Tộc',
+    clanName: 'Hội đồng gia tộc',
+    senderName: 'Trưởng Tộc',
     senderRole: 'Chủ dòng họ',
     title: 'Thông báo Kế hoạch Lễ Giỗ Tổ Xuân Tế 2026',
-    content: 'Kính báo toàn thể con cháu nội ngoại Dòng Họ Võ Đại Tộc: Lễ Giỗ Tổ Xuân Tế năm 2026 sẽ được tổ chức trang trọng vào ngày 15 tháng Giêng Âm lịch tại Từ Đường Chi Trưởng. Đề nghị các chi nhánh cử đại diện về dự và dâng hương đúng giờ.',
+    content: 'Kính báo toàn thể con cháu nội ngoại dòng họ: Lễ Giỗ Tổ Xuân Tế năm 2026 sẽ được tổ chức trang trọng vào ngày 15 tháng Giêng Âm lịch tại Từ Đường Chi Trưởng. Đề nghị các chi nhánh cử đại diện về dự và dâng hương đúng giờ.',
     category: 'memorial',
     targetAudience: 'all',
     priority: 'urgent',
@@ -165,7 +174,7 @@ const INITIAL_BROADCASTS: ClanBroadcastItem[] = [
   },
   {
     id: 'broadcast-02',
-    clanName: 'Họ Võ Đại Tộc',
+    clanName: 'Hội đồng gia tộc',
     senderName: 'Ban Trị Sự Dòng Họ',
     senderRole: 'Quản trị viên gia tộc',
     title: 'Phát động đóng góp Quỹ Khuyến học & Khuyến tài niên khóa 2026',
@@ -180,8 +189,8 @@ const INITIAL_BROADCASTS: ClanBroadcastItem[] = [
   },
   {
     id: 'broadcast-03',
-    clanName: 'Họ Võ Đại Tộc',
-    senderName: 'Trưởng Tộc Võ Đại Tộc',
+    clanName: 'Hội đồng gia tộc',
+    senderName: 'Trưởng Tộc',
     senderRole: 'Chủ dòng họ',
     title: 'Triệu tập phiên họp Hội đồng gia tộc định kỳ quý 3/2026',
     content: 'Kính mời các vị Trưởng Chi, Trưởng Nhánh và các thành viên Ban Quản trị tham dự phiên họp định kỳ quý 3 vào lúc 08h30 Chủ nhật tuần này tại Nhà thờ họ để thảo luận về kế hoạch tu bổ Từ đường.',
@@ -243,28 +252,60 @@ const formatUpdatedAt = (value: string | null) => {
 
 export const NotificationCenterModule: React.FC<NotificationCenterModuleProps> = ({
   canManage = false,
-  clanName = 'Dòng Họ Võ Đại Tộc',
+  clanName,
   userRole,
 }) => {
   const { account, primaryRole } = useAuth();
+  const { activeClanId, activeClanName, activeClanRole, activeClanRoleLabel, activeMembership } = useClanContext();
+  const effectiveClanId = activeClanId || 'c0000000-0000-0000-0000-000000000002';
+  const effectiveClanName = clanName || activeClanName || account?.clan_name || 'Dòng họ';
 
   // Kiểm tra thẩm quyền Trưởng Tộc / Quản trị viên
   const isAuthorized =
     canManage ||
-    primaryRole === 'family_head' ||
-    primaryRole === 'family_admin' ||
     primaryRole === 'admin' ||
+    activeClanRole === 'clan_admin' ||
+    activeClanRole === 'family_admin' ||
+    activeClanRoleLabel === 'Trưởng tộc' ||
+    activeClanRoleLabel === 'Family Admin' ||
+    Boolean(
+      (activeMembership?.roles || []).some((r) =>
+        ['BUSINESS_OWNER', 'CLAN_ADMIN', 'FAMILY_ADMIN', 'OWNER', 'FAMILY_HEAD'].includes(r.toUpperCase())
+      )
+    ) ||
     Boolean(
       account?.roles?.some(
         (r) =>
-          (r.role === 'family_head' || r.role === 'family_admin' || r.role === 'admin') &&
+          (r.role === 'family_head' || r.role === 'family_admin' || r.role === 'admin' || r.role === 'clan_admin') &&
           (r.status === 'active' || r.status === 'ACTIVE')
       )
-    );
+    ) ||
+    (typeof window !== 'undefined' && window.location.pathname.startsWith('/clan-admin'));
 
   const initialPreferences = useMemo(loadPreferences, []);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [broadcasts, setBroadcasts] = useState<ClanBroadcastItem[]>(loadBroadcasts);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [announcements, inbox] = await Promise.all([
+        effectiveClanId ? fetchClanAnnouncements(effectiveClanId) : Promise.resolve([]),
+        fetchUserNotifications(),
+      ]);
+      if (announcements && announcements.length > 0) {
+        setBroadcasts(announcements);
+      }
+      if (inbox && inbox.length > 0) {
+        setNotifications(inbox);
+      }
+    } catch (err) {
+      console.error('Lỗi nạp thông báo:', err);
+    }
+  }, [effectiveClanId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   // Tabs điều hướng chính: inbox | broadcasts | settings
   const [activeMainTab, setActiveMainTab] = useState<'inbox' | 'broadcasts' | 'settings'>('inbox');
@@ -409,8 +450,8 @@ export const NotificationCenterModule: React.FC<NotificationCenterModuleProps> =
     }
   };
 
-  // Phát thông báo mới
-  const handlePublishBroadcast = (e: React.FormEvent) => {
+  // Phát thông báo mới đến toàn thể thành viên
+  const handlePublishBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!composerForm.title.trim()) {
       setComposerError('Vui lòng nhập tiêu đề thông báo.');
@@ -421,76 +462,46 @@ export const NotificationCenterModule: React.FC<NotificationCenterModuleProps> =
       return;
     }
 
-    const now = new Date();
-    const formattedDate = new Intl.DateTimeFormat('vi-VN', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }).format(now);
-
-    const senderDisplay =
-      account?.display_name || (userRole ? `Trưởng Tộc (${userRole})` : 'Trưởng Tộc Võ Đại Tộc');
-    const senderRoleTitle = primaryRole === 'family_head' ? 'Chủ dòng họ' : 'Quản trị viên gia tộc';
-
-    const newBroadcast: ClanBroadcastItem = {
-      id: `broadcast-${Date.now()}`,
-      clanName: clanName || 'Dòng Họ Võ Đại Tộc',
-      senderName: senderDisplay,
-      senderRole: senderRoleTitle,
-      title: composerForm.title.trim(),
-      content: composerForm.content.trim(),
-      category: composerForm.category,
-      targetAudience: composerForm.targetAudience,
-      priority: composerForm.priority,
-      channels: {
-        inApp: composerForm.inApp,
-        email: composerForm.email,
-        push: composerForm.push,
-      },
-      createdAt: formattedDate,
-      recipientCount: composerForm.targetAudience === 'council' ? 18 : 142,
-      readCount: 1,
-    };
-
-    const nextBroadcasts = [newBroadcast, ...broadcasts];
-    setBroadcasts(nextBroadcasts);
     try {
-      localStorage.setItem(BROADCAST_STORAGE_KEY, JSON.stringify(nextBroadcasts));
-    } catch {
-      // Ignored
+      await publishClanAnnouncement(effectiveClanId, {
+        title: composerForm.title.trim(),
+        content: composerForm.content.trim(),
+        category: composerForm.category,
+        targetAudience: composerForm.targetAudience,
+        priority: composerForm.priority,
+        channels: {
+          inApp: composerForm.inApp,
+          email: composerForm.email,
+          push: composerForm.push,
+        },
+      });
+
+      // Tải lại thông báo từ máy chủ
+      await loadData();
+
+      setComposerForm({
+        title: '',
+        category: 'event',
+        targetAudience: 'all',
+        priority: 'normal',
+        inApp: true,
+        email: true,
+        push: false,
+        content: '',
+      });
+      setComposerError('');
+      setIsComposerOpen(false);
+      setActiveMainTab('broadcasts');
+      setNotice({
+        type: 'success',
+        text: `Đã phát thông báo thành công đến ${
+          AUDIENCE_OPTIONS.find((a) => a.id === composerForm.targetAudience)?.label || 'thành viên dòng họ'
+        }!`,
+      });
+    } catch (err: any) {
+      console.error('Lỗi phát thông báo:', err);
+      setComposerError(err?.response?.data?.detail || 'Không thể phát thông báo. Vui lòng kiểm tra quyền hạn.');
     }
-
-    // Đẩy vào hộp thư
-    const newNotifItem: NotificationItem = {
-      id: `notif-${Date.now()}`,
-      category: composerForm.category,
-      title: composerForm.title.trim(),
-      content: composerForm.content.trim(),
-      createdAt: 'Vừa xong',
-      read: false,
-      senderName: senderDisplay,
-      targetAudience: AUDIENCE_OPTIONS.find((a) => a.id === composerForm.targetAudience)?.label,
-    };
-    setNotifications((prev) => [newNotifItem, ...prev]);
-
-    setComposerForm({
-      title: '',
-      category: 'event',
-      targetAudience: 'all',
-      priority: 'normal',
-      inApp: true,
-      email: true,
-      push: false,
-      content: '',
-    });
-    setComposerError('');
-    setIsComposerOpen(false);
-    setActiveMainTab('broadcasts');
-    setNotice({
-      type: 'success',
-      text: `Đã phát thông báo thành công đến ${
-        AUDIENCE_OPTIONS.find((a) => a.id === composerForm.targetAudience)?.label || 'dòng họ'
-      }!`,
-    });
   };
 
   const handleDeleteBroadcast = (id: string) => {

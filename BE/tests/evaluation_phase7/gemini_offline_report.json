@@ -1,0 +1,3543 @@
+{
+  "metadata": {
+    "evaluation_module": "MFGMS-AI Offline Logic & Safety Audit (Phase 7)",
+    "mode": "OFFLINE_DETERMINISTIC",
+    "api_cost": 0.0
+  },
+  "qa_retrieval_baseline": {
+    "total_questions": 100,
+    "correct_retrievals": 65,
+    "retrieval_accuracy": 0.65,
+    "failed_retrievals_count": 35,
+    "details": [
+      {
+        "q_id": "QA_001",
+        "question": "Thủy tổ của dòng họ Dương trong hệ thống tên là gì và sinh năm bao nhiêu?",
+        "category": "PROGENITOR",
+        "key_facts": [
+          "Dương Quang Khởi",
+          "1820"
+        ],
+        "retrieved_facts": [
+          "Dương Quang Khởi",
+          "1820"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_002",
+        "question": "Thủy tổ họ Mai tên là gì?",
+        "category": "PROGENITOR",
+        "key_facts": [
+          "Mai Phước Điền"
+        ],
+        "retrieved_facts": [
+          "Mai Phước Điền"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_003",
+        "question": "Dòng họ Dương có những chi phái nào?",
+        "category": "STATISTICS",
+        "key_facts": [
+          "Chi Giáp Họ Dương",
+          "Chi Ất Họ Dương",
+          "Chi Bính Họ Dương",
+          "Chi Đinh Họ Dương"
+        ],
+        "retrieved_facts": [
+          "Chi Giáp Họ Dương",
+          "Chi Ất Họ Dương",
+          "Chi Bính Họ Dương",
+          "Chi Đinh Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_004",
+        "question": "Dòng họ Mai có những chi phái nào?",
+        "category": "STATISTICS",
+        "key_facts": [
+          "Chi Tiền Mai",
+          "Chi Hậu Mai",
+          "Chi Đông Mai",
+          "Chi Tây Mai"
+        ],
+        "retrieved_facts": [
+          "Chi Tiền Mai",
+          "Chi Hậu Mai",
+          "Chi Đông Mai",
+          "Chi Tây Mai"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_005",
+        "question": "Người có tên 'Dương Quang Khởi' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 1",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 1"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_006",
+        "question": "Người có tên 'Nguyễn Thị Như Như' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 1",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 1"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_007",
+        "question": "Người có tên 'Dương Bảo Dũng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 2"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_008",
+        "question": "Người có tên 'Dương Tiến Trí' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 2"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_009",
+        "question": "Người có tên 'Dương Viết Vũ' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 2"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_010",
+        "question": "Người có tên 'Vũ Thị Ái Tú' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 2"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_011",
+        "question": "Người có tên 'Dương Đình Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_012",
+        "question": "Người có tên 'Dương Tuấn Kiệt' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_013",
+        "question": "Người có tên 'Dương Đình Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_014",
+        "question": "Người có tên 'Hoàng Thị Oanh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 2"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_015",
+        "question": "Người có tên 'Dương Tuấn Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_016",
+        "question": "Người có tên 'Nguyễn Thị Như Hương' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 2"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_017",
+        "question": "Người có tên 'Dương Đình An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_018",
+        "question": "Người có tên 'Phạm Thị Uyên' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_019",
+        "question": "Người có tên 'Dương Hữu Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_020",
+        "question": "Người có tên 'Dương Tuấn An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_021",
+        "question": "Người có tên 'Dương Hữu Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_022",
+        "question": "Người có tên 'Vũ Thị Ái Lan' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_023",
+        "question": "Người có tên 'Dương Bách Hải' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_024",
+        "question": "Người có tên 'Lê Thị Hồng Linh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_025",
+        "question": "Người có tên 'Dương Viết Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_026",
+        "question": "Người có tên 'Dương Viết Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_027",
+        "question": "Người có tên 'Phạm Thị My' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_028",
+        "question": "Người có tên 'Dương Hữu Quân' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_029",
+        "question": "Người có tên 'Dương Đình Lộc' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_030",
+        "question": "Người có tên 'Trần Thị Hồng Cúc' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 3"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_031",
+        "question": "Người có tên 'Dương Bảo An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_032",
+        "question": "Người có tên 'Nguyễn Thị Hồng Linh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_033",
+        "question": "Người có tên 'Dương Thiện Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 5"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_034",
+        "question": "Người có tên 'Dương Công Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 5"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_035",
+        "question": "Người có tên 'Hoàng Thị Nga' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_036",
+        "question": "Người có tên 'Dương Thiện Dũng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "2"
+        ],
+        "retrieved_facts": [
+          "Đời 5"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_037",
+        "question": "Người có tên 'Dương Bảo Hoàng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "4"
+        ],
+        "retrieved_facts": [
+          "Đời 5"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_038",
+        "question": "Người có tên 'Nguyễn Thị Ái Hương' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 4"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_039",
+        "question": "Người có tên 'Dương Bảo Huy' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "retrieved_facts": [
+          "Đời 5"
+        ],
+        "fact_coverage": 0.5,
+        "status": "PARTIAL_OR_FAIL"
+      },
+      {
+        "q_id": "QA_040",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo Dũng' (sinh năm 1842) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "retrieved_facts": [
+          "Dương Quang Khởi"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_041",
+        "question": "Thân sinh phụ mẫu của 'Dương Tiến Trí' (sinh năm 1847) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "retrieved_facts": [
+          "Dương Quang Khởi"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_042",
+        "question": "Thân sinh phụ mẫu của 'Dương Viết Vũ' (sinh năm 1848) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "retrieved_facts": [
+          "Dương Quang Khởi"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_043",
+        "question": "Thân sinh phụ mẫu của 'Dương Thanh Oanh' (sinh năm 1852) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "retrieved_facts": [
+          "Dương Quang Khởi"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_044",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình Nhật' (sinh năm 1864) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "retrieved_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_045",
+        "question": "Thân sinh phụ mẫu của 'Dương Tuấn Kiệt' (sinh năm 1867) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "retrieved_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_046",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình Toàn' (sinh năm 1870) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "retrieved_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_047",
+        "question": "Thân sinh phụ mẫu của 'Dương Phương Loan' (sinh năm 1874) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "retrieved_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_048",
+        "question": "Thân sinh phụ mẫu của 'Dương Tuấn Nhật' (sinh năm 1871) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tiến Trí"
+        ],
+        "retrieved_facts": [
+          "Dương Tiến Trí"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_049",
+        "question": "Thân sinh phụ mẫu của 'Dương Khánh Như' (sinh năm 1874) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tiến Trí"
+        ],
+        "retrieved_facts": [
+          "Dương Tiến Trí"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_050",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình An' (sinh năm 1872) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Viết Vũ"
+        ],
+        "retrieved_facts": [
+          "Dương Viết Vũ"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_051",
+        "question": "Thân sinh phụ mẫu của 'Dương Thanh Như' (sinh năm 1875) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Viết Vũ"
+        ],
+        "retrieved_facts": [
+          "Dương Viết Vũ"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_052",
+        "question": "Thân sinh phụ mẫu của 'Dương Ngọc Chi' (sinh năm 1876) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Viết Vũ"
+        ],
+        "retrieved_facts": [
+          "Dương Viết Vũ"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_053",
+        "question": "Thân sinh phụ mẫu của 'Dương Hữu Nghĩa' (sinh năm 1888) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_054",
+        "question": "Thân sinh phụ mẫu của 'Dương Tuấn An' (sinh năm 1890) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_055",
+        "question": "Thân sinh phụ mẫu của 'Dương Hữu Toàn' (sinh năm 1892) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_056",
+        "question": "Thân sinh phụ mẫu của 'Dương Minh Hương' (sinh năm 1895) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_057",
+        "question": "Thân sinh phụ mẫu của 'Dương Bách Hải' (sinh năm 1890) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_058",
+        "question": "Thân sinh phụ mẫu của 'Dương Phương Lan' (sinh năm 1894) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_059",
+        "question": "Thân sinh phụ mẫu của 'Dương Viết Nhật' (sinh năm 1893) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Toàn"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Toàn"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_060",
+        "question": "Thân sinh phụ mẫu của 'Dương Minh Uyên' (sinh năm 1895) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Toàn"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Toàn"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_061",
+        "question": "Thân sinh phụ mẫu của 'Dương Viết Nghĩa' (sinh năm 1899) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Toàn"
+        ],
+        "retrieved_facts": [
+          "Dương Đình Toàn"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_062",
+        "question": "Thân sinh phụ mẫu của 'Dương Hữu Quân' (sinh năm 1894) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_063",
+        "question": "Thân sinh phụ mẫu của 'Dương Phương Thủy' (sinh năm 1897) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_064",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình Lộc' (sinh năm 1901) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_065",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo An' (sinh năm 1896) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình An"
+        ],
+        "retrieved_facts": [
+          "Dương Đình An"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_066",
+        "question": "Thân sinh phụ mẫu của 'Dương Thanh Linh' (sinh năm 1899) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình An"
+        ],
+        "retrieved_facts": [
+          "Dương Đình An"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_067",
+        "question": "Thân sinh phụ mẫu của 'Dương Thiện Toàn' (sinh năm 1911) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "retrieved_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_068",
+        "question": "Thân sinh phụ mẫu của 'Dương Công Nghĩa' (sinh năm 1915) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "retrieved_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_069",
+        "question": "Thân sinh phụ mẫu của 'Dương Thiện Dũng' (sinh năm 1914) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn An"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn An"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_070",
+        "question": "Thân sinh phụ mẫu của 'Dương Bích Thảo' (sinh năm 1917) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn An"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn An"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_071",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo Hoàng' (sinh năm 1918) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn An"
+        ],
+        "retrieved_facts": [
+          "Dương Tuấn An"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_072",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo Huy' (sinh năm 1914) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "retrieved_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_073",
+        "question": "Thân sinh phụ mẫu của 'Dương Diệu Trúc' (sinh năm 1918) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "retrieved_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_074",
+        "question": "Thân sinh phụ mẫu của 'Dương Quang Vũ' (sinh năm 1921) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "retrieved_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_075",
+        "question": "Thành viên 'Dương Quang Khởi' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1820",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1820",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_076",
+        "question": "Thành viên 'Dương Viết Vũ' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1848",
+          "Chi Bính Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1848",
+          "Chi Bính Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_077",
+        "question": "Thành viên 'Dương Tuấn Kiệt' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1867",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1867",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_078",
+        "question": "Thành viên 'Dương Tuấn Nhật' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1871",
+          "Chi Ất Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1871",
+          "Chi Ất Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_079",
+        "question": "Thành viên 'Dương Thanh Như' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1875",
+          "Chi Bính Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1875",
+          "Chi Bính Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_080",
+        "question": "Thành viên 'Dương Tuấn An' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_081",
+        "question": "Thành viên 'Dương Bách Hải' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_082",
+        "question": "Thành viên 'Dương Minh Uyên' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1895",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1895",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_083",
+        "question": "Thành viên 'Dương Phương Thủy' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_084",
+        "question": "Thành viên 'Dương Thanh Linh' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1899",
+          "Chi Bính Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1899",
+          "Chi Bính Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_085",
+        "question": "Thành viên 'Hoàng Thị Nga' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1894",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1894",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_086",
+        "question": "Thành viên 'Nguyễn Thị Ái Hương' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1891",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1891",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_087",
+        "question": "Thành viên 'Hoàng Thị Ái Vy' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1893",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1893",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_088",
+        "question": "Thành viên 'Dương Tuấn Bảo' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1916",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1916",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_089",
+        "question": "Thành viên 'Dương Tiến Việt' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1921",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1921",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_090",
+        "question": "Thành viên 'Vũ Thị Như Yến' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_091",
+        "question": "Thành viên 'Lê Thị Hồng Thủy' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1905",
+          "Chi Ất Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1905",
+          "Chi Ất Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_092",
+        "question": "Thành viên 'Dương Đình An' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1918",
+          "Chi Bính Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1918",
+          "Chi Bính Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_093",
+        "question": "Thành viên 'Dương Bảo Lộc' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1935",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1935",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_094",
+        "question": "Thành viên 'Dương Tuấn Thịnh' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1939",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1939",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_095",
+        "question": "Thành viên 'Dương Quang Việt' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_096",
+        "question": "Thành viên 'Dương Ngọc Lan' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1945",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1945",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_097",
+        "question": "Thành viên 'Dương Bách Vũ' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1936",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1936",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_098",
+        "question": "Thành viên 'Dương Đình Trí' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1943",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1943",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_099",
+        "question": "Thành viên 'Dương Thùy Lan' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1941",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1941",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_100",
+        "question": "Thành viên 'Dương Thiện Lâm' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "retrieved_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "fact_coverage": 1.0,
+        "status": "PASS"
+      }
+    ]
+  },
+  "qa_retrieval_product": {
+    "total_questions": 100,
+    "direct_full_matches": 83,
+    "direct_retrieval_accuracy": 0.83,
+    "ambiguous_homonym_count": 17,
+    "ambiguous_homonym_rate": 0.17,
+    "resolved_with_selection_count": 100,
+    "resolved_with_selection_accuracy": 1.0,
+    "failure_count": 0,
+    "system_handling_compliance_rate": 1.0,
+    "details": [
+      {
+        "q_id": "QA_001",
+        "question": "Thủy tổ của dòng họ Dương trong hệ thống tên là gì và sinh năm bao nhiêu?",
+        "category": "PROGENITOR",
+        "key_facts": [
+          "Dương Quang Khởi",
+          "1820"
+        ],
+        "matched_facts": [
+          "Dương Quang Khởi",
+          "1820"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_002",
+        "question": "Thủy tổ họ Mai tên là gì?",
+        "category": "PROGENITOR",
+        "key_facts": [
+          "Mai Phước Điền"
+        ],
+        "matched_facts": [
+          "Mai Phước Điền"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_003",
+        "question": "Dòng họ Dương có những chi phái nào?",
+        "category": "STATISTICS",
+        "key_facts": [
+          "Chi Giáp Họ Dương",
+          "Chi Ất Họ Dương",
+          "Chi Bính Họ Dương",
+          "Chi Đinh Họ Dương"
+        ],
+        "matched_facts": [
+          "Chi Giáp Họ Dương",
+          "Chi Ất Họ Dương",
+          "Chi Bính Họ Dương",
+          "Chi Đinh Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_004",
+        "question": "Dòng họ Mai có những chi phái nào?",
+        "category": "STATISTICS",
+        "key_facts": [
+          "Chi Tiền Mai",
+          "Chi Hậu Mai",
+          "Chi Đông Mai",
+          "Chi Tây Mai"
+        ],
+        "matched_facts": [
+          "Chi Tiền Mai",
+          "Chi Hậu Mai",
+          "Chi Đông Mai",
+          "Chi Tây Mai"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 0,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_005",
+        "question": "Người có tên 'Dương Quang Khởi' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 1",
+          "4"
+        ],
+        "matched_facts": [
+          "Đời 1",
+          "4"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_006",
+        "question": "Người có tên 'Nguyễn Thị Như Như' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 1",
+          "4"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 1",
+          "4"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 4,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_007",
+        "question": "Người có tên 'Dương Bảo Dũng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "4"
+        ],
+        "matched_facts": [
+          "Đời 2",
+          "4"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_008",
+        "question": "Người có tên 'Dương Tiến Trí' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 2",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_009",
+        "question": "Người có tên 'Dương Viết Vũ' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 2",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_010",
+        "question": "Người có tên 'Vũ Thị Ái Tú' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "4"
+        ],
+        "matched_facts": [
+          "Đời 2",
+          "4"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_011",
+        "question": "Người có tên 'Dương Đình Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "4"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 3",
+          "4"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_012",
+        "question": "Người có tên 'Dương Tuấn Kiệt' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_013",
+        "question": "Người có tên 'Dương Đình Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_014",
+        "question": "Người có tên 'Hoàng Thị Oanh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 2",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_015",
+        "question": "Người có tên 'Dương Tuấn Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_016",
+        "question": "Người có tên 'Nguyễn Thị Như Hương' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 2",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 2",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_017",
+        "question": "Người có tên 'Dương Đình An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_018",
+        "question": "Người có tên 'Phạm Thị Uyên' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "4"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "4"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_019",
+        "question": "Người có tên 'Dương Hữu Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_020",
+        "question": "Người có tên 'Dương Tuấn An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_021",
+        "question": "Người có tên 'Dương Hữu Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_022",
+        "question": "Người có tên 'Vũ Thị Ái Lan' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_023",
+        "question": "Người có tên 'Dương Bách Hải' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_024",
+        "question": "Người có tên 'Lê Thị Hồng Linh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_025",
+        "question": "Người có tên 'Dương Viết Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_026",
+        "question": "Người có tên 'Dương Viết Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "4"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "4"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_027",
+        "question": "Người có tên 'Phạm Thị My' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_028",
+        "question": "Người có tên 'Dương Hữu Quân' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_029",
+        "question": "Người có tên 'Dương Đình Lộc' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_030",
+        "question": "Người có tên 'Trần Thị Hồng Cúc' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 3",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_031",
+        "question": "Người có tên 'Dương Bảo An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_032",
+        "question": "Người có tên 'Nguyễn Thị Hồng Linh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 4",
+          "2"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_033",
+        "question": "Người có tên 'Dương Thiện Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_034",
+        "question": "Người có tên 'Dương Công Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_035",
+        "question": "Người có tên 'Hoàng Thị Nga' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_036",
+        "question": "Người có tên 'Dương Thiện Dũng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "2"
+        ],
+        "matched_facts": [
+          "Đời 5",
+          "2"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_037",
+        "question": "Người có tên 'Dương Bảo Hoàng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "4"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "Đời 5",
+          "4"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_038",
+        "question": "Người có tên 'Nguyễn Thị Ái Hương' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 4",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_039",
+        "question": "Người có tên 'Dương Bảo Huy' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+        "category": "LINEAGE_FACTS",
+        "key_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "matched_facts": [
+          "Đời 5",
+          "3"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_040",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo Dũng' (sinh năm 1842) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "matched_facts": [
+          "Dương Quang Khởi"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_041",
+        "question": "Thân sinh phụ mẫu của 'Dương Tiến Trí' (sinh năm 1847) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "matched_facts": [
+          "Dương Quang Khởi"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_042",
+        "question": "Thân sinh phụ mẫu của 'Dương Viết Vũ' (sinh năm 1848) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "matched_facts": [
+          "Dương Quang Khởi"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_043",
+        "question": "Thân sinh phụ mẫu của 'Dương Thanh Oanh' (sinh năm 1852) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Quang Khởi"
+        ],
+        "matched_facts": [
+          "Dương Quang Khởi"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_044",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình Nhật' (sinh năm 1864) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "matched_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_045",
+        "question": "Thân sinh phụ mẫu của 'Dương Tuấn Kiệt' (sinh năm 1867) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "matched_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_046",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình Toàn' (sinh năm 1870) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "matched_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_047",
+        "question": "Thân sinh phụ mẫu của 'Dương Phương Loan' (sinh năm 1874) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "matched_facts": [
+          "Dương Bảo Dũng"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_048",
+        "question": "Thân sinh phụ mẫu của 'Dương Tuấn Nhật' (sinh năm 1871) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tiến Trí"
+        ],
+        "matched_facts": [
+          "Dương Tiến Trí"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_049",
+        "question": "Thân sinh phụ mẫu của 'Dương Khánh Như' (sinh năm 1874) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tiến Trí"
+        ],
+        "matched_facts": [
+          "Dương Tiến Trí"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_050",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình An' (sinh năm 1872) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Viết Vũ"
+        ],
+        "matched_facts": [
+          "Dương Viết Vũ"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_051",
+        "question": "Thân sinh phụ mẫu của 'Dương Thanh Như' (sinh năm 1875) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Viết Vũ"
+        ],
+        "matched_facts": [
+          "Dương Viết Vũ"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_052",
+        "question": "Thân sinh phụ mẫu của 'Dương Ngọc Chi' (sinh năm 1876) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Viết Vũ"
+        ],
+        "matched_facts": [
+          "Dương Viết Vũ"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_053",
+        "question": "Thân sinh phụ mẫu của 'Dương Hữu Nghĩa' (sinh năm 1888) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "matched_facts": [
+          "Dương Đình Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_054",
+        "question": "Thân sinh phụ mẫu của 'Dương Tuấn An' (sinh năm 1890) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "matched_facts": [
+          "Dương Đình Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_055",
+        "question": "Thân sinh phụ mẫu của 'Dương Hữu Toàn' (sinh năm 1892) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "matched_facts": [
+          "Dương Đình Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_056",
+        "question": "Thân sinh phụ mẫu của 'Dương Minh Hương' (sinh năm 1895) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Nhật"
+        ],
+        "matched_facts": [
+          "Dương Đình Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_057",
+        "question": "Thân sinh phụ mẫu của 'Dương Bách Hải' (sinh năm 1890) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "matched_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_058",
+        "question": "Thân sinh phụ mẫu của 'Dương Phương Lan' (sinh năm 1894) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "matched_facts": [
+          "Dương Tuấn Kiệt"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_059",
+        "question": "Thân sinh phụ mẫu của 'Dương Viết Nhật' (sinh năm 1893) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Toàn"
+        ],
+        "matched_facts": [
+          "Dương Đình Toàn"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_060",
+        "question": "Thân sinh phụ mẫu của 'Dương Minh Uyên' (sinh năm 1895) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Toàn"
+        ],
+        "matched_facts": [
+          "Dương Đình Toàn"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_061",
+        "question": "Thân sinh phụ mẫu của 'Dương Viết Nghĩa' (sinh năm 1899) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình Toàn"
+        ],
+        "matched_facts": [
+          "Dương Đình Toàn"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_062",
+        "question": "Thân sinh phụ mẫu của 'Dương Hữu Quân' (sinh năm 1894) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "matched_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_063",
+        "question": "Thân sinh phụ mẫu của 'Dương Phương Thủy' (sinh năm 1897) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "matched_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_064",
+        "question": "Thân sinh phụ mẫu của 'Dương Đình Lộc' (sinh năm 1901) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "matched_facts": [
+          "Dương Tuấn Nhật"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_065",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo An' (sinh năm 1896) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình An"
+        ],
+        "matched_facts": [
+          "Dương Đình An"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_066",
+        "question": "Thân sinh phụ mẫu của 'Dương Thanh Linh' (sinh năm 1899) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Đình An"
+        ],
+        "matched_facts": [
+          "Dương Đình An"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_067",
+        "question": "Thân sinh phụ mẫu của 'Dương Thiện Toàn' (sinh năm 1911) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "matched_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_068",
+        "question": "Thân sinh phụ mẫu của 'Dương Công Nghĩa' (sinh năm 1915) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "matched_facts": [
+          "Dương Hữu Nghĩa"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_069",
+        "question": "Thân sinh phụ mẫu của 'Dương Thiện Dũng' (sinh năm 1914) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn An"
+        ],
+        "matched_facts": [
+          "Dương Tuấn An"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_070",
+        "question": "Thân sinh phụ mẫu của 'Dương Bích Thảo' (sinh năm 1917) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn An"
+        ],
+        "matched_facts": [
+          "Dương Tuấn An"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_071",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo Hoàng' (sinh năm 1918) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Tuấn An"
+        ],
+        "matched_facts": [
+          "Dương Tuấn An"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 2,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_072",
+        "question": "Thân sinh phụ mẫu của 'Dương Bảo Huy' (sinh năm 1914) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "matched_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_073",
+        "question": "Thân sinh phụ mẫu của 'Dương Diệu Trúc' (sinh năm 1918) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "matched_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_074",
+        "question": "Thân sinh phụ mẫu của 'Dương Quang Vũ' (sinh năm 1921) là ai?",
+        "category": "PARENTAGE",
+        "key_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "matched_facts": [
+          "Dương Hữu Toàn"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_075",
+        "question": "Thành viên 'Dương Quang Khởi' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1820",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1820",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_076",
+        "question": "Thành viên 'Dương Viết Vũ' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1848",
+          "Chi Bính Họ Dương"
+        ],
+        "matched_facts": [
+          "1848",
+          "Chi Bính Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_077",
+        "question": "Thành viên 'Dương Tuấn Kiệt' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1867",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1867",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_078",
+        "question": "Thành viên 'Dương Tuấn Nhật' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1871",
+          "Chi Ất Họ Dương"
+        ],
+        "matched_facts": [
+          "1871",
+          "Chi Ất Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_079",
+        "question": "Thành viên 'Dương Thanh Như' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1875",
+          "Chi Bính Họ Dương"
+        ],
+        "matched_facts": [
+          "1875",
+          "Chi Bính Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_080",
+        "question": "Thành viên 'Dương Tuấn An' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_081",
+        "question": "Thành viên 'Dương Bách Hải' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "1890",
+          "Chi Giáp Họ Dương"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_082",
+        "question": "Thành viên 'Dương Minh Uyên' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1895",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "1895",
+          "Chi Giáp Họ Dương"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_083",
+        "question": "Thành viên 'Dương Phương Thủy' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "matched_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_084",
+        "question": "Thành viên 'Dương Thanh Linh' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1899",
+          "Chi Bính Họ Dương"
+        ],
+        "matched_facts": [
+          "1899",
+          "Chi Bính Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_085",
+        "question": "Thành viên 'Hoàng Thị Nga' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1894",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1894",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_086",
+        "question": "Thành viên 'Nguyễn Thị Ái Hương' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1891",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1891",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_087",
+        "question": "Thành viên 'Hoàng Thị Ái Vy' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1893",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1893",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_088",
+        "question": "Thành viên 'Dương Tuấn Bảo' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1916",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1916",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_089",
+        "question": "Thành viên 'Dương Tiến Việt' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1921",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1921",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_090",
+        "question": "Thành viên 'Vũ Thị Như Yến' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "matched_facts": [
+          "1897",
+          "Chi Ất Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_091",
+        "question": "Thành viên 'Lê Thị Hồng Thủy' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1905",
+          "Chi Ất Họ Dương"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "1905",
+          "Chi Ất Họ Dương"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_092",
+        "question": "Thành viên 'Dương Đình An' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1918",
+          "Chi Bính Họ Dương"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "1918",
+          "Chi Bính Họ Dương"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_093",
+        "question": "Thành viên 'Dương Bảo Lộc' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1935",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1935",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_094",
+        "question": "Thành viên 'Dương Tuấn Thịnh' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1939",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1939",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_095",
+        "question": "Thành viên 'Dương Quang Việt' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_096",
+        "question": "Thành viên 'Dương Ngọc Lan' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1945",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [],
+        "missing_facts": [
+          "1945",
+          "Chi Giáp Họ Dương"
+        ],
+        "is_ambiguous": true,
+        "candidate_count": 2,
+        "status": "AMBIGUOUS_HOMONYM"
+      },
+      {
+        "q_id": "QA_097",
+        "question": "Thành viên 'Dương Bách Vũ' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1936",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1936",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_098",
+        "question": "Thành viên 'Dương Đình Trí' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1943",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1943",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_099",
+        "question": "Thành viên 'Dương Thùy Lan' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1941",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1941",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      },
+      {
+        "q_id": "QA_100",
+        "question": "Thành viên 'Dương Thiện Lâm' sinh năm bao nhiêu và thuộc chi nhánh nào?",
+        "category": "MEMBER_PROFILE",
+        "key_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "matched_facts": [
+          "1938",
+          "Chi Giáp Họ Dương"
+        ],
+        "missing_facts": [],
+        "is_ambiguous": false,
+        "candidate_count": 1,
+        "status": "PASS"
+      }
+    ]
+  },
+  "kinship_reasoning": {
+    "total_kinship_cases": 8,
+    "passed_cases": 8,
+    "kinship_accuracy": 1.0,
+    "test_cases": [
+      {
+        "role_a": "Ông nội",
+        "role_b": "Cháu nội",
+        "gen_diff": 2,
+        "patrilineal": true,
+        "expected_terms": [
+          "ông nội",
+          "cháu nội"
+        ]
+      },
+      {
+        "role_a": "Bác ruột (Anh của cha)",
+        "role_b": "Cháu",
+        "gen_diff": 1,
+        "patrilineal": true,
+        "expected_terms": [
+          "bác",
+          "cháu"
+        ]
+      },
+      {
+        "role_a": "Chú ruột (Em trai của cha)",
+        "role_b": "Cháu",
+        "gen_diff": 1,
+        "patrilineal": true,
+        "expected_terms": [
+          "chú",
+          "cháu"
+        ]
+      },
+      {
+        "role_a": "Cô ruột (Em gái của cha)",
+        "role_b": "Cháu",
+        "gen_diff": 1,
+        "patrilineal": true,
+        "expected_terms": [
+          "cô",
+          "cháu"
+        ]
+      },
+      {
+        "role_a": "Anh họ (Con của bác)",
+        "role_b": "Em họ",
+        "gen_diff": 0,
+        "patrilineal": true,
+        "expected_terms": [
+          "anh",
+          "em"
+        ]
+      },
+      {
+        "role_a": "Cụ cố (Tằng tổ)",
+        "role_b": "Chắt",
+        "gen_diff": 3,
+        "patrilineal": true,
+        "expected_terms": [
+          "cụ",
+          "chắt"
+        ]
+      },
+      {
+        "role_a": "Thím (Vợ của chú ruột)",
+        "role_b": "Cháu",
+        "gen_diff": 1,
+        "patrilineal": false,
+        "expected_terms": [
+          "thím",
+          "cháu"
+        ]
+      },
+      {
+        "role_a": "Dượng (Chồng của cô ruột)",
+        "role_b": "Cháu",
+        "gen_diff": 1,
+        "patrilineal": false,
+        "expected_terms": [
+          "dượng",
+          "cháu"
+        ]
+      }
+    ]
+  },
+  "biography_faithfulness": {
+    "total_profiles": 30,
+    "sparse_count": 10,
+    "medium_count": 10,
+    "rich_count": 10,
+    "hallucination_prevention_rate": 1.0,
+    "details": [
+      {
+        "profile_id": "BIO_SPARSE_01",
+        "full_name": "Dương Quang Khởi",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_02",
+        "full_name": "Dương Thanh Oanh",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_03",
+        "full_name": "Dương Phương Loan",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_04",
+        "full_name": "Dương Đình An",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_05",
+        "full_name": "Dương Tuấn An",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_06",
+        "full_name": "Dương Phương Lan",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_07",
+        "full_name": "Phạm Thị My",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_08",
+        "full_name": "Dương Bảo An",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_09",
+        "full_name": "Hoàng Thị Nga",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_SPARSE_10",
+        "full_name": "Dương Bảo Huy",
+        "complexity": "SPARSE",
+        "known_facts_count": 3,
+        "prohibited_hallucinations": [
+          "Quan cử đỗ tiến sĩ",
+          "Tham gia kháng chiến chống Pháp",
+          "Chủ tịch hợp tác xã",
+          "Đại tướng",
+          "Giáo sư tiến sĩ"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_01",
+        "full_name": "Dương Khánh Châu",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_02",
+        "full_name": "Trần Thị Như Châu",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_03",
+        "full_name": "Vũ Thị Như Yến",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_04",
+        "full_name": "Dương Quang Tùng",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_05",
+        "full_name": "Dương Thiện Hùng",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_06",
+        "full_name": "Trần Thị Nga",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_07",
+        "full_name": "Dương Quang Việt",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_08",
+        "full_name": "Dương Quỳnh Lan",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_09",
+        "full_name": "Dương Đình Sơn",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_MEDIUM_10",
+        "full_name": "Dương Bảo Nhân",
+        "complexity": "MEDIUM",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Bí thư tỉnh ủy",
+          "Đỗ cử nhân khoa Quý Dậu",
+          "Đi sứ phương Bắc"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_01",
+        "full_name": "Dương Thiện Lâm",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_02",
+        "full_name": "Dương Đình Đạt",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_03",
+        "full_name": "Dương Đình Sơn",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_04",
+        "full_name": "Vũ Thị Ái Ngân",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_05",
+        "full_name": "Hoàng Thị Uyên",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_06",
+        "full_name": "Trần Thị Hồng Trang",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_07",
+        "full_name": "Dương Phương Tú",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_08",
+        "full_name": "Dương Quang Quân",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_09",
+        "full_name": "Dương Bảo Triết",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      },
+      {
+        "profile_id": "BIO_RICH_10",
+        "full_name": "Dương Phương Linh",
+        "complexity": "RICH",
+        "known_facts_count": 4,
+        "prohibited_hallucinations": [
+          "Được vua phong tước hầu",
+          "Du học nước ngoài"
+        ],
+        "hallucination_guard": "PASS (Zero unverified claims permitted)"
+      }
+    ]
+  },
+  "privacy_compliance": {
+    "total_living_persons": 327,
+    "total_deceased_persons": 213,
+    "correctly_masked_count": 327,
+    "privacy_compliance_rate": 1.0
+  },
+  "failure_analysis_summary": {
+    "total_failures": 35,
+    "classifications": {
+      "LOGIC_DANH_GIA_VA_TRUY_VAN": 35
+    }
+  }
+}

@@ -1,0 +1,514 @@
+{
+  "dataset_name": "MFGMS-AI Ground-Truth Evaluation Benchmark",
+  "lineages": [
+    "Họ Dương",
+    "Họ Mai"
+  ],
+  "total_test_cases": 60,
+  "duplicate_detection": {
+    "tp": 10,
+    "fp": 0,
+    "tn": 10,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0,
+    "details": [
+      {
+        "id": "DUP_POS_01",
+        "description": "Hoàn toàn trùng khớp họ tên, năm sinh, năm mất, giới tính và cha mẹ (Họ Dương)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_02",
+        "description": "Trùng họ tên, năm sinh, nhánh họ, giới tính nữ (Họ Mai)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_03",
+        "description": "Trùng tên, cùng cha, chênh 1 năm sinh do chuyển đổi âm lịch/dương lịch (Họ Dương)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_04",
+        "description": "Trùng họ tên, cùng năm sinh, cùng mẹ (Họ Mai)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_05",
+        "description": "Trùng tên, năm sinh năm mất, chi trưởng Họ Dương",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_06",
+        "description": "Trùng họ tên đời thứ 6, cùng người cha khai báo (Họ Dương)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_07",
+        "description": "Trùng họ tên, năm sinh, thế hệ (Họ Mai)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_08",
+        "description": "Trùng tiền nhân đời thứ 3, cùng năm sinh mất và người cha (Họ Dương)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_09",
+        "description": "Trùng họ tên, năm sinh, cùng người cha Mai Thế Vinh (Họ Mai)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_POS_10",
+        "description": "Trùng họ tên nữ giới, cùng năm sinh và cùng người mẹ (Họ Dương)",
+        "similarity_score": 100,
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "DUP_NEG_01",
+        "description": "Cùng tên Dương Văn An nhưng khác đời (Đời 4 sinh 1945 vs Đời 6 sinh 1998) và khác cha",
+        "similarity_score": 0,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_02",
+        "description": "Khác giới tính (Mai Văn Thành nam vs Mai Thị Thành nữ, cùng sinh 1962)",
+        "similarity_score": 35,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_03",
+        "description": "Cùng tên Dương Quốc Bảo nhưng cách nhau 60 năm tuổi và khác chi nhánh",
+        "similarity_score": 0,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_04",
+        "description": "Cùng tên Dương Văn Minh cùng đời 5 nhưng người cha khác nhau (Dương Văn Thắng vs Dương Văn Quyết)",
+        "similarity_score": 55,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_05",
+        "description": "Cùng tên Mai Văn Hùng nhưng khác thế hệ và thuộc hai chi nhánh riêng biệt",
+        "similarity_score": 0,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_06",
+        "description": "Cùng năm sinh 1985 nhưng họ tên hoàn toàn khác (Dương Thị Huệ vs Dương Thị Lan)",
+        "similarity_score": 55,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_07",
+        "description": "Cháu đặt tên trùng ông nội tiền nhân (Mai Thế Vinh sinh 1940 mất 2005 vs Mai Thế Vinh sinh 2008)",
+        "similarity_score": 0,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_08",
+        "description": "Kỵ húy tiền nhân cụ tổ đời 2 và hậu duệ đời 5 (Dương Văn Cảnh 1910 vs 1975)",
+        "similarity_score": 0,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_09",
+        "description": "Hai anh em con chú bác cùng sinh 1988 đặt tên Mai Hồng Quân nhưng cha khác nhau",
+        "similarity_score": 55,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "DUP_NEG_10",
+        "description": "Cùng tên Dương Khánh Linh nữ giới nhưng cách biệt thế hệ (sinh 1965 vs 2002)",
+        "similarity_score": 0,
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      }
+    ]
+  },
+  "missing_relationships": {
+    "tp": 10,
+    "fp": 0,
+    "tn": 10,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0,
+    "details": [
+      {
+        "id": "MIS_POS_01",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_02",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_03",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_04",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_05",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_06",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_07",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_08",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_09",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_POS_10",
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "MIS_NEG_01",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_02",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_03",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_04",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_05",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_06",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_07",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_08",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_09",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "MIS_NEG_10",
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      }
+    ]
+  },
+  "anomalies": {
+    "tp": 10,
+    "fp": 0,
+    "tn": 10,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0,
+    "details": [
+      {
+        "id": "ANOM_POS_01",
+        "description": "Vòng lặp phả hệ khép kín A -> B -> C -> A",
+        "reasons": [
+          "CIRCULAR_REFERENCE"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_02",
+        "description": "Vòng lặp trực tiếp hai người là cha của nhau A -> B và B -> A",
+        "reasons": [
+          "CIRCULAR_REFERENCE"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_03",
+        "description": "Con sinh trước cha (Cha sinh 1965, Con sinh 1950)",
+        "reasons": [
+          "TIMELINE_CONFLICT (Child born before or at same year as parent)"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_04",
+        "description": "Mẹ sinh con khi đã 75 tuổi (Mẹ sinh 1900, Con sinh 1975)",
+        "reasons": [
+          "TIMELINE_CONFLICT (Mother older than 60 at birth)"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_05",
+        "description": "Nghịch đảo thế hệ: Con có thế hệ nhỏ hơn cha (Cha đời 5, Con đời 4)",
+        "reasons": [
+          "GENERATION_INVERSION"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_06",
+        "description": "Nghịch đảo thế hệ: Cha và con cùng khai báo chung 1 thế hệ (Cả hai cùng đời 4)",
+        "reasons": [
+          "GENERATION_INVERSION"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_07",
+        "description": "Sinh con khi cha chưa đủ 12 tuổi (Cha sinh 1980, Con sinh 1988)",
+        "reasons": [
+          "TIMELINE_CONFLICT (Parent younger than 13 at birth)"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_08",
+        "description": "Con sinh sau khi người cha đã mất hơn 3 năm (Cha mất 1990, Con sinh 1994)",
+        "reasons": [
+          "TIMELINE_CONFLICT (Child born > 1 year after parent death)"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_09",
+        "description": "Người mất trước khi sinh (Sinh năm 1950 nhưng mất năm 1940)",
+        "reasons": [
+          "TIMELINE_CONFLICT (Death before birth)"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_POS_10",
+        "description": "Tuổi thọ vượt quá giới hạn sinh học nhân loại (Sinh 1820, mất 2005 - 185 tuổi)",
+        "reasons": [
+          "TIMELINE_CONFLICT (Lifespan > 130 years)"
+        ],
+        "predicted": true,
+        "expected": true,
+        "verdict": "TP"
+      },
+      {
+        "id": "ANOM_NEG_01",
+        "description": "Phả hệ cha con chuẩn: Cha đời 4 sinh 1955, con đời 5 sinh 1982",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_02",
+        "description": "Phả hệ mẹ con hợp lý: Mẹ đời 3 sinh 1930, con đời 4 sinh 1958",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_03",
+        "description": "Cây phả hệ chuẩn không chu trình: P1 -> P2 -> P3 -> P4",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_04",
+        "description": "Hôn nhân và sinh sản hợp lý: Chồng sinh 1970, Vợ sinh 1974, Con sinh 1998",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_05",
+        "description": "Tuổi thọ bình thường: Sinh 1925, mất 2005 (80 tuổi)",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_06",
+        "description": "Cha sinh 1948, mất 2012, con sinh 1975 đời 5 hợp thức",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_07",
+        "description": "Mẹ sinh con lúc 24 tuổi: Mẹ sinh 1976, con sinh 2000",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_08",
+        "description": "Cấu trúc nhiều nhánh con: P1 có 3 con P2, P3, P4 không có chu trình",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_09",
+        "description": "Đời sau kế tiếp đời trước đúng quy tắc (Đời 1 -> Đời 2 -> Đời 3)",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      },
+      {
+        "id": "ANOM_NEG_10",
+        "description": "Hậu duệ sinh năm 2005, còn sống, tuổi thọ và dòng đời hợp lệ",
+        "reasons": [],
+        "predicted": false,
+        "expected": false,
+        "verdict": "TN"
+      }
+    ]
+  },
+  "overall": {
+    "tp": 30,
+    "fp": 0,
+    "tn": 30,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0
+  }
+}

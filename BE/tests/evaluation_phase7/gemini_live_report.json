@@ -1,0 +1,77 @@
+{
+  "total_attempted": 5,
+  "successful_calls": 5,
+  "failed_calls": 0,
+  "api_completion_rate": 1.0,
+  "failure_reasons": {},
+  "knowledge_pass": 4,
+  "knowledge_fail": 1,
+  "knowledge_accuracy": 0.8,
+  "evaluation_verdict": "HOÀN TẤT ĐÁNH GIÁ",
+  "average_latency_seconds": 0.82,
+  "details": [
+    {
+      "q_id": "QA_001",
+      "question": "Thủy tổ của dòng họ Dương trong hệ thống tên là gì và sinh năm bao nhiêu?",
+      "key_facts": [
+        "Dương Quang Khởi",
+        "1820"
+      ],
+      "ai_response": "Thủy tổ của dòng họ Dương là Dương Quang Khởi, sinh năm 1820.",
+      "call_status": "SUCCESS",
+      "knowledge_evaluation": "PASS",
+      "duration_seconds": 1.1
+    },
+    {
+      "q_id": "QA_002",
+      "question": "Thủy tổ họ Mai tên là gì?",
+      "key_facts": [
+        "Mai Phước Điền"
+      ],
+      "ai_response": "Thủy tổ họ Mai tên là Mai Phước Điền.",
+      "call_status": "SUCCESS",
+      "knowledge_evaluation": "PASS",
+      "duration_seconds": 0.82
+    },
+    {
+      "q_id": "QA_003",
+      "question": "Dòng họ Dương có những chi phái nào?",
+      "key_facts": [
+        "Chi Giáp Họ Dương",
+        "Chi Ất Họ Dương",
+        "Chi Bính Họ Dương",
+        "Chi Đinh Họ Dương"
+      ],
+      "ai_response": "Chào bạn, tôi là Trợ lý AI Gia phả MFGMS-AI.\n\nDựa trên dữ liệu phả hệ tham chiếu, Dòng họ Dương gồm có các chi sau:\n- Chi Giáp Họ Dương\n- Chi Ất Họ Dương\n- Chi Bính Họ Dương\n- Chi Đinh Họ Dương",
+      "call_status": "SUCCESS",
+      "knowledge_evaluation": "PASS",
+      "duration_seconds": 0.89
+    },
+    {
+      "q_id": "QA_004",
+      "question": "Dòng họ Mai có những chi phái nào?",
+      "key_facts": [
+        "Chi Tiền Mai",
+        "Chi Hậu Mai",
+        "Chi Đông Mai",
+        "Chi Tây Mai"
+      ],
+      "ai_response": "Dòng họ Mai gồm có các chi: Chi Tiền Mai, Chi Hậu Mai, Chi Đông Mai, Chi Tây Mai.",
+      "call_status": "SUCCESS",
+      "knowledge_evaluation": "PASS",
+      "duration_seconds": 0.69
+    },
+    {
+      "q_id": "QA_005",
+      "question": "Người có tên 'Dương Quang Khởi' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+      "key_facts": [
+        "Đời 1",
+        "4"
+      ],
+      "ai_response": "Dương Quang Khởi thuộc Đời thứ 1 và có 4 người con.",
+      "call_status": "SUCCESS",
+      "knowledge_evaluation": "PARTIAL_OR_FAIL",
+      "duration_seconds": 0.61
+    }
+  ]
+}

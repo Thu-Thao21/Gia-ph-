@@ -1,3 +1,5 @@
+import { EmptyState } from '../../../shared/Feedback/EmptyState';
+import { LoadingState } from '../../../shared/Feedback/LoadingState';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useClanContext } from '../../../context/ClanContext';
@@ -95,13 +97,16 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember, initialF
 
       <div className="member-table-card">
         {loading ? (
-          <div className="member-table-prompt-loading">
-             Đang tải danh sách thành viên từ cơ sở dữ liệu...
-          </div>
+          <LoadingState
+            message="Đang đồng bộ danh sách nhân khẩu gia tộc..."
+            subMessage="Hệ thống đang truy xuất thông tin thành viên từ cơ sở dữ liệu phả hệ."
+          />
         ) : members.length === 0 ? (
-          <div className="member-table-prompt-empty">
-             Chưa có thành viên nào phù hợp với bộ lọc.
-          </div>
+          <EmptyState
+            variant="members"
+            title="Không tìm thấy thành viên phù hợp"
+            subMessage={searchTerm ? `Không tìm thấy hồ sơ nào khớp với từ khóa "${searchTerm}". Vui lòng thử tìm kiếm bằng từ khóa khác.` : "Dòng họ hiện chưa có hồ sơ thành viên nào được lưu trữ."}
+          />
         ) : (
           <table className="member-table">
             <thead>
@@ -111,50 +116,57 @@ export const MemberList: React.FC<MemberListProps> = ({ onSelectMember, initialF
                 <th>Thế hệ</th>
                 <th>Chi / Nhánh</th>
                 <th>Nghề nghiệp</th>
-                <th>Trạng thái</th>
+                <th>Trạng thái hồ sơ</th>
                 <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {members.map((m) => (
-                <tr key={m.id} onClick={() => onSelectMember(m.id)}>
-                  <td>
-                    <div className="member-cell-info">
-                      <GenderAvatar
-                        avatarUrl={m.avatarUrl}
-                        gender={m.gender}
-                        name={m.fullName}
-                        size={32}
-                        imgClassName="member-avatar-mini"
-                      />
-                      <div>
-                        <div className="member-name-bold">{m.fullName}</div>
-                        {m.otherName && <div className="member-other-name">({m.otherName})</div>}
-                      </div>
+                <tr key={m.id} onClick={() => onSelectMember(m.id)} style={{ cursor: 'pointer' }}>
+                  <td className="member-name-cell">
+                    <GenderAvatar gender={m.gender} fullName={m.fullName} avatarUrl={m.avatarUrl} size={36} />
+                    <div className="member-name-info">
+                      <span className="member-primary-name">{m.fullName}</span>
+                      {m.otherName && <span className="member-secondary-name">({m.otherName})</span>}
                     </div>
                   </td>
-                  <td>{m.gender === 'male' ? 'Nam ' : 'Nữ '}</td>
+                  <td>{m.gender === 'male' ? 'Nam' : 'Nữ'}</td>
                   <td>
-                    <span className="member-generation-text">Đời {m.generation}</span>
+                    <span className="member-badge-generation">Đời thứ {m.generation}</span>
                   </td>
                   <td>{m.branch || 'Chưa xếp chi'}</td>
                   <td>{m.occupation || '—'}</td>
                   <td>
-                    {m.isAlive ? (
-                      <span className="member-badge-alive">Còn sống</span>
-                    ) : (
-                      <span className="member-badge-deceased">Đã mất</span>
-                    )}
+                    <div className="member-status-group">
+                      {m.isAlive ? (
+                        <span className="member-badge-alive">Còn sống</span>
+                      ) : (
+                        <span className="member-badge-deceased">Đã mất</span>
+                      )}
+                      {m.userId ? (
+                        <span className="member-badge-account is-linked" title="Đã có tài khoản người dùng liên kết">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                          </svg>
+                          Đã liên kết tài khoản
+                        </span>
+                      ) : (
+                        <span className="member-badge-account is-unlinked" title="Hồ sơ phả hệ chưa có tài khoản liên kết (tượng trưng)">
+                          Chưa liên kết tài khoản
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <button
+                      className="member-btn-view"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectMember(m.id);
                       }}
-                      className="member-view-profile-btn"
                     >
-                      Xem hồ sơ ➔
+                      Chi tiết →
                     </button>
                   </td>
                 </tr>

@@ -1,0 +1,23 @@
+/* Genealogy Excel Import Modal Specific Styles */
+.fa-preview-tab-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fa-preview-tab-btn:hover {
+  color: #1e293b;
+}
+
+.fa-preview-tab-btn.active {
+  color: #0284c7;
+  border-bottom-color: #0284c7;
+  font-weight: 700;
+}
+

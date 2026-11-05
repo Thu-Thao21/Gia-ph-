@@ -12,6 +12,11 @@ function getRoleLabel(roles: string[] = []): string {
   return 'Thành viên';
 }
 
+function isLeaderRole(roles: string[] = [], roleLabel?: string): boolean {
+  if (roleLabel === 'Trưởng tộc') return true;
+  return roles.some((r) => ['BUSINESS_OWNER', 'CLAN_ADMIN', 'FAMILY_ADMIN'].includes(r.toUpperCase()));
+}
+
 function getLineageLabel(lineageType?: string | null): string {
   if (!lineageType) return 'Bên Nội';
   return lineageType.toUpperCase() === 'MATERNAL' ? 'Bên Ngoại' : 'Bên Nội';
@@ -105,9 +110,11 @@ export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) =
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
           <span className="clan-name-text">{singleClan.clan_name}</span>
-          <span className={`clan-lineage-badge ${getLineageClass(singleClan.lineage_type)}`}>
-            {getLineageLabel(singleClan.lineage_type)}
-          </span>
+          {!isLeaderRole(singleClan.roles, roleLabel) && singleClan.lineage_type && availableClans.length > 1 && (
+            <span className={`clan-lineage-badge ${getLineageClass(singleClan.lineage_type)}`}>
+              {getLineageLabel(singleClan.lineage_type)}
+            </span>
+          )}
           <span className="clan-role-separator">—</span>
           <span className="clan-role-text">{roleLabel}</span>
         </div>
@@ -135,14 +142,29 @@ export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) =
           </svg>
           <div className="clan-selector-trigger-labels">
             <span className="clan-name-text">{activeClanName || 'Chọn dòng họ'}</span>
-            <span className={`clan-lineage-badge ${getLineageClass(activeMembership?.lineage_type)}`}>
-              {getLineageLabel(activeMembership?.lineage_type)}
-            </span>
+            {!isLeaderRole(activeMembership?.roles, activeClanRoleLabel) && activeMembership?.lineage_type && availableClans.length > 1 && (
+              <span className={`clan-lineage-badge ${getLineageClass(activeMembership?.lineage_type)}`}>
+                {getLineageLabel(activeMembership?.lineage_type)}
+              </span>
+            )}
             <span className="clan-role-separator">—</span>
             <span className="clan-role-text">{activeClanRoleLabel || 'Thành viên'}</span>
           </div>
         </div>
-        <span className={`clan-selector-arrow ${isOpen ? 'open' : ''}`}>▼</span>
+        <svg
+          className={`clan-selector-arrow ${isOpen ? 'open' : ''}`}
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
 
       {isOpen && (
@@ -172,9 +194,11 @@ export const ClanSelector: React.FC<ClanSelectorProps> = ({ isAdmin = false }) =
                   <div className="clan-item-content">
                     <div className="clan-item-header-row">
                       <span className="clan-item-name">{clan.clan_name}</span>
-                      <span className={`clan-lineage-badge ${getLineageClass(clan.lineage_type)}`}>
-                        {getLineageLabel(clan.lineage_type)}
-                      </span>
+                      {!isLeaderRole(clan.roles, roleText) && clan.lineage_type && availableClans.length > 1 && (
+                        <span className={`clan-lineage-badge ${getLineageClass(clan.lineage_type)}`}>
+                          {getLineageLabel(clan.lineage_type)}
+                        </span>
+                      )}
                     </div>
                     <div className="clan-item-role">{roleText}</div>
                   </div>

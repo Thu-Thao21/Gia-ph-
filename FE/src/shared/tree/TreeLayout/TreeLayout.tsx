@@ -9,6 +9,8 @@ import { ErgoTreeCanvas } from '../ErgoTreeCanvas';
 import { TreeContextMenu } from '../TreeContextMenu';
 import TreeActionModals, { type ModalType } from '../TreeActionModals/TreeActionModals';
 import { NotificationModal } from '../../common/NotificationModal';
+import { BurialQuickViewModal } from '../../../components/common/BurialQuickViewModal';
+import { DualLineageModal } from '../../../components/network/DualLineageModal';
 import '../Tree.css';
 import './TreeLayout.css';
 
@@ -48,6 +50,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   );
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
+  const [dualLineagePersonId, setDualLineagePersonId] = useState<string | null>(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<TreeContextMenuState>({
@@ -73,6 +76,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
     node: ErgoTreeNode | null;
   }>({ type: null, node: null });
   const [successToastMessage, setSuccessToastMessage] = useState<string | null>(null);
+  const [burialModalNode, setBurialModalNode] = useState<ErgoTreeNode | null>(null);
 
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
   const [selectedGeneration, setSelectedGeneration] = useState<number | undefined>(undefined);
@@ -145,7 +149,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   useEffect(() => {
     if (!selectedFamilyId) return;
-    const currentReqId = ++requestCounterRef.current;
+    let isCancelled = false;
 
     // Khi đổi sang gia tộc khác, xóa sạch cache thành viên của gia tộc cũ
     const isDifferentFamily = selectedFamilyId !== lastFetchedFamilyIdRef.current;
@@ -164,7 +168,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
     buildErgoTreeFromDB(selectedFamilyId, focusMemberId, cached)
       .then(({ rootNodes, allMembers: mems }) => {
         // Chống race condition: Chỉ áp dụng kết quả của request mới nhất
-        if (currentReqId === requestCounterRef.current) {
+        if (!isCancelled) {
           allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
@@ -172,11 +176,14 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         }
       })
       .catch((err) => {
-        if (currentReqId === requestCounterRef.current) {
+        if (!isCancelled) {
           console.error('[TreeLayout] Focus view tree loading error:', err);
           setLoading(false);
         }
       });
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedFamilyId, focusMemberId]);
 
   const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
@@ -246,11 +253,11 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   const reloadTree = React.useCallback(() => {
     if (!selectedFamilyId) return;
-    const currentReqId = ++requestCounterRef.current;
+    let isCancelled = false;
     allMembersCacheRef.current = [];
     buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
       .then(({ rootNodes, allMembers: mems }) => {
-        if (currentReqId === requestCounterRef.current) {
+        if (!isCancelled) {
           allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
@@ -260,6 +267,9 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
       .catch((err) => {
         console.error('[TreeLayout] Reload error:', err);
       });
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedFamilyId, focusMemberId]);
 
   const handleEdit = (node: ErgoTreeNode) => {
@@ -606,6 +616,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
             onSelectFocus={handleSelectFocus}
             onViewBio={handleViewBio}
+            onViewBurial={(node) => setBurialModalNode(node)}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddChild={handleAddChild}
@@ -703,6 +714,14 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         </div>
       )}
 
+      {/* Sơ đồ Huyết thống Liên họ 2-3 đời Bên Nội & Bên Ngoại */}
+      {dualLineagePersonId && (
+        <DualLineageModal
+          personId={dualLineagePersonId}
+          onClose={() => setDualLineagePersonId(null)}
+        />
+      )}
+
       {/* Notification Toast */}
       <NotificationModal
         isOpen={isToastOpen}
@@ -747,6 +766,19 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             ✕
           </button>
         </div>
+      )}
+      {burialModalNode && (
+        <BurialQuickViewModal
+          isOpen={Boolean(burialModalNode)}
+          onClose={() => setBurialModalNode(null)}
+          personId={burialModalNode.id}
+          personName={burialModalNode.fullName}
+          deathDate={burialModalNode.deathDate}
+          clanId={familyId}
+          onViewFullProfile={() => {
+            if (onSelectMemberProfile) onSelectMemberProfile(burialModalNode.id);
+          }}
+        />
       )}
     </div>
   );

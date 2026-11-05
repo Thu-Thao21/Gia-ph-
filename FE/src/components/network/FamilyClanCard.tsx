@@ -34,8 +34,8 @@ export const FamilyClanCard: React.FC<FamilyClanCardProps> = ({ family, defaultE
             {family.code && <span className="network-clan-code">{family.code}</span>}
           </div>
           <div className="network-clan-badges">
-            <span className={`network-clan-tag ${family.category === 'ngoai' ? 'tag-maternal' : 'tag-paternal'}`}>
-              {family.category === 'ngoai' ? 'Bên ngoại' : 'Bên nội'}
+            <span className={`network-clan-tag ${family.category === 'noi' ? 'tag-paternal' : 'tag-maternal'}`}>
+              {family.category === 'noi' ? 'Dòng họ chính' : 'Dòng họ liên kết'}
             </span>
             <span className="network-clan-tag tag-connected">
               {family.status === 'connected' ? 'Đã kết nối' : 'Đang hoạt động'}

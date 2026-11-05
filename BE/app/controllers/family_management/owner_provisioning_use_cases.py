@@ -345,7 +345,7 @@ async def _owner_info(family: FamilyRepository, clan, body: OwnerProvisionReques
         await family.get_registration_by_id(clan.registration_id) if clan.registration_id else None
     )
     email = body.email or (registration.representative_email if registration else None)
-    display_name = body.display_name or (registration.representative_name if registration else None)
+    display_name = body.display_name or (clan.name if clan else None) or (registration.name if registration else None) or (registration.representative_name if registration else None)
     phone = body.phone or (registration.representative_phone if registration else None)
     missing = [name for name, value in (("email", email), ("display_name", display_name)) if not value]
     if missing:
@@ -583,6 +583,8 @@ async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock):
                 clan_id=run.clan_id, now=now,
             )
         cred = await users.add_credential_metadata(user_id, now=now)
+        from app.core.security.password_hash import hash_password
+        cred.password_hash = await asyncio.to_thread(hash_password, password)
         cred.must_change_password = True
         cred.temporary_password_issued_at = now
         cred.temporary_password_expires_at = expires_at
@@ -592,6 +594,20 @@ async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock):
             user_id=user_id, role_id=role.role_id, clan_id=run.clan_id, granted_by=run.actor_id, now=now
         )
         await family.create_ownership(clan_id=run.clan_id, user_id=user_id, now=now)
+        try:
+            from app.services.genealogy.clan_leader_profile_service import ensure_clan_leader_person_profile
+            leader_name = str(registration.representative_name) if registration and registration.representative_name else str(run.display_name or "Trưởng tộc")
+            leader_phone = str(registration.representative_phone) if registration and registration.representative_phone else str(job.phone or "")
+            target_sess = db._session if hasattr(db, "_session") else db
+            await ensure_clan_leader_person_profile(
+                db=target_sess,
+                clan_id=run.clan_id,
+                user_id=user_id,
+                full_name=leader_name,
+                phone=leader_phone,
+            )
+        except Exception as e:
+            logger.warning("ensure_clan_leader_person_profile in owner_provisioning T4: %s", e)
         await jobs.finish_succeeded(job, user_id=user_id, now=now)
         await _audit(
             users, event="succeeded", from_status=state.RUNNING, to_status=state.SUCCEEDED,

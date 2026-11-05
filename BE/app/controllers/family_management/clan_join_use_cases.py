@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from typing import Any, List, Optional, Tuple
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -203,6 +203,32 @@ async def create_clan_join_request(
             detail={"code": "ALREADY_JOINED", "message": "Bạn đã là thành viên chính thức của dòng họ này."},
         )
 
+    # Quy tắc phả hệ: Mỗi người chỉ có tối đa 2 dòng họ (1 bên Nội và 1 bên Ngoại)
+    user_mems_stmt = select(ClanMembership).where(
+        ClanMembership.user_id == principal.user_id,
+        ClanMembership.status == "ACTIVE",
+    )
+    user_mems = (await db.execute(user_mems_stmt)).scalars().all()
+    if len(user_mems) >= 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "MAX_CLANS_REACHED",
+                "message": "Mỗi người chỉ có thể tham gia tối đa 2 dòng họ (1 bên Nội và 1 bên Ngoại).",
+            },
+        )
+    req_lineage = (body.lineage_type or "PATERNAL").upper()
+    for m in user_mems:
+        if (m.lineage_type or "").upper() == req_lineage:
+            side = "bên Nội" if req_lineage == "PATERNAL" else "bên Ngoại"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "LINEAGE_ALREADY_EXISTS",
+                    "message": f"Bạn đã tham gia một dòng họ {side}. Mỗi người chỉ có tối đa 1 dòng họ bên Nội và 1 dòng họ bên Ngoại.",
+                },
+            )
+
     # Check for existing unfinished request (PENDING or NEED_INFO)
     existing_req_stmt = select(ClanJoinRequest).where(
         ClanJoinRequest.user_id == principal.user_id,
@@ -257,6 +283,24 @@ async def create_clan_join_request(
                 "message": "Đã có yêu cầu đang chờ xử lý từ trước cho dòng họ này.",
             },
         )
+
+    # Gửi thông báo đến toàn bộ Ban Quản trị / Trưởng tộc của dòng họ
+    try:
+        from app.services.activity_fund.notification_service import notification_service
+        await notification_service.notify_clan_admins(
+            db=db,
+            clan_id=body.clan_id,
+            title="Yêu cầu gia nhập dòng họ mới",
+            body=f"Thành viên {body.full_name} vừa gửi yêu cầu gia nhập dòng họ (Tuyến quan hệ: {body.lineage_type}). Vui lòng xem xét và duyệt hồ sơ.",
+            notif_type="JOIN_REQUEST",
+            entity_type="CLAN_JOIN_REQUEST",
+            entity_id=new_req.request_id,
+            sender_name=body.full_name,
+            exclude_user_id=principal.user_id,
+        )
+    except Exception as e:
+        logger.warning("Không thể gửi thông báo yêu cầu gia nhập: %s", e)
+
     return new_req
 
 
@@ -455,6 +499,25 @@ async def review_clan_join_request(
         })
         req.history = hist
         await db.commit()
+
+        # Gửi thông báo đến người gửi yêu cầu
+        try:
+            from app.services.activity_fund.notification_service import notification_service
+            clan_name_val = (await db.execute(select(Clan.name).where(Clan.clan_id == clan_id))).scalar_one_or_none() or "dòng họ"
+            await notification_service.notify_single_user(
+                db=db,
+                user_id=req.user_id,
+                title="Yêu cầu bổ sung thông tin gia nhập",
+                body=f"Ban Quản trị dòng họ {clan_name_val} yêu cầu bạn bổ sung thông tin cho hồ sơ gia nhập: '{req.review_note}'",
+                clan_id=clan_id,
+                notif_type="JOIN_REQUEST_RESULT",
+                entity_type="CLAN_JOIN_REQUEST",
+                entity_id=req.request_id,
+                sender_name=f"Ban Quản trị {clan_name_val}",
+            )
+        except Exception as e:
+            logger.warning("Lỗi gửi thông báo bổ sung thông tin: %s", e)
+
         return await format_request_response(db, req)
 
     # -------------------------------------------------------------
@@ -479,6 +542,25 @@ async def review_clan_join_request(
         })
         req.history = hist
         await db.commit()
+
+        # Gửi thông báo đến người gửi yêu cầu
+        try:
+            from app.services.activity_fund.notification_service import notification_service
+            clan_name_val = (await db.execute(select(Clan.name).where(Clan.clan_id == clan_id))).scalar_one_or_none() or "dòng họ"
+            await notification_service.notify_single_user(
+                db=db,
+                user_id=req.user_id,
+                title="Yêu cầu gia nhập dòng họ bị từ chối",
+                body=f"Rất tiếc, yêu cầu gia nhập dòng họ {clan_name_val} của bạn đã bị từ chối. Lý do: '{req.review_note}'",
+                clan_id=clan_id,
+                notif_type="JOIN_REQUEST_RESULT",
+                entity_type="CLAN_JOIN_REQUEST",
+                entity_id=req.request_id,
+                sender_name=f"Ban Quản trị {clan_name_val}",
+            )
+        except Exception as e:
+            logger.warning("Lỗi gửi thông báo từ chối gia nhập: %s", e)
+
         return await format_request_response(db, req)
 
     # -------------------------------------------------------------
@@ -650,6 +732,21 @@ async def review_clan_join_request(
             )
 
     # 5. Handle ClanMembership (Support reactivation for users who previously left)
+    user_other_mems_stmt = select(ClanMembership).where(
+        ClanMembership.user_id == req.user_id,
+        ClanMembership.clan_id != clan_id,
+        ClanMembership.status == "ACTIVE",
+    )
+    other_mems = (await db.execute(user_other_mems_stmt)).scalars().all()
+    if len(other_mems) >= 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "MAX_CLANS_REACHED",
+                "message": "Người dùng này đã tham gia tối đa 2 dòng họ (1 bên Nội và 1 bên Ngoại).",
+            },
+        )
+
     mem_stmt = select(ClanMembership).where(
         ClanMembership.clan_id == clan_id, ClanMembership.user_id == req.user_id
     )
@@ -738,6 +835,25 @@ async def review_clan_join_request(
 
     await db.commit()
     await db.refresh(req)
+
+    # Gửi thông báo phê duyệt tới người dùng
+    try:
+        from app.services.activity_fund.notification_service import notification_service
+        clan_name_val = (await db.execute(select(Clan.name).where(Clan.clan_id == clan_id))).scalar_one_or_none() or "dòng họ"
+        await notification_service.notify_single_user(
+            db=db,
+            user_id=req.user_id,
+            title="Yêu cầu gia nhập dòng họ đã được phê duyệt",
+            body=f"Chúc mừng bạn! Yêu cầu gia nhập dòng họ {clan_name_val} (Tuyến quan hệ: {req.lineage_type}) đã được Ban Quản trị phê duyệt thành công. Bạn hiện có thể truy cập cây gia phả đầy đủ.",
+            clan_id=clan_id,
+            notif_type="JOIN_REQUEST_RESULT",
+            entity_type="CLAN_JOIN_REQUEST",
+            entity_id=req.request_id,
+            sender_name=f"Ban Quản trị {clan_name_val}",
+        )
+    except Exception as e:
+        logger.warning("Lỗi gửi thông báo phê duyệt gia nhập: %s", e)
+
     return await format_request_response(db, req)
 
 
@@ -858,5 +974,157 @@ async def leave_clan(
         "success": True,
         "message": f"Bạn đã rời khỏi dòng họ '{clan_name}' thành công.",
         "clan_id": str(clan_id),
+    }
+
+
+async def revoke_clan_member(
+    db: AsyncSession,
+    principal: Principal,
+    clan_id: uuid.UUID,
+    target_user_id: uuid.UUID,
+    reason: Optional[str] = None,
+) -> dict:
+    """Trưởng tộc hoặc Quản trị viên có thẩm quyền khai trừ thành viên ra khỏi dòng họ (Phương án 2).
+    
+    Quy tắc an toàn:
+    - Người thực hiện phải là Trưởng tộc (BUSINESS_OWNER) hoặc Quản trị viên dòng họ có quyền.
+    - Không thể tự khai trừ chính mình (nếu muốn rời thì dùng tính năng tự rời dòng họ).
+    - Không thể khai trừ Trưởng tộc / Chủ sở hữu dòng họ.
+    - Membership chuyển sang REVOKED, ghi nhận revoked_at.
+    - PersonAccountLink của tài khoản trong dòng họ chuyển sang REVOKED (ngắt liên kết tài khoản nhưng giữ nguyên hồ sơ Person trên cây gia phả).
+    - Mọi vai trò UserRole của tài khoản trong dòng họ bị thu hồi (revoked_at = now).
+    - Mọi quyền FamilyAdminAssignment của tài khoản trong dòng họ bị thu hồi.
+    - Các yêu cầu gia nhập đang chờ duyệt tại dòng họ này của user bị CANCELLED.
+    - Ghi nhận AuditLog.
+    """
+    now = _utc_now()
+
+    # 1. Kiểm tra quyền của người thực hiện
+    is_authorized, role_desc = await check_clan_reviewer_permission(db, clan_id, principal.user_id)
+    if not is_authorized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Bạn không có quyền khai trừ thành viên khỏi dòng họ này."},
+        )
+
+    # 2. Không thể tự khai trừ chính mình
+    if principal.user_id == target_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "CANNOT_EXPEL_SELF", "message": "Bạn không thể tự khai trừ chính mình. Nếu muốn rời dòng họ, vui lòng sử dụng tính năng rời dòng họ."},
+        )
+
+    # 3. Kiểm tra mục tiêu không phải là Trưởng tộc (BUSINESS_OWNER)
+    bo_role_stmt = select(Role.role_id).where(Role.code == "BUSINESS_OWNER")
+    bo_role_id = (await db.execute(bo_role_stmt)).scalar_one_or_none()
+    if bo_role_id:
+        user_bo_stmt = select(UserRole).where(
+            UserRole.user_id == target_user_id,
+            UserRole.role_id == bo_role_id,
+            UserRole.clan_id == clan_id,
+            UserRole.revoked_at.is_(None),
+        )
+        if (await db.execute(user_bo_stmt)).scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "CANNOT_EXPEL_OWNER", "message": "Không thể khai trừ Trưởng tộc / Chủ sở hữu dòng họ."},
+            )
+
+    # 4. Kiểm tra tư cách thành viên của mục tiêu
+    mem_stmt = select(ClanMembership).where(
+        ClanMembership.clan_id == clan_id,
+        ClanMembership.user_id == target_user_id,
+        ClanMembership.status == "ACTIVE",
+    ).with_for_update()
+    mem = (await db.execute(mem_stmt)).scalar_one_or_none()
+    if not mem:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "MEMBERSHIP_NOT_FOUND", "message": "Tài khoản không phải là thành viên hoạt động trong dòng họ này."},
+        )
+
+    # Lấy thông tin user mục tiêu để ghi log và trả về
+    target_user_stmt = select(User).where(User.user_id == target_user_id)
+    target_user = (await db.execute(target_user_stmt)).scalar_one_or_none()
+    target_name = target_user.display_name if target_user else "Thành viên"
+    target_email = target_user.email if target_user else ""
+
+    # 5. Cập nhật ClanMembership -> REVOKED
+    mem.status = "REVOKED"
+    mem.revoked_at = now
+
+    # 6. Thu hồi PersonAccountLink -> REVOKED (Giữ nguyên Person trên cây, chỉ ngắt liên kết tài khoản)
+    link_stmt = select(PersonAccountLink).where(
+        PersonAccountLink.clan_id == clan_id,
+        PersonAccountLink.user_id == target_user_id,
+        PersonAccountLink.status == "ACTIVE",
+        PersonAccountLink.revoked_at.is_(None),
+    )
+    links = (await db.execute(link_stmt)).scalars().all()
+    for link in links:
+        link.status = "REVOKED"
+        link.revoked_at = now
+
+    # 7. Thu hồi mọi UserRole của user trong clan
+    roles_stmt = select(UserRole).where(
+        UserRole.clan_id == clan_id,
+        UserRole.user_id == target_user_id,
+        UserRole.revoked_at.is_(None),
+    )
+    roles = (await db.execute(roles_stmt)).scalars().all()
+    for r in roles:
+        r.revoked_at = now
+
+    # 8. Thu hồi FamilyAdminAssignment nếu có
+    fa_stmt = select(FamilyAdminAssignment).where(
+        FamilyAdminAssignment.clan_id == clan_id,
+        FamilyAdminAssignment.user_id == target_user_id,
+        FamilyAdminAssignment.revoked_at.is_(None),
+    )
+    fas = (await db.execute(fa_stmt)).scalars().all()
+    for fa in fas:
+        fa.revoked_at = now
+        del_perm = delete(FamilyAdminPermission).where(FamilyAdminPermission.assignment_id == fa.assignment_id)
+        await db.execute(del_perm)
+
+    # 9. Hủy bỏ yêu cầu gia nhập đang chờ nếu có
+    req_stmt = select(ClanJoinRequest).where(
+        ClanJoinRequest.clan_id == clan_id,
+        ClanJoinRequest.user_id == target_user_id,
+        ClanJoinRequest.status.in_(["PENDING", "NEED_INFO"]),
+    )
+    reqs = (await db.execute(req_stmt)).scalars().all()
+    for r in reqs:
+        r.status = "CANCELLED"
+        r.updated_at = now
+
+    # 10. Ghi AuditLog
+    audit = AuditLog(
+        clan_id=clan_id,
+        actor_id=principal.user_id,
+        action="clan.member.revoke",
+        entity_type="clan_membership",
+        entity_id=mem.membership_id,
+        new_data={
+            "user_id": str(target_user_id),
+            "user_name": target_name,
+            "user_email": target_email,
+            "status": "REVOKED",
+            "reason": reason or "Trưởng tộc khai trừ khỏi dòng họ",
+        },
+        occurred_at=now,
+    )
+    db.add(audit)
+
+    await db.commit()
+
+    clan_name_stmt = select(Clan.name).where(Clan.clan_id == clan_id)
+    clan_name = (await db.execute(clan_name_stmt)).scalar_one_or_none() or "dòng họ"
+
+    return {
+        "success": True,
+        "message": f"Đã khai trừ thành viên '{target_name}' khỏi dòng họ '{clan_name}'.",
+        "clan_id": str(clan_id),
+        "user_id": str(target_user_id),
     }
 

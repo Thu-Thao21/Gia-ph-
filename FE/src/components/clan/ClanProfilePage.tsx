@@ -72,9 +72,19 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
         : Array.isArray(branchRes.data)
         ? branchRes.data
         : [];
-      setBranches(branchItems);
 
       const memList = memRes.items || [];
+
+      // Đồng bộ số lượng thành viên thực tế của từng chi từ danh sách Person trong DB
+      const enrichedBranches = branchItems.map((b: any) => {
+        const bId = b.branchId || b.id;
+        const countFromMembers = memList.filter((m: any) => m.branchId === bId || m.branch_id === bId).length;
+        return {
+          ...b,
+          memberCount: countFromMembers || b.memberCount || 0,
+        };
+      });
+      setBranches(enrichedBranches);
       const males = memList.filter((m) => m.gender === 'male').length;
       const females = memList.filter((m) => m.gender === 'female').length;
       const maxGen = memList.length > 0 ? Math.max(...memList.map((m) => m.generation || 1)) : 1;
@@ -119,6 +129,15 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
     }
   };
 
+  if (!effectiveClanId) {
+    return (
+      <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+        <h2 style={{ marginBottom: '12px', color: '#1e293b' }}>Chưa tham gia dòng họ</h2>
+        <p>Tài khoản của bạn hiện chưa liên kết với dòng họ nào để hiển thị hồ sơ gia tộc.</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
@@ -127,7 +146,7 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
     );
   }
 
-  const clanName = profile?.name || account?.clan_name || 'Dòng tộc Họ Võ';
+  const clanName = profile?.name || account?.clan_name || 'Dòng họ';
 
   return (
     <div className="clan-profile-container">
@@ -137,7 +156,7 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
           <div className="clan-hero-title-group">
             <h1>Hồ Sơ Gia Tộc: {clanName}</h1>
             <div className="clan-hero-badges">
-              <span className="clan-tag code">Mã tộc: {profile?.clanCode || 'CLAN-VO'}</span>
+              <span className="clan-tag code">Mã tộc: {profile?.clanCode || '—'}</span>
               <span className="clan-tag active">Trạng thái: Đang hoạt động</span>
             </div>
           </div>
@@ -184,17 +203,17 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
 
             <div className="clan-info-row">
               <span className="clan-info-label">Trưởng tộc đương nhiệm</span>
-              <span className="clan-info-value">Võ Trí Thắng</span>
+              <span className="clan-info-value">{profile?.leaderName || account?.display_name || 'Chưa cập nhật'}</span>
             </div>
 
             <div className="clan-info-row">
               <span className="clan-info-label">Quê quán phát tích</span>
-              <span className="clan-info-value">{profile?.originPlace || 'Đà Nẵng, Việt Nam'}</span>
+              <span className="clan-info-value">{profile?.originPlace || 'Chưa cập nhật'}</span>
             </div>
 
             <div className="clan-info-row">
               <span className="clan-info-label">Địa chỉ nhà thờ tộc / Từ đường</span>
-              <span className="clan-info-value">{profile?.ancestralHouseAddress || 'Từ đường Họ Võ, Hòa Vang, Đà Nẵng'}</span>
+              <span className="clan-info-value">{profile?.ancestralHouseAddress || 'Chưa cập nhật địa chỉ từ đường'}</span>
             </div>
           </div>
 
@@ -221,17 +240,15 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="clan-card">
             <h2 className="clan-card-title">Lịch Sử & Nguồn Gốc Dòng Họ</h2>
-            <div className="clan-prose">
-              {profile?.history || 
-                'Dòng tộc Họ Võ có truyền thống lâu đời, phát tích và định cư tại miền Trung Việt Nam. Các thế hệ con cháu luôn nêu cao tinh thần hiếu học, đoàn kết, phụng sự tổ quốc và giữ gìn gia phong đạo đức.'}
+            <div className="clan-prose" style={!profile?.history ? { fontStyle: 'italic', color: '#64748b' } : undefined}>
+              {profile?.history || 'Dòng họ chưa cập nhật thông tin lịch sử & nguồn gốc.'}
             </div>
           </div>
 
           <div className="clan-card">
             <h2 className="clan-card-title">Tộc Ước & Gia Huấn Dòng Tộc</h2>
-            <div className="clan-prose">
-              {profile?.publicDescription || 
-                '1. Kính trên nhường dưới, hiếu thuận với ông bà cha mẹ.\n2. Giữ gìn gia phong, tương thân tương ái, giúp đỡ bà con trong dòng họ.\n3. Khuyến học khuyến tài, vun đắp tương lai cho thế hệ mai sau.\n4. Định kỳ tề tựu vào các dịp giỗ tổ và tế xuân hàng năm.'}
+            <div className="clan-prose" style={!profile?.publicDescription ? { fontStyle: 'italic', color: '#64748b' } : undefined}>
+              {profile?.publicDescription || 'Dòng họ chưa cập nhật tộc ước & gia huấn dòng tộc.'}
             </div>
           </div>
         </div>
@@ -255,7 +272,7 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
                     className="tree-action-form-input"
                     value={editOriginPlace}
                     onChange={(e) => setEditOriginPlace(e.target.value)}
-                    placeholder="Ví dụ: Hòa Vang, Đà Nẵng"
+                    placeholder="Ví dụ: Điện Bàn, Quảng Nam"
                   />
                 </div>
 
@@ -266,7 +283,7 @@ export const ClanProfilePage: React.FC<ClanProfilePageProps> = ({ clanId }) => {
                     className="tree-action-form-input"
                     value={editAncestralAddress}
                     onChange={(e) => setEditAncestralAddress(e.target.value)}
-                    placeholder="Ví dụ: Thôn Túy Loan, Hòa Phong, Hòa Vang"
+                    placeholder="Ví dụ: Thôn ..., Xã ..., Tỉnh/Thành phố"
                   />
                 </div>
 

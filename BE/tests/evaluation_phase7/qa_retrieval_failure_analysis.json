@@ -1,0 +1,632 @@
+[
+  {
+    "q_id": "QA_005",
+    "question": "Người có tên 'Dương Quang Khởi' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Quang Khởi thuộc Đời thứ 1, có 4 người con gồm: Dương Bảo Dũng, Dương Tiến Trí, Dương Viết Vũ, Dương Thanh Oanh.",
+    "key_facts": [
+      "Đời 1",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 1"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_006",
+    "question": "Người có tên 'Nguyễn Thị Như Như' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Nguyễn Thị Như Như thuộc Đời thứ 1, có 4 người con gồm: Dương Bảo Dũng, Dương Tiến Trí, Dương Viết Vũ, Dương Thanh Oanh.",
+    "key_facts": [
+      "Đời 1",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 1"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_007",
+    "question": "Người có tên 'Dương Bảo Dũng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Bảo Dũng thuộc Đời thứ 2, có 4 người con gồm: Dương Đình Nhật, Dương Tuấn Kiệt, Dương Đình Toàn, Dương Phương Loan.",
+    "key_facts": [
+      "Đời 2",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 2"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_008",
+    "question": "Người có tên 'Dương Tiến Trí' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Tiến Trí thuộc Đời thứ 2, có 2 người con gồm: Dương Tuấn Nhật, Dương Khánh Như.",
+    "key_facts": [
+      "Đời 2",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 2"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_009",
+    "question": "Người có tên 'Dương Viết Vũ' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Viết Vũ thuộc Đời thứ 2, có 3 người con gồm: Dương Đình An, Dương Thanh Như, Dương Ngọc Chi.",
+    "key_facts": [
+      "Đời 2",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 2"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_010",
+    "question": "Người có tên 'Vũ Thị Ái Tú' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Vũ Thị Ái Tú thuộc Đời thứ 2, có 4 người con gồm: Dương Đình Nhật, Dương Tuấn Kiệt, Dương Đình Toàn, Dương Phương Loan.",
+    "key_facts": [
+      "Đời 2",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 2"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_011",
+    "question": "Người có tên 'Dương Đình Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Đình Nhật thuộc Đời thứ 3, có 4 người con gồm: Dương Hữu Nghĩa, Dương Tuấn An, Dương Hữu Toàn, Dương Minh Hương.",
+    "key_facts": [
+      "Đời 3",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_012",
+    "question": "Người có tên 'Dương Tuấn Kiệt' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Tuấn Kiệt thuộc Đời thứ 3, có 2 người con gồm: Dương Bách Hải, Dương Phương Lan.",
+    "key_facts": [
+      "Đời 3",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_013",
+    "question": "Người có tên 'Dương Đình Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Đình Toàn thuộc Đời thứ 3, có 3 người con gồm: Dương Viết Nhật, Dương Minh Uyên, Dương Viết Nghĩa.",
+    "key_facts": [
+      "Đời 3",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_014",
+    "question": "Người có tên 'Hoàng Thị Oanh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Hoàng Thị Oanh thuộc Đời thứ 2, có 2 người con gồm: Dương Tuấn Nhật, Dương Khánh Như.",
+    "key_facts": [
+      "Đời 2",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 2"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_015",
+    "question": "Người có tên 'Dương Tuấn Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Tuấn Nhật thuộc Đời thứ 3, có 3 người con gồm: Dương Hữu Quân, Dương Phương Thủy, Dương Đình Lộc.",
+    "key_facts": [
+      "Đời 3",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_016",
+    "question": "Người có tên 'Nguyễn Thị Như Hương' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Nguyễn Thị Như Hương thuộc Đời thứ 2, có 3 người con gồm: Dương Đình An, Dương Thanh Như, Dương Ngọc Chi.",
+    "key_facts": [
+      "Đời 2",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 2"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_017",
+    "question": "Người có tên 'Dương Đình An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Đình An thuộc Đời thứ 3, có 2 người con gồm: Dương Bảo An, Dương Thanh Linh.",
+    "key_facts": [
+      "Đời 3",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_018",
+    "question": "Người có tên 'Phạm Thị Uyên' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Phạm Thị Uyên thuộc Đời thứ 3, có 4 người con gồm: Dương Hữu Nghĩa, Dương Tuấn An, Dương Hữu Toàn, Dương Minh Hương.",
+    "key_facts": [
+      "Đời 3",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_019",
+    "question": "Người có tên 'Dương Hữu Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Hữu Nghĩa thuộc Đời thứ 4, có 2 người con gồm: Dương Thiện Toàn, Dương Công Nghĩa.",
+    "key_facts": [
+      "Đời 4",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_020",
+    "question": "Người có tên 'Dương Tuấn An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Tuấn An thuộc Đời thứ 4, có 3 người con gồm: Dương Thiện Dũng, Dương Bích Thảo, Dương Bảo Hoàng.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_021",
+    "question": "Người có tên 'Dương Hữu Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Hữu Toàn thuộc Đời thứ 4, có 3 người con gồm: Dương Bảo Huy, Dương Diệu Trúc, Dương Quang Vũ.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_022",
+    "question": "Người có tên 'Vũ Thị Ái Lan' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Vũ Thị Ái Lan thuộc Đời thứ 3, có 2 người con gồm: Dương Bách Hải, Dương Phương Lan.",
+    "key_facts": [
+      "Đời 3",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_023",
+    "question": "Người có tên 'Dương Bách Hải' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Bách Hải thuộc Đời thứ 4, có 2 người con gồm: Dương Bách Hoàng, Dương Khánh Châu.",
+    "key_facts": [
+      "Đời 4",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_024",
+    "question": "Người có tên 'Lê Thị Hồng Linh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Lê Thị Hồng Linh thuộc Đời thứ 3, có 3 người con gồm: Dương Viết Nhật, Dương Minh Uyên, Dương Viết Nghĩa.",
+    "key_facts": [
+      "Đời 3",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_025",
+    "question": "Người có tên 'Dương Viết Nhật' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Viết Nhật thuộc Đời thứ 4, có 3 người con gồm: Dương Tuấn Bảo, Dương Thiện Thịnh, Dương Tiến Hải.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_026",
+    "question": "Người có tên 'Dương Viết Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Viết Nghĩa thuộc Đời thứ 4, có 4 người con gồm: Dương Tiến Việt, Dương Quang Sơn, Dương Phương Ngân, Dương Bích Uyên.",
+    "key_facts": [
+      "Đời 4",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_027",
+    "question": "Người có tên 'Phạm Thị My' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Phạm Thị My thuộc Đời thứ 3, có 3 người con gồm: Dương Hữu Quân, Dương Phương Thủy, Dương Đình Lộc.",
+    "key_facts": [
+      "Đời 3",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_028",
+    "question": "Người có tên 'Dương Hữu Quân' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Hữu Quân thuộc Đời thứ 4, có 3 người con gồm: Dương Tuấn An, Dương Quỳnh Vy, Dương Hồng My.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_029",
+    "question": "Người có tên 'Dương Đình Lộc' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Đình Lộc thuộc Đời thứ 4, có 2 người con gồm: Dương Quang Tùng, Dương Phương Thảo.",
+    "key_facts": [
+      "Đời 4",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_030",
+    "question": "Người có tên 'Trần Thị Hồng Cúc' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Trần Thị Hồng Cúc thuộc Đời thứ 3, có 2 người con gồm: Dương Bảo An, Dương Thanh Linh.",
+    "key_facts": [
+      "Đời 3",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 3"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_031",
+    "question": "Người có tên 'Dương Bảo An' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Bảo An thuộc Đời thứ 4, có 3 người con gồm: Dương Đình An, Dương Tiến Nghĩa, Dương Thiện Hùng.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_032",
+    "question": "Người có tên 'Nguyễn Thị Hồng Linh' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Nguyễn Thị Hồng Linh thuộc Đời thứ 4, có 2 người con gồm: Dương Thiện Toàn, Dương Công Nghĩa.",
+    "key_facts": [
+      "Đời 4",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_033",
+    "question": "Người có tên 'Dương Thiện Toàn' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Thiện Toàn thuộc Đời thứ 5, có 3 người con gồm: Dương Bảo Lộc, Dương Quang An, Dương Bách Nghĩa.",
+    "key_facts": [
+      "Đời 5",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 5"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_034",
+    "question": "Người có tên 'Dương Công Nghĩa' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Công Nghĩa thuộc Đời thứ 5, có 3 người con gồm: Dương Tuấn Thịnh, Dương Ngọc Hà, Dương Khánh Ly.",
+    "key_facts": [
+      "Đời 5",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 5"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_035",
+    "question": "Người có tên 'Hoàng Thị Nga' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Hoàng Thị Nga thuộc Đời thứ 4, có 3 người con gồm: Dương Thiện Dũng, Dương Bích Thảo, Dương Bảo Hoàng.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_036",
+    "question": "Người có tên 'Dương Thiện Dũng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Thiện Dũng thuộc Đời thứ 5, có 2 người con gồm: Dương Quang Việt, Dương Thanh Mai.",
+    "key_facts": [
+      "Đời 5",
+      "2"
+    ],
+    "retrieved_facts": [
+      "Đời 5"
+    ],
+    "missing_facts": [
+      "2"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('2'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_037",
+    "question": "Người có tên 'Dương Bảo Hoàng' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Bảo Hoàng thuộc Đời thứ 5, có 4 người con gồm: Dương Bảo Hải, Dương Ngọc Lan, Dương Quỳnh Lan, Dương Thanh My.",
+    "key_facts": [
+      "Đời 5",
+      "4"
+    ],
+    "retrieved_facts": [
+      "Đời 5"
+    ],
+    "missing_facts": [
+      "4"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('4'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_038",
+    "question": "Người có tên 'Nguyễn Thị Ái Hương' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Nguyễn Thị Ái Hương thuộc Đời thứ 4, có 3 người con gồm: Dương Bảo Huy, Dương Diệu Trúc, Dương Quang Vũ.",
+    "key_facts": [
+      "Đời 4",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 4"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  },
+  {
+    "q_id": "QA_039",
+    "question": "Người có tên 'Dương Bảo Huy' thuộc thế hệ thứ mấy và có bao nhiêu người con?",
+    "category": "LINEAGE_FACTS",
+    "ground_truth": "Dương Bảo Huy thuộc Đời thứ 5, có 3 người con gồm: Dương Bách Vũ, Dương Thanh Uyên, Dương Đình Sơn.",
+    "key_facts": [
+      "Đời 5",
+      "3"
+    ],
+    "retrieved_facts": [
+      "Đời 5"
+    ],
+    "missing_facts": [
+      "3"
+    ],
+    "error_classification": "LOGIC_DANH_GIA_VA_TRUY_VAN",
+    "root_cause": "Dữ kiện chuẩn chứa giá trị số đếm quan hệ ('3'), hàm trích xuất từ khóa cục bộ chỉ so khớp thuộc tính Person đơn lẻ (tên, năm sinh, chi) mà chưa thực hiện hàm tổng hợp đồ thị quan hệ (Aggregation Query - COUNT con cái)."
+  }
+]

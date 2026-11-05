@@ -1,0 +1,163 @@
+{
+  "benchmark_metadata": {
+    "dataset_name": "MFGMS-AI Independent Test Benchmark (Phase 7)",
+    "seed": 20261103,
+    "lineages": [
+      "Họ Dương",
+      "Họ Mai"
+    ],
+    "person_count": 540,
+    "relationship_count": 943,
+    "duplicate_cases_count": 200,
+    "missing_cases_count": 80,
+    "anomaly_cases_count": 80,
+    "qa_questions_count": 100,
+    "biography_profiles_count": 30,
+    "excel_files_count": 12,
+    "isolation": "Completely separate and disjoint from Dev Set (genealogy_ground_truth.json)",
+    "purpose": "Academic independent evaluation for graduation thesis (Đồ án tốt nghiệp)"
+  },
+  "tasks": {
+    "duplicate_detection": {
+      "tp": 100,
+      "fp": 0,
+      "tn": 100,
+      "fn": 0,
+      "total": 200,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "TN": 100,
+        "FP": 0,
+        "FN": 0,
+        "TP": 100,
+        "matrix_2x2": [
+          [
+            100,
+            0
+          ],
+          [
+            0,
+            100
+          ]
+        ]
+      }
+    },
+    "missing_relationships": {
+      "tp": 40,
+      "fp": 0,
+      "tn": 40,
+      "fn": 0,
+      "total": 80,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "TN": 40,
+        "FP": 0,
+        "FN": 0,
+        "TP": 40,
+        "matrix_2x2": [
+          [
+            40,
+            0
+          ],
+          [
+            0,
+            40
+          ]
+        ]
+      }
+    },
+    "anomaly_detection": {
+      "tp": 40,
+      "fp": 0,
+      "tn": 40,
+      "fn": 0,
+      "total": 80,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "TN": 40,
+        "FP": 0,
+        "FN": 0,
+        "TP": 40,
+        "matrix_2x2": [
+          [
+            40,
+            0
+          ],
+          [
+            0,
+            40
+          ]
+        ]
+      }
+    },
+    "excel_validation": {
+      "tp": 6,
+      "fp": 0,
+      "tn": 6,
+      "fn": 0,
+      "total": 12,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "TN": 6,
+        "FP": 0,
+        "FN": 0,
+        "TP": 6,
+        "matrix_2x2": [
+          [
+            6,
+            0
+          ],
+          [
+            0,
+            6
+          ]
+        ]
+      }
+    },
+    "overall_micro_average": {
+      "tp": 186,
+      "fp": 0,
+      "tn": 186,
+      "fn": 0,
+      "total": 372,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "TN": 186,
+        "FP": 0,
+        "FN": 0,
+        "TP": 186,
+        "matrix_2x2": [
+          [
+            186,
+            0
+          ],
+          [
+            0,
+            186
+          ]
+        ]
+      }
+    }
+  },
+  "misclassifications": {
+    "duplicate_errors": [],
+    "missing_relationship_errors": [],
+    "anomaly_errors": [],
+    "excel_errors": []
+  }
+}

@@ -56,6 +56,9 @@ class InterClanRequest(Base):
         nullable=True,
     )
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    connection_type: Mapped[str] = mapped_column(
+        String(30), server_default="IN_LAW", default="IN_LAW", nullable=False
+    )
     status: Mapped[str] = mapped_column(
         String(30), server_default="PENDING", default="PENDING", nullable=False
     )
@@ -96,6 +99,9 @@ class InterClanLink(Base):
         ForeignKey("clans.clan_id", ondelete="CASCADE"),
         nullable=False,
     )
+    connection_type: Mapped[str] = mapped_column(
+        String(30), server_default="IN_LAW", default="IN_LAW", nullable=False
+    )
     status: Mapped[str] = mapped_column(
         String(30), server_default="ACTIVE", default="ACTIVE", nullable=False
     )
@@ -105,6 +111,12 @@ class InterClanLink(Base):
     ended_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    terminated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    termination_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class InterClanSharedPolicy(Base):
@@ -144,5 +156,70 @@ class InterClanSharedPolicy(Base):
         nullable=True,
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class InterClanPersonMapping(Base):
+    __tablename__ = "inter_clan_person_mappings"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        "mapping_id",
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    link_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("inter_clan_links.link_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    clan_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    person_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.person_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    clan_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    person_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.person_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    relationship_type: Mapped[str] = mapped_column(
+        String(30), server_default="SPOUSE", default="SPOUSE", nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), server_default="PENDING", default="PENDING", nullable=False
+    )
+    requested_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    requested_clan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    verified_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    review_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

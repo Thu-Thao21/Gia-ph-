@@ -2,7 +2,7 @@
 .status-tab-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .status-alive-card {
@@ -12,9 +12,12 @@
 }
 
 .status-deceased-card {
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
-  color: #334155;
+  color: #1e293b;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .status-bold-value {
@@ -28,4 +31,164 @@
 
 .status-full-width {
   grid-column: 1 / -1;
+}
+
+/* Burial Section */
+.burial-section-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.burial-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 14px;
+}
+
+.burial-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.burial-title-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.burial-section-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.burial-section-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.burial-empty-state {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.burial-empty-text {
+  font-size: 14px;
+  color: #92400e;
+  font-weight: 500;
+  max-width: 450px;
+}
+
+.burial-map-preview-container {
+  width: 100%;
+  height: 260px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  position: relative;
+}
+
+.burial-map-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.burial-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.burial-direction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #16a34a;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.2);
+  transition: all 0.15s ease;
+}
+
+.burial-direction-btn:hover {
+  background: #15803d;
+  box-shadow: 0 6px 10px -1px rgba(22, 163, 74, 0.3);
+  transform: translateY(-1px);
+}
+
+.burial-action-secondary-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.burial-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.burial-edit-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.burial-propose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.burial-propose-btn:hover {
+  background: #dbeafe;
 }

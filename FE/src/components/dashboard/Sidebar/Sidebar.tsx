@@ -36,10 +36,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     overview: true,
     tree_rel: true,
     network: true,
-    profile_prop: true,
+    worship_space: true,
     life: true,
     docs_ai: true,
-    settings: true,
+    governance: true,
+    profile_settings: true,
     admin: true,
   });
 
@@ -48,8 +49,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const isAdmin = (userRole || '').toLowerCase() === 'admin';
+  const roleLower = (userRole || '').toLowerCase();
+  const isClanAdmin = ['trưởng tộc', 'chủ dòng họ', 'clan admin', 'clan_admin', 'family_head'].includes(roleLower);
+  const isFamilyAdmin = ['family admin', 'family_admin', 'manager'].includes(roleLower);
+  const canManageFamily = isClanAdmin || isFamilyAdmin;
 
-  const memberGroups = [
+  // Menu dành cho System Administrator (SA UI) theo sơ đồ MVC
+  const adminMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'admin-tree', label: 'Cây Gia Phả', icon: 'tree' },
+    { id: 'admin-members-mgmt', label: 'Quản lý Nhân Khẩu', icon: 'people' },
+    { id: 'admin-family-links', label: 'Quản lý Quan Hệ', icon: 'relation' },
+    { id: 'admin-families-mgmt', label: 'Quản lý Chi Nhánh', icon: 'branch' },
+    { id: 'admin-approval', label: 'Phê duyệt', icon: 'approval' },
+    { id: 'admin-packages', label: 'Gói Dịch Vụ', icon: 'package' },
+    { id: 'admin-payments', label: 'Thanh Toán', icon: 'payment' },
+    { id: 'admin-moderation', label: 'Kiểm Duyệt', icon: 'moderation' },
+    { id: 'admin-roles', label: 'Phân Quyền & Role', icon: 'account' },
+    { id: 'admin-permissions', label: 'Quản Lý Tài Khoản', icon: 'account' },
+    { id: 'admin-logs', label: 'Nhật Ký Hệ Thống', icon: 'logs' },
+    { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục', icon: 'backup' },
+  ];
+
+  // Cấu trúc Menu chuẩn hoá theo sơ đồ MVC (Image 2) và 5 nhóm Actor View (SA, BO, FA, ME, GU)
+  // Thành viên (ME) và Ban quản trị (FA/BO) dùng chung các trang cốt lõi, chỉ phân quyền nút bấm.
+  const commonGroups = [
     {
       id: 'overview',
       label: 'TỔNG QUAN',
@@ -61,12 +85,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ),
       items: [
         { id: 'dashboard', label: 'Trang chủ' },
-        { id: 'notifications', label: 'Thông báo & Cài đặt' },
+        { id: 'notifications', label: 'Thông báo & Nhắc nhở' },
       ],
     },
     {
       id: 'tree_rel',
-      label: 'GIA PHẢ & QUAN HỆ',
+      label: 'GIA PHẢ & THÀNH VIÊN',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" />
@@ -92,26 +116,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </svg>
       ),
       items: [
-        { id: 'net-noi', label: 'Dòng họ Nội' },
-        { id: 'net-ngoai', label: 'Dòng họ Ngoại' },
+        { id: 'net-ngoai', label: 'Dòng họ liên kết' },
         { id: 'net-dau-re', label: 'Dâu & Rể liên họ' },
-        { id: 'net-thong-gia', label: 'Họ Thông gia' },
+        { id: 'net-noi', label: 'Dòng họ Nội tộc' },
       ],
     },
     {
-      id: 'profile_prop',
-      label: 'HỒ SƠ & ĐỀ XUẤT',
+      id: 'worship_space',
+      label: 'THỜ CÚNG & ĐỊA ĐIỂM',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
+          <path d="M3 21h18M4 18h16M5 14h14M9 10h6M12 3v7" />
         </svg>
       ),
       items: [
-        { id: 'clan-profile', label: 'Hồ sơ gia tộc' },
-        { id: 'my-profile', label: 'Hồ sơ của tôi' },
-        { id: 'my-clans', label: 'Dòng tộc của tôi' },
-        { id: 'my-proposals', label: 'Đề xuất của tôi' },
+        { id: 'ancestral-hall', label: 'Phòng thờ số' },
+        { id: 'clan-locations', label: 'Bản đồ & Địa điểm dòng họ' },
+        { id: 'ancestral-library', label: 'Thư viện 3D/360' },
       ],
     },
     {
@@ -129,7 +150,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'anniversaries', label: 'Lịch ngày giỗ' },
         { id: 'events', label: 'Sự kiện dòng họ' },
         { id: 'funds', label: 'Quỹ & Đóng góp' },
-        { id: 'ancestral-hall', label: 'Phòng thờ số' },
       ],
     },
     {
@@ -146,90 +166,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'documents', label: 'Tư liệu lịch sử' },
         { id: 'ai-assistant', label: 'Trợ lý AI dòng họ' },
-        { id: 'ai-consent', label: 'Đồng ý sử dụng AI' },
-        { id: 'ancestral-library', label: 'Thư viện 3D/360' },
-      ],
-    },
-    {
-      id: 'settings',
-      label: 'CÀI ĐẶT & BẢO MẬT',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-      ),
-      items: [
-        { id: 'privacy-settings', label: 'Quyền riêng tư' },
-        { id: 'privacy-preview', label: 'Xem trước góc nhìn' },
+        { id: 'ai-consent', label: 'Quyền riêng tư & AI' },
       ],
     },
   ];
 
-  const adminMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'admin-tree', label: 'Cây Gia Phả', icon: 'tree' },
-    { id: 'admin-members-mgmt', label: 'Quản lý Nhân Khẩu', icon: 'people' },
-    { id: 'admin-family-links', label: 'Quản lý Quan Hệ', icon: 'relation' },
-    { id: 'admin-families-mgmt', label: 'Quản lý Chi Nhánh', icon: 'branch' },
-    { id: 'admin-approval', label: 'Phê duyệt', icon: 'approval' },
-    { id: 'admin-packages', label: 'Gói Dịch Vụ', icon: 'package' },
-    { id: 'admin-payments', label: 'Thanh Toán', icon: 'payment' },
-    { id: 'admin-moderation', label: 'Kiểm Duyệt', icon: 'moderation' },
-    { id: 'admin-roles', label: 'Phân Quyền & Role', icon: 'account' },
-    { id: 'admin-permissions', label: 'Quản Lý Tài Khoản', icon: 'account' },
-    { id: 'admin-logs', label: 'Nhật Ký Hệ Thống', icon: 'logs' },
-    { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục', icon: 'backup' },
-  ];
+  // Nhóm chức năng Quản trị & Điều hành dành riêng cho Ban Quản trị (FA) và Trưởng tộc (BO)
+  // Tuyệt đối không lặp lại các màn hình đã có trong các nhóm dùng chung bên trên.
+  const governanceItems = [];
+  if (canManageFamily) {
+    governanceItems.push({ id: 'family-approvals', label: 'Phê duyệt đề xuất' });
+    if (isClanAdmin) {
+      governanceItems.push({ id: 'family-accounts', label: 'Phân quyền & Tài khoản' });
+      governanceItems.push({ id: 'family-ai-settings', label: 'Cấu hình AI & Giám sát dữ liệu' });
+    }
+    governanceItems.push({ id: 'family-import-export', label: 'Nhập xuất dữ liệu' });
+    governanceItems.push({ id: 'family-logs', label: 'Nhật ký hoạt động' });
+  }
 
-  const roleLower = (userRole || '').toLowerCase();
-  const isClanAdmin = ['trưởng tộc', 'chủ dòng họ', 'clan admin', 'clan_admin', 'family_head'].includes(roleLower);
-  const isFamilyAdmin = ['family admin', 'family_admin', 'manager'].includes(roleLower);
-
-  // Nhóm chức năng Quản lý dòng họ được phân quyền chi tiết
-  const clanAdminManagementItems = [
-    { id: 'family-members', label: 'Quản lý thành viên' },
-    { id: 'family-relations', label: 'Quan hệ gia phả' },
-    { id: 'family-tree', label: 'Cây theo quan hệ' },
-    { id: 'family-search', label: 'Tìm đường quan hệ' },
-    { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
-    { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
-    { id: 'family-accounts', label: 'Phân quyền & Tài khoản' },
-    { id: 'family-links', label: 'Yêu cầu liên họ' },
-    { id: 'family-privacy', label: 'Quyền riêng tư dòng tộc' },
-    { id: 'family-import-export', label: 'Nhập xuất dữ liệu' },
-    { id: 'family-statistics', label: 'Thống kê dân số & thế hệ' },
-    { id: 'family-logs', label: 'Nhật ký hoạt động' },
-  ];
-
-  const familyAdminManagementItems = [
-    { id: 'family-members', label: 'Quản lý thành viên' },
-    { id: 'family-relations', label: 'Quan hệ gia phả' },
-    { id: 'family-tree', label: 'Cây theo quan hệ' },
-    { id: 'family-search', label: 'Tìm đường quan hệ' },
-    { id: 'family-branches', label: 'Quản lý Chi & Nhánh' },
-    { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
-    { id: 'family-links', label: 'Yêu cầu liên họ' },
-    { id: 'family-import-export', label: 'Nhập xuất dữ liệu' },
-    { id: 'family-logs', label: 'Nhật ký thao tác' },
-  ];
-
-  const currentManagementItems = isClanAdmin
-    ? clanAdminManagementItems
-    : isFamilyAdmin
-    ? familyAdminManagementItems
-    : [];
-
-  const familyManagementGroup = currentManagementItems.length > 0 ? {
-    id: 'family_management',
-    label: 'QUẢN LÝ DÒNG HỌ',
-    icon: <AdminNavIcon name="branch" />,
-    items: currentManagementItems,
+  const governanceGroup = governanceItems.length > 0 ? {
+    id: 'governance',
+    label: 'ĐIỀU HÀNH & PHÊ DUYỆT',
+    icon: <AdminNavIcon name="approval" />,
+    items: governanceItems,
   } : null;
 
-  const visibleMemberGroups = familyManagementGroup
-    ? memberGroups.flatMap((group) => group.id === 'network' ? [group, familyManagementGroup] : [group])
-    : memberGroups;
+  const profileSettingsGroup = {
+    id: 'profile_settings',
+    label: 'HỒ SƠ & CÀI ĐẶT',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    ),
+    items: [
+      { id: 'clan-profile', label: 'Hồ sơ gia tộc' },
+      { id: 'my-profile', label: 'Hồ sơ của tôi' },
+      { id: 'my-clans', label: 'Dòng tộc của tôi' },
+      { id: 'my-proposals', label: 'Đề xuất của tôi' },
+      { id: 'privacy-settings', label: 'Quyền riêng tư & Bảo mật' },
+    ],
+  };
+
+  const visibleMemberGroups = [
+    ...commonGroups,
+    ...(governanceGroup ? [governanceGroup] : []),
+    profileSettingsGroup,
+  ];
 
   return (
     <aside className={`sidebar-container ${isCollapsed ? 'collapsed' : 'expanded'}`}>

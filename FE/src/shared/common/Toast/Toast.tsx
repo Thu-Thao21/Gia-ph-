@@ -25,11 +25,11 @@ const TOAST_ICONS: Record<ToastType, string> = {
 };
 
 const TOAST_TITLES: Record<ToastType, string> = {
-  success: 'Thành công',
-  error: 'Có lỗi xảy ra',
-  warning: 'Cảnh báo',
-  info: 'Thông tin',
-  loading: 'Đang xử lý',
+  success: 'Ghi nhận thành công',
+  error: 'Không thể hoàn tất thao tác',
+  warning: 'Lưu ý từ hệ thống gia tộc',
+  info: 'Thông báo gia phả',
+  loading: 'Đang lưu trữ dữ liệu...',
 };
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onClose }) => {

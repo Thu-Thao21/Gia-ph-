@@ -211,6 +211,8 @@ async def _write(*, db, users, family, idempotency, principal, clan_id, seen: _S
             )
         now = clock()
         expires_at = now + timedelta(hours=settings.OWNER_TEMP_PASSWORD_TTL_HOURS)
+        from app.core.security.password_hash import hash_password
+        cred.password_hash = await asyncio.to_thread(hash_password, password)
         cred.must_change_password = True
         cred.temporary_password_issued_at = now
         cred.temporary_password_expires_at = expires_at

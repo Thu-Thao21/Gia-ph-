@@ -62,7 +62,7 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
     >
       {/* Primary Person Card (Blood Child / Direct Lineage) */}
       <div
-        className={`tree-person-card ${node.gender} ${node.isFocusPerson ? 'is-focus-card' : ''} ${node.isUnconnected ? 'is-unconnected-card' : ''}`}
+        className={`tree-person-card ${node.gender} ${node.isFocusPerson ? 'is-focus-card' : ''} ${node.isUnconnected ? 'is-unconnected-card' : ''} ${node.isCurrentUser ? 'is-current-user' : ''}`}
         data-person-card-id={node.id}
         onClick={(e) => {
           e.stopPropagation();
@@ -105,6 +105,30 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
           {getYearRange(node.birthDate, node.isAlive)}
         </div>
 
+        {/* Trạng thái liên kết tài khoản người dùng */}
+        <div
+          className={`tree-person-account-badge ${node.userId ? 'is-linked' : 'is-unlinked'}`}
+          title={node.userId ? 'Hồ sơ đã được liên kết với tài khoản người dùng' : 'Hồ sơ chưa liên kết tài khoản (hồ sơ phả hệ)'}
+        >
+          {node.userId ? (
+            <>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              <span>{node.isCurrentUser ? 'Chính bạn (Đã liên kết)' : 'Đã liên kết tài khoản'}</span>
+            </>
+          ) : (
+            <>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+              </svg>
+              <span>Chưa liên kết tài khoản</span>
+            </>
+          )}
+        </div>
+
         {node.isUnconnected ? (
           <div className="tree-unconnected-indicator" title="Nhấp chuột phải để xác nhận mối quan hệ hoặc nối phả hệ">
             Chờ xác nhận quan hệ
@@ -122,14 +146,20 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
       {primarySpouse && (
         <>
           <div className="tree-spouse-connector" data-spouse-bridge-id={node.id}>
-            <div className="tree-spouse-line" />
-            <span className="tree-spouse-badge">
-              {primarySpouse.focusRole || (primarySpouse.gender === 'female' ? 'Vợ' : 'Chồng')}
+            <div
+              className="tree-spouse-line"
+              style={primarySpouse.isCrossClan ? { background: 'linear-gradient(90deg, #2563eb, #7c3aed)' } : undefined}
+            />
+            <span
+              className="tree-spouse-badge"
+              style={primarySpouse.isCrossClan ? { background: '#f5f3ff', color: '#6d28d9', borderColor: '#c4b5fd' } : undefined}
+            >
+              {primarySpouse.inLawRole || primarySpouse.focusRole || (primarySpouse.gender === 'female' ? 'Vợ' : 'Chồng')}
             </span>
           </div>
 
           <div
-            className={`tree-person-card ${primarySpouse.gender} ${node.isFocusPerson ? 'is-focus-spouse' : ''}`}
+            className={`tree-person-card ${primarySpouse.gender} ${node.isFocusPerson ? 'is-focus-spouse' : ''} ${primarySpouse.isCurrentUser ? 'is-current-user' : ''}`}
             data-person-card-id={primarySpouse.id}
             onClick={(e) => {
               e.stopPropagation();
@@ -142,6 +172,8 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
                 birthDate: primarySpouse.birthDate,
                 isAlive: primarySpouse.isAlive,
                 occupation: primarySpouse.occupation,
+                userId: primarySpouse.userId,
+                isCurrentUser: primarySpouse.isCurrentUser,
               });
             }}
             onContextMenu={(e) => {
@@ -152,6 +184,8 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
                 id: primarySpouse.id,
                 fullName: primarySpouse.fullName,
                 gender: primarySpouse.gender,
+                userId: primarySpouse.userId,
+                isCurrentUser: primarySpouse.isCurrentUser,
               });
             }}
             title={
@@ -162,8 +196,8 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
           >
             <div className="tree-person-gen-badge spouse">
               {`ĐỜI ${node.generation || 1}`}
-              <span className="tree-role-tag spouse">
-                {primarySpouse.focusRole || getRoleTag(node.generation, primarySpouse.gender, true)}
+              <span className={`tree-role-tag spouse ${primarySpouse.isCrossClan ? 'role-cross-clan' : ''}`}>
+                {primarySpouse.inLawRole || primarySpouse.focusRole || getRoleTag(node.generation, primarySpouse.gender, true)}
               </span>
             </div>
 
@@ -173,8 +207,51 @@ export const TreeNodeCard: React.FC<TreeNodeCardProps> = ({
             
             <div className="tree-person-name">{primarySpouse.fullName}</div>
 
+            {primarySpouse.isCrossClan && (
+              <div
+                style={{
+                  background: '#f5f3ff',
+                  border: '1px solid #ddd6fe',
+                  borderRadius: '4px',
+                  padding: '2px 6px',
+                  fontSize: '10.5px',
+                  fontWeight: 600,
+                  color: '#6d28d9',
+                  marginTop: '2px',
+                  textAlign: 'center',
+                }}
+                title={`Mối quan hệ thông gia liên tộc: ${primarySpouse.inLawRole}`}
+              >
+                {primarySpouse.inLawRole}
+              </div>
+            )}
+
             <div className={`tree-person-year ${primarySpouse.isAlive === false ? 'deceased' : ''}`}>
               {getYearRange(primarySpouse.birthDate, primarySpouse.isAlive)}
+            </div>
+
+            {/* Trạng thái liên kết tài khoản người dùng (Spouse) */}
+            <div
+              className={`tree-person-account-badge ${primarySpouse.userId ? 'is-linked' : 'is-unlinked'}`}
+              title={primarySpouse.userId ? 'Hồ sơ đã được liên kết với tài khoản người dùng' : 'Hồ sơ chưa liên kết tài khoản (hồ sơ phả hệ)'}
+            >
+              {primarySpouse.userId ? (
+                <>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  <span>{primarySpouse.isCurrentUser ? 'Chính bạn (Đã liên kết)' : 'Đã liên kết tài khoản'}</span>
+                </>
+              ) : (
+                <>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                  </svg>
+                  <span>Chưa liên kết tài khoản</span>
+                </>
+              )}
             </div>
 
             {primarySpouse.occupation && (

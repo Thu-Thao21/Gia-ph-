@@ -89,9 +89,23 @@ export const ClanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Xác định vai trò có hiệu lực tại cây đó (KHÔNG lấy từ cây khác)
   const activeClanRole: 'clan_admin' | 'family_admin' | 'member' | '' = useMemo(() => {
     if (!activeMembership) return '';
-    const roles = activeMembership.roles || [];
-    if (roles.includes('BUSINESS_OWNER')) return 'clan_admin';
-    if (roles.includes('FAMILY_ADMIN')) return 'family_admin';
+    const roles = (activeMembership.roles || []).map((r) => String(r).toUpperCase());
+    const perms = activeMembership.permissions || [];
+    if (
+      roles.includes('BUSINESS_OWNER') ||
+      roles.includes('CLAN_ADMIN') ||
+      roles.includes('OWNER') ||
+      roles.includes('FAMILY_HEAD')
+    ) {
+      return 'clan_admin';
+    }
+    if (
+      roles.includes('FAMILY_ADMIN') ||
+      roles.includes('MANAGER') ||
+      perms.includes('family.update')
+    ) {
+      return 'family_admin';
+    }
     return 'member';
   }, [activeMembership]);
 

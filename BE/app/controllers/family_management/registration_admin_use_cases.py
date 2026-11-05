@@ -351,7 +351,7 @@ async def _provision_owner_via_firebase_rest(
                             update_url,
                             json={
                                 "idToken": id_token,
-                                "displayName": applicant_name,
+                                "displayName": clan_name,
                                 "returnSecureToken": False,
                             },
                         )
@@ -381,7 +381,7 @@ async def _provision_owner_via_firebase_rest(
             user_id=user_id,
             firebase_uid=firebase_uid,
             email=clan_leader_email,
-            display_name=applicant_name,
+            display_name=clan_name,
             phone=applicant_phone,
             status="PENDING",
             first_login_required=True,
@@ -395,6 +395,8 @@ async def _provision_owner_via_firebase_rest(
             contact_email=applicant_email, actor_id=principal.user_id, clan_id=clan_id, now=now,
         )
         cred = await users.add_credential_metadata(user_id, now=now)
+        from app.core.security.password_hash import hash_password
+        cred.password_hash = await asyncio.to_thread(hash_password, temp_pass)
         cred.must_change_password = True
         cred.temporary_password_issued_at = now
         cred.temporary_password_expires_at = expires_at
@@ -412,6 +414,19 @@ async def _provision_owner_via_firebase_rest(
     cur_owner = await family.get_active_owner(clan_id)
     if cur_owner is None:
         await family.create_ownership(clan_id=clan_id, user_id=user_id, now=now)
+
+    try:
+        from app.services.genealogy.clan_leader_profile_service import ensure_clan_leader_person_profile
+        target_sess = db._session if hasattr(db, "_session") else db
+        await ensure_clan_leader_person_profile(
+            db=target_sess,
+            clan_id=clan_id,
+            user_id=user_id,
+            full_name=applicant_name,
+            phone=applicant_phone,
+        )
+    except Exception as e:
+        logger.warning("ensure_clan_leader_person_profile in _provision_owner_via_firebase_rest: %s", e)
 
     await db.commit()
 
@@ -533,7 +548,7 @@ async def approve_and_provision_registration(
                     clan_id=clan.clan_id,
                     body=OwnerProvisionRequest(
                         email=clan_leader_email,
-                        display_name=rep_name,
+                        display_name=clan.name,
                         phone=rep_phone,
                     ),
                     key=owner_key,
@@ -567,7 +582,7 @@ async def approve_and_provision_registration(
                 sender=sender,
                 clan_code=clan.clan_code,
             )
-            owner_name = rep_name
+            owner_name = clan.name
     else:
         owner_user = await users.get_user_by_id(existing_owner.user_id)
         owner_email = owner_user.email if owner_user else rep_email
@@ -593,6 +608,23 @@ async def approve_and_provision_registration(
             clan_refresh = await family.get_clan_by_registration_id(registration_id)
             if clan_refresh:
                 clan_status = clan_refresh.status
+
+    # 5b. Ensure Clan Leader has a Person profile in the clan's phả hệ and PersonAccountLink
+    try:
+        from app.services.genealogy.clan_leader_profile_service import ensure_clan_leader_person_profile
+        active_owner = await family.get_active_owner(clan.clan_id)
+        if active_owner:
+            target_sess = db._session if hasattr(db, "_session") else db
+            await ensure_clan_leader_person_profile(
+                db=target_sess,
+                clan_id=clan.clan_id,
+                user_id=active_owner.user_id,
+                full_name=rep_name,
+                phone=rep_phone,
+            )
+            await db.commit()
+    except Exception as e:
+        logger.warning("ensure_clan_leader_person_profile in approve_and_provision: %s", e)
 
     email_sent = delivery_status == "SENT"
     if email_sent:
