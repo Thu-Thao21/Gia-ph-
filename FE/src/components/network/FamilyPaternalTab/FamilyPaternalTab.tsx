@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { fetchFamilyNetwork } from '../../../services/network.service';
 import type { FamilyNetwork } from '../../../types/network';
 import { FamilyClanCard } from '../FamilyClanCard';
+import { EmptyState } from '../../../shared/Feedback/EmptyState';
+import { LoadingState } from '../../../shared/Feedback/LoadingState';
 import '../Network.css';
 
 export const FamilyPaternalTab: React.FC = () => {
@@ -15,14 +17,25 @@ export const FamilyPaternalTab: React.FC = () => {
     });
   }, []);
 
-  if (loading) return <div className="network-loading-prompt">Đang tải dữ liệu Dòng họ Nội...</div>;
+  if (loading) {
+    return (
+      <div className="network-layout">
+        <div className="network-card">
+          <LoadingState
+            message="Đang đồng bộ dữ liệu Dòng họ Nội tộc..."
+            subMessage="Hệ thống đang truy vấn các chi phái và trực hệ nội tộc từ cơ sở dữ liệu."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="network-layout">
       <div className="network-card">
-        <h3 className="network-card-title">Dòng Họ Nội (Bên Cha)</h3>
+        <h3 className="network-card-title">Dòng Họ Nội Tộc</h3>
         <p className="network-card-subtitle">
-          Các dòng họ thuộc bên nội cha, bao gồm dòng họ gốc và các chi nhánh trực hệ.
+          Dòng họ chính và các chi nhánh trực hệ trong gia phả của bạn.
         </p>
         {families.length > 0 ? (
           <div className="network-clans-list">
@@ -31,7 +44,11 @@ export const FamilyPaternalTab: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="network-empty">Chưa có dữ liệu dòng họ Nội nào trong cơ sở dữ liệu.</div>
+          <EmptyState
+            variant="tree"
+            title="Chưa ghi nhận dữ liệu Dòng họ Nội tộc"
+            subMessage="Hệ thống chưa tìm thấy thông tin chi phái trực hệ nội tộc nào trong cơ sở dữ liệu gia tộc."
+          />
         )}
       </div>
     </div>

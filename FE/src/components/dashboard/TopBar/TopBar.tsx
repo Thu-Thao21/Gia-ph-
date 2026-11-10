@@ -4,6 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../config/routes';
 import circularEmblemLogo from '../../../assets/logo/logo_circular_emblem.png';
 import { ClanSelector } from './ClanSelector';
+import {
+  fetchUserNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '../../../services/notification.service';
 import './TopBar.css';
 
 export interface TopBarProps {
@@ -148,6 +153,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onNavigateTab,
 }) => {
   const navigate = useNavigate();
+  const isAdmin = (userRole || '').toLowerCase() === 'admin';
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
@@ -186,44 +192,46 @@ export const TopBar: React.FC<TopBarProps> = ({
     };
   }, [showProfileMenu, showNotifications, selectedNotification]);
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 1,
-      title: 'Lịch giỗ sắp tới',
-      desc: 'Giỗ Cụ Nguyễn Văn A (Đời thứ 3) sẽ diễn ra vào ngày 15/08 Âm lịch.',
-      time: '10 phút trước',
-      unread: true,
-      type: 'Lễ giỗ & Tưởng niệm',
-      fullContent: 'Kính gửi toàn thể quý bà con cô bác và con cháu trong dòng tộc,\n\nBan khánh tiết xin trân trọng thông báo: Lễ tưởng niệm ngày giỗ Cụ Nguyễn Văn A (Đời thứ 3 - Chi 1) sẽ được tổ chức trang trọng tại Từ đường Nhà thờ tộc.\n\nThời gian: Ngày 15 tháng 08 Âm lịch\nĐịa điểm: Từ đường chính gia tộc\n\nChương trình buổi lễ:\n• 08:30: Lễ cáo yết và dâng hương tiên tổ\n• 10:00: Họp mặt truyền thống các chi phái và báo cáo quỹ khuyến học\n• 11:30: Thụ lộc gia tộc và giao lưu con cháu nội ngoại\n\nKính mời các gia đình và con cháu thu xếp thời gian về dự đông đủ.',
-      targetTab: 'anniversaries',
-    },
-    {
-      id: 2,
-      title: 'Đề xuất thay đổi',
-      desc: 'Yêu cầu cập nhật thông tin học vấn đã được gửi cho Quản trị viên duyệt.',
-      time: '2 giờ trước',
-      unread: true,
-      type: 'Phê duyệt hồ sơ',
-      fullContent: 'Hệ thống vừa tiếp nhận yêu cầu thay đổi thông tin từ thành viên trong gia tộc:\n\n• Người gửi: Nguyễn Văn B (Chi phái 2, Đời thứ 5)\n• Loại đề xuất: Cập nhật học vấn & nghề nghiệp\n• Nội dung thay đổi: Bổ sung bằng Thạc sĩ Công nghệ Thông tin, đơn vị công tác mới.\n\nYêu cầu này đã được chuyển đến mục Phê duyệt để Quản trị viên kiểm tra và cập nhật chính thức vào cơ sở dữ liệu phả hệ.',
-      targetTab: 'admin-approvals',
-    },
-    {
-      id: 3,
-      title: 'Sự kiện gia tộc',
-      desc: 'Lễ giỗ tổ dòng họ năm 2026 đã mở đăng ký tham dự.',
-      time: '1 ngày trước',
-      unread: false,
-      type: 'Sự kiện & Hoạt động',
-      fullContent: 'Ban liên lạc dòng họ thông báo đã chính thức mở cổng đăng ký tham dự Đại lễ Giỗ Tổ Dòng Họ năm 2026.\n\nĐể công tác đón tiếp và chuẩn bị khánh tiết được chu đáo, kính đề nghị đại diện các gia đình đăng ký sớm số lượng người tham dự trực tiếp trên hệ thống tại mục Quản lý Sự kiện.',
-      targetTab: 'clan-events',
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  // Tải thông báo thực tế từ máy chủ
+  const loadNotifications = () => {
+    fetchUserNotifications().then((items) => {
+      if (items && items.length > 0) {
+        setNotifications(
+          items.map((it: any, index: number) => ({
+            id: it.id || index + 1,
+            title: it.title,
+            desc: it.content,
+            time: it.createdAt,
+            unread: !it.read,
+            type: it.category || 'Thông báo dòng họ',
+            fullContent: it.content,
+            targetTab: 'notifications',
+          }))
+        );
+      }
+    }).catch((err) => console.error('Lỗi nạp thông báo TopBar:', err));
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (showNotifications) {
+      loadNotifications();
+    }
+  }, [showNotifications]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
   const roleClass = userRole === 'Admin' ? 'admin' : 'member';
 
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    void markAllNotificationsRead();
   };
 
   const handleNotificationClick = (item: NotificationItem) => {
@@ -231,6 +239,9 @@ export const TopBar: React.FC<TopBarProps> = ({
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, unread: false } : n))
     );
+    if (item.id) {
+      void markNotificationRead(String(item.id));
+    }
     // 2. Mở modal hiển thị chi tiết thông báo
     setSelectedNotification({ ...item, unread: false });
     // 3. Đóng dropdown thông báo
@@ -250,9 +261,9 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   const handleNavToProfile = () => {
     setShowProfileMenu(false);
-    if (userRole === 'Admin') {
-      if (onNavigateTab) onNavigateTab('admin-permissions');
-      else navigate(ROUTES.ADMIN.ACCOUNTS);
+    if (isAdmin) {
+      if (onNavigateTab) onNavigateTab('admin-profile');
+      else navigate(ROUTES.ADMIN.PROFILE);
     } else if (onNavigateTab) onNavigateTab('my-profile');
     else navigate(ROUTES.USER.MY_PROFILE);
   };
@@ -271,7 +282,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   const handleNavToSettings = () => {
     setShowProfileMenu(false);
-    if (userRole === 'Admin') {
+    if (isAdmin) {
       if (onNavigateTab) onNavigateTab('admin-roles');
       else navigate(ROUTES.ADMIN.ROLES);
     } else if (onNavigateTab) onNavigateTab('privacy-settings');
@@ -378,16 +389,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                           }
                         }}
                       >
-                        <div
-                          className="topbar-notif-item-icon-box"
-                          style={{
-                            backgroundColor: typeConfig.iconBg,
-                            color: typeConfig.color,
-                            borderColor: typeConfig.badgeBorder,
-                          }}
-                        >
-                          {typeConfig.icon}
-                        </div>
+                        
                         <div className="topbar-notif-item-content-col">
                           <div className="topbar-notif-item-header">
                             <span className="topbar-notif-item-title">{item.title}</span>
@@ -433,26 +435,49 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <div className="topbar-profile-role">{userRole}</div>
               </div>
 
-              <button className="topbar-menu-item" onClick={handleNavToProfile}>
-                Hồ sơ của tôi
-              </button>
+              {isAdmin ? (
+                <>
+                  <button className="topbar-menu-item" onClick={handleNavToProfile}>
+                    Hồ sơ của tôi
+                  </button>
 
-              <button className="topbar-menu-item" onClick={handleNavToMyClans}>
-                Dòng tộc của tôi
-              </button>
+                  <button
+                    className="topbar-menu-item"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      if (onNavigateTab) onNavigateTab('admin-permissions');
+                      else navigate(ROUTES.ADMIN.ACCOUNTS);
+                    }}
+                  >
+                    Quản lý tài khoản toàn hệ thống
+                  </button>
 
-              <button className="topbar-menu-item" onClick={handleNavToClanProfile}>
-                Hồ sơ gia tộc
-              </button>
+                  <button className="topbar-menu-item" onClick={handleNavToSettings}>
+                    Phân quyền & Vai trò
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="topbar-menu-item" onClick={handleNavToProfile}>
+                    Hồ sơ của tôi
+                  </button>
 
-              <button className="topbar-menu-item" onClick={handleNavToSettings}>
-                Cài đặt & Quyền riêng tư
-              </button>
+                  <button className="topbar-menu-item" onClick={handleNavToMyClans}>
+                    Dòng tộc của tôi
+                  </button>
 
-              {userRole !== 'Admin' && (
-                <button className="topbar-menu-item" onClick={handleNavToAIConsent}>
-                  Quyền sử dụng AI
-                </button>
+                  <button className="topbar-menu-item" onClick={handleNavToClanProfile}>
+                    Hồ sơ gia tộc
+                  </button>
+
+                  <button className="topbar-menu-item" onClick={handleNavToSettings}>
+                    Cài đặt & Quyền riêng tư
+                  </button>
+
+                  <button className="topbar-menu-item" onClick={handleNavToAIConsent}>
+                    Quyền sử dụng AI
+                  </button>
+                </>
               )}
 
               <div className="topbar-profile-divider" />
@@ -486,16 +511,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               >
                 <div className="topbar-notif-modal-header">
                   <div className="topbar-notif-modal-header-left">
-                    <div
-                      className="topbar-notif-modal-icon-box"
-                      style={{
-                        backgroundColor: typeConfig.iconBg,
-                        color: typeConfig.color,
-                        borderColor: typeConfig.badgeBorder,
-                      }}
-                    >
-                      {typeConfig.icon}
-                    </div>
+                    
                     <div className="topbar-notif-modal-header-text">
                       <div className="topbar-notif-modal-top-meta">
                         <span

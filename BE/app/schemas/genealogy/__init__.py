@@ -21,6 +21,9 @@ class PersonResponse(BaseModel):
     avatar_url: Optional[str] = Field(None, alias="avatarUrl")
     is_alive: bool = Field(alias="isLiving")
     status: str
+    birth_date: Optional[date] = Field(None, alias="birthDate")
+    death_date: Optional[date] = Field(None, alias="deathDate")
+    privacy_level: Optional[str] = Field(None, alias="privacyLevel")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -102,6 +105,9 @@ class TreeNode(BaseModel):
     avatar_url: Optional[str] = Field(None, alias="avatarUrl")
     is_alive: bool = Field(True, alias="isLiving")
     status: str
+    birth_date: Optional[date] = Field(None, alias="birthDate")
+    death_date: Optional[date] = Field(None, alias="deathDate")
+    privacy_level: Optional[str] = Field(None, alias="privacyLevel")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -109,6 +115,7 @@ class TreeNode(BaseModel):
 class TreeDataResponse(BaseModel):
     nodes: List[TreeNode]
     edges: List[RelationshipResponse]
+    can_export: Optional[bool] = Field(False, alias="canExport")
 
 
 class FocusViewNode(BaseModel):
@@ -122,6 +129,9 @@ class FocusViewNode(BaseModel):
     is_ego: bool = Field(False, alias="isEgo")
     role: Optional[str] = None
     status: str
+    birth_date: Optional[date] = Field(None, alias="birthDate")
+    death_date: Optional[date] = Field(None, alias="deathDate")
+    privacy_level: Optional[str] = Field(None, alias="privacyLevel")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

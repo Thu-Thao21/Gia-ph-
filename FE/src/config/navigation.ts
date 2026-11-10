@@ -55,8 +55,8 @@ export const memberNavigation: NavGroup[] = [
   {
     groupLabel: 'ĐỜI SỐNG DÒNG HỌ',
     items: [
-      { id: 'anniversaries', label: 'Lịch ngày giỗ', route: ROUTES.USER.ANNIVERSARIES },
-      { id: 'events', label: 'Sự kiện dòng họ', route: ROUTES.USER.EVENTS },
+      { id: 'events', label: 'Sự kiện & Ngày giỗ', route: ROUTES.USER.EVENTS },
+
       { id: 'funds', label: 'Quỹ & Đóng góp', route: ROUTES.USER.FUNDS },
       { id: 'ancestral-hall', label: 'Phòng thờ số', route: ROUTES.USER.ANCESTRAL_HALL },
       { id: 'ancestral-library', label: 'Thư viện Tổ tiên 3D/360°', route: ROUTES.USER.ANCESTRAL_LIBRARY },

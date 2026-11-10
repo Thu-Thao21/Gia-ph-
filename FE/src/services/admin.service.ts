@@ -228,3 +228,15 @@ export async function revokeFamilyAdmin(clanId: string, userId: string): Promise
   await apiClient.delete(`/clans/${clanId}/admins/${userId}`);
 }
 
+/** DELETE /clans/{clan_id}/members/{user_id} - Khai trừ thành viên ra khỏi dòng họ */
+export async function revokeClanMember(
+  clanId: string,
+  userId: string,
+  reason?: string
+): Promise<{ success: boolean; message: string; user_id?: string; clan_id?: string }> {
+  const res = await apiClient.delete(`/clans/${clanId}/members/${userId}`, {
+    params: reason ? { reason } : undefined,
+  });
+  return res.data;
+}
+

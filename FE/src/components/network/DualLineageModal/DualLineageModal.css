@@ -1,0 +1,295 @@
+/* DualLineageModal.css - Clean, Modern Dual Lineage Viewer */
+
+.dlm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.dlm-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 980px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.dlm-header {
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dlm-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dlm-header-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.dlm-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.dlm-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.dlm-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Central Couple Hero Banner */
+.dlm-hero-banner {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dlm-hero-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dlm-hero-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #ffffff;
+}
+
+.dlm-hero-avatar.male {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.dlm-hero-avatar.female {
+  background: linear-gradient(135deg, #db2777, #be185d);
+}
+
+.dlm-hero-name {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dlm-hero-clan {
+  font-size: 12.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.dlm-hero-bridge-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+}
+
+.dlm-bridge-pill {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #c4b5fd;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Two Columns Layout */
+.dlm-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .dlm-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dlm-column {
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dlm-column.paternal {
+  background: #f8fafc;
+  border-top: 4px solid #2563eb;
+}
+
+.dlm-column.maternal {
+  background: #fdf2f8;
+  border-top: 4px solid #db2777;
+}
+
+.dlm-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+
+.dlm-column-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.dlm-column.paternal .dlm-column-title {
+  color: #1e40af;
+}
+
+.dlm-column.maternal .dlm-column-title {
+  color: #9d174d;
+}
+
+.dlm-gen-card {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 12px;
+}
+
+.dlm-gen-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.dlm-members-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dlm-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+}
+
+.dlm-member-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dlm-member-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dlm-member-tag.male {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.dlm-member-tag.female {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.dlm-footer {
+  padding: 16px 24px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.dlm-btn-primary {
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dlm-btn-primary:hover {
+  background: #6d28d9;
+}
+
+.dlm-btn-secondary {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dlm-btn-secondary:hover {
+  background: #f1f5f9;
+}
+

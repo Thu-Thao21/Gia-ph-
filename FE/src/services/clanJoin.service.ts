@@ -97,24 +97,24 @@ export interface ReviewActionPayload {
 
 export const searchPublicClans = async (query?: string): Promise<PublicClanItem[]> => {
   const params = query ? { q: query } : {};
-  const res = await apiClient.get<PublicClanItem[]>('/api/v1/clans/search-public', { params });
+  const res = await apiClient.get<PublicClanItem[]>('/clans/search-public', { params });
   return res.data;
 };
 
 export const getMyClansSummary = async (): Promise<MyClansSummaryResponse> => {
-  const res = await apiClient.get<MyClansSummaryResponse>('/api/v1/my-clans/summary');
+  const res = await apiClient.get<MyClansSummaryResponse>('/my-clans/summary');
   return res.data;
 };
 
 export const createJoinRequest = async (
   payload: CreateJoinRequestPayload
 ): Promise<ClanJoinRequestItem> => {
-  const res = await apiClient.post<ClanJoinRequestItem>('/api/v1/my-clans/join-requests', payload);
+  const res = await apiClient.post<ClanJoinRequestItem>('/my-clans/join-requests', payload);
   return res.data;
 };
 
 export const getMyJoinRequests = async (): Promise<ClanJoinRequestItem[]> => {
-  const res = await apiClient.get<ClanJoinRequestItem[]>('/api/v1/my-clans/join-requests');
+  const res = await apiClient.get<ClanJoinRequestItem[]>('/my-clans/join-requests');
   return res.data;
 };
 
@@ -123,7 +123,7 @@ export const supplementJoinRequest = async (
   payload: SupplementPayload
 ): Promise<ClanJoinRequestItem> => {
   const res = await apiClient.put<ClanJoinRequestItem>(
-    `/api/v1/my-clans/join-requests/${requestId}/supplement`,
+    `/my-clans/join-requests/${requestId}/supplement`,
     payload
   );
   return res.data;
@@ -131,7 +131,7 @@ export const supplementJoinRequest = async (
 
 export const cancelJoinRequest = async (requestId: string): Promise<ClanJoinRequestItem> => {
   const res = await apiClient.post<ClanJoinRequestItem>(
-    `/api/v1/my-clans/join-requests/${requestId}/cancel`
+    `/my-clans/join-requests/${requestId}/cancel`
   );
   return res.data;
 };
@@ -139,7 +139,7 @@ export const cancelJoinRequest = async (requestId: string): Promise<ClanJoinRequ
 export const getClanJoinRequestsForReviewer = async (
   clanId: string
 ): Promise<ClanJoinRequestItem[]> => {
-  const res = await apiClient.get<ClanJoinRequestItem[]>(`/api/v1/clans/${clanId}/join-requests`);
+  const res = await apiClient.get<ClanJoinRequestItem[]>(`/clans/${clanId}/join-requests`);
   return res.data;
 };
 
@@ -149,7 +149,7 @@ export const reviewClanJoinRequest = async (
   payload: ReviewActionPayload
 ): Promise<ClanJoinRequestItem> => {
   const res = await apiClient.post<ClanJoinRequestItem>(
-    `/api/v1/clans/${clanId}/join-requests/${requestId}/review`,
+    `/clans/${clanId}/join-requests/${requestId}/review`,
     payload
   );
   return res.data;
@@ -159,7 +159,7 @@ export const leaveClan = async (
   clanId: string
 ): Promise<{ success: boolean; message: string; clan_id: string }> => {
   const res = await apiClient.post<{ success: boolean; message: string; clan_id: string }>(
-    `/api/v1/my-clans/${clanId}/leave`
+    `/my-clans/${clanId}/leave`
   );
   return res.data;
 };

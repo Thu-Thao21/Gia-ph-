@@ -98,7 +98,7 @@
 .processing-toast-text {
   font-size: 16px;
   font-weight: 700;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   color: #ffffff;
   letter-spacing: 0.02em;
   display: flex;

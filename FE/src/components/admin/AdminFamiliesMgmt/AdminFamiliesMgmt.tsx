@@ -99,7 +99,7 @@ export const AdminFamiliesMgmt: React.FC<AdminFamiliesMgmtProps> = ({ onViewTree
         setFamilies([]);
       }
     } catch (err: any) {
-      console.error('Không thể tải danh sách dòng họ từ Neon DB:', err);
+      console.error('Không thể tải danh sách dòng họ:', err);
       setFamilies([]);
     } finally {
       setLoading(false);
@@ -287,7 +287,17 @@ export const AdminFamiliesMgmt: React.FC<AdminFamiliesMgmtProps> = ({ onViewTree
       {/* Main List Display */}
       {loading ? (
         <div className="admin-table-loading">
-          <p>Đang tải danh sách dòng họ...</p>
+          <div className="s6a-loading-box">
+            <div className="s6a-spinner-rings">
+              <div className="s6a-spinner-outer" />
+              <div className="s6a-spinner-inner" />
+              <div className="s6a-spinner-dot" />
+            </div>
+            <div className="s6a-loading-text">
+              <strong>Đang đồng bộ danh mục dòng họ...</strong>
+              <p>Hệ thống đang truy xuất thông tin gia tộc và các chi nhánh từ máy chủ...</p>
+            </div>
+          </div>
         </div>
       ) : filteredFamilies.length === 0 ? (
         <div className="admin-table-empty">
@@ -338,8 +348,7 @@ export const AdminFamiliesMgmt: React.FC<AdminFamiliesMgmtProps> = ({ onViewTree
                   {onViewTree && (
                     <button
                       type="button"
-                      className="fam-btn fam-btn-view"
-                      style={{ color: '#0d9488', borderColor: '#0d9488' }}
+                      className="fam-btn fam-btn-view fam-btn-tree"
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewTree(fam.id);

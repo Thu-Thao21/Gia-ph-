@@ -38,7 +38,7 @@
   justify-content: space-between;
   gap: 28px;
   padding: 30px 34px;
-  border-radius: 24px;
+  border-radius: 16px;
   color: #ffffff;
   background:
     radial-gradient(circle at 84% 16%, rgba(255, 255, 255, 0.18), transparent 30%),
@@ -46,6 +46,7 @@
   box-shadow: 0 16px 34px rgba(37, 99, 235, 0.17);
   overflow: hidden;
   position: relative;
+  font-family: var(--font-body);
 }
 
 .links-hero-banner::after {
@@ -187,9 +188,10 @@
 
 .links-type-tab {
   padding: 7px 16px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-body);
   border: 1px solid #e2e8f0;
   background: #f8fafc;
   color: #475569;
@@ -224,7 +226,7 @@
   flex: 1;
   min-width: 260px;
   max-width: 440px;
-  height: 40px;
+  height: 38px;
   display: flex;
   align-items: center;
   position: relative;
@@ -243,9 +245,10 @@
   width: 100%;
   height: 100%;
   padding: 0 34px 0 16px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   font-size: 13.5px;
+  font-family: var(--font-body);
   outline: none;
   background: #ffffff;
   color: #0f172a;
@@ -587,16 +590,17 @@
 }
 
 .links-btn-action.view {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #334155;
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 .links-btn-action.view:hover {
-  background: #eff6ff;
-  border-color: #93c5fd;
-  color: #2563eb;
+  background: #ffffff;
+  border-color: #94a3b8;
+  color: #000000;
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
 }
 
 .links-btn-action.approve {

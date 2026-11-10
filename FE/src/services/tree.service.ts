@@ -1,5 +1,6 @@
 import apiClient from '../api/axios';
 import { fetchMembers } from './member.service';
+import { fetchInLawMarriages } from './network.service';
 import type { Member } from '../types/member';
 import type { ErgoTreeNode, SpouseNode } from '../types/tree';
 
@@ -7,6 +8,8 @@ export async function buildErgoTreeFromDB(
   familyId?: string,
   focusMemberId?: string,
   cachedMembers?: Member[],
+  currentPersonId?: string,
+  currentUserId?: string,
 ): Promise<{ rootNodes: ErgoTreeNode[]; allMembers: Member[] }> {
   try {
     let allMembers = (cachedMembers && cachedMembers.length > 0) ? cachedMembers : [];
@@ -23,6 +26,69 @@ export async function buildErgoTreeFromDB(
     const memberMap = new Map<string, Member>();
     allMembers.forEach((m) => memberMap.set(m.id, m));
 
+    // Fetch verified cross-clan marriages for this family
+    let crossClanMarriages: any[] = [];
+    try {
+      crossClanMarriages = await fetchInLawMarriages(familyId);
+    } catch {
+      crossClanMarriages = [];
+    }
+
+    const crossSpousesByPersonId = new Map<string, SpouseNode[]>();
+    crossClanMarriages.forEach((cm) => {
+      if (!cm.isCrossClan) return;
+      const hId = cm.husbandPersonId;
+      const wId = cm.wifePersonId;
+
+      if (hId && memberMap.has(hId)) {
+        const cur = crossSpousesByPersonId.get(hId) || [];
+        const isCurrent = Boolean(
+          (currentPersonId && (wId === currentPersonId || String(wId).toLowerCase() === String(currentPersonId).toLowerCase())) ||
+          (currentUserId && cm.wifeUserId === currentUserId)
+        );
+        cur.push({
+          id: wId || ('cross-wife-' + cm.id),
+          fullName: cm.wifeName,
+          gender: 'female',
+          birthDate: cm.wifeBirthDate || undefined,
+          occupation: cm.wifeOccupation || 'Kinh doanh / Quản trị',
+          isAlive: true,
+          isCrossClan: true,
+          clanName: cm.wifeFamily,
+          clanId: cm.wifeClanId,
+          inLawRole: `Dâu họ ${cm.wifeFamily}`,
+          linkId: cm.linkId,
+          isCurrentUser: isCurrent,
+          userId: cm.wifeUserId || (isCurrent ? currentUserId : undefined),
+        });
+        crossSpousesByPersonId.set(hId, cur);
+      }
+
+      if (wId && memberMap.has(wId)) {
+        const cur = crossSpousesByPersonId.get(wId) || [];
+        const isCurrent = Boolean(
+          (currentPersonId && (hId === currentPersonId || String(hId).toLowerCase() === String(currentPersonId).toLowerCase())) ||
+          (currentUserId && cm.husbandUserId === currentUserId)
+        );
+        cur.push({
+          id: hId || ('cross-husband-' + cm.id),
+          fullName: cm.husbandName,
+          gender: 'male',
+          birthDate: cm.husbandBirthDate || undefined,
+          occupation: cm.husbandOccupation || 'Kinh doanh / Quản trị',
+          isAlive: true,
+          isCrossClan: true,
+          clanName: cm.husbandFamily,
+          clanId: cm.husbandClanId,
+          inLawRole: `Rể họ ${cm.husbandFamily}`,
+          linkId: cm.linkId,
+          isCurrentUser: isCurrent,
+          userId: cm.husbandUserId || (isCurrent ? currentUserId : undefined),
+        });
+        crossSpousesByPersonId.set(wId, cur);
+      }
+    });
+
     // Helper to find true spouses (wives/husbands)
     const getSpouses = (m: Member): SpouseNode[] => {
       const spouses: SpouseNode[] = [];
@@ -37,8 +103,9 @@ export async function buildErgoTreeFromDB(
           avatarUrl: sp.avatarUrl,
           isAlive: sp.isAlive,
           occupation: sp.occupation,
+          userId: sp.userId || (sp as any).user_id,
         });
-        return spouses;
+
       }
 
       allMembers.forEach((w) => {
@@ -79,6 +146,22 @@ export async function buildErgoTreeFromDB(
             avatarUrl: w.avatarUrl,
             isAlive: w.isAlive,
             occupation: w.occupation,
+            userId: w.userId || (w as any).user_id,
+          });
+        }
+      });
+
+      // Inject cross-clan verified in-law spouses
+      const crossList = crossSpousesByPersonId.get(m.id) || [];
+      crossList.forEach((cs) => {
+        if (!spouses.some((s) => s.id === cs.id || s.fullName === cs.fullName)) {
+          const isCurrent = Boolean(
+            (currentPersonId && (cs.id === currentPersonId || String(cs.id).toLowerCase() === String(currentPersonId).toLowerCase())) ||
+            (currentUserId && (cs.userId === currentUserId || (cs as any).user_id === currentUserId))
+          );
+          spouses.push({
+            ...cs,
+            isCurrentUser: isCurrent || cs.isCurrentUser,
           });
         }
       });
@@ -97,6 +180,10 @@ export async function buildErgoTreeFromDB(
       const isPrivate = localPrivacy ? localPrivacy === 'private' : Boolean((m as any).isPrivate || (m as any).is_private);
       const isUnconnected = Boolean((m as any).isUnconnected || (m as any).is_unconnected);
 
+      const isCurrent = Boolean(
+        (currentPersonId && (m.id === currentPersonId || String(m.id).toLowerCase() === String(currentPersonId).toLowerCase())) ||
+        (currentUserId && (m.userId === currentUserId || (m as any).user_id === currentUserId))
+      );
       return {
         id: m.id,
         fullName: m.fullName,
@@ -110,82 +197,18 @@ export async function buildErgoTreeFromDB(
         branch: m.branch,
         occupation: m.occupation,
         bio: (m as any).bio,
-        userId: (m as any).userId || (m as any).user_id,
+        userId: m.userId || (m as any).user_id,
         isPrivate,
         isUnconnected,
         spouses,
         children: [],
         isFocusPerson: isCardFocus,
+        isCurrentUser: isCurrent,
       };
     };
 
-    // When focusMemberId is provided: Render strict 3-tier centered genealogy:
-    // Level 1: Cha & Mẹ
-    // Level 2 (CHÍNH GIỮA): Bản thân (Ego, ĐANG CHỌN) & Vợ/Chồng
-    // Level 3: Con cái
-    if (focusMemberId && focusM) {
-      // Direct children (+1)
-      const egoChildrenMembers = allMembers.filter(
-        (m) => (m as any).fatherId === focusM.id || (m as any).motherId === focusM.id
-      );
-      const egoChildNodes: ErgoTreeNode[] = egoChildrenMembers.map((c) => ({
-        ...convertNode(c),
-        focusRole: c.gender === 'female' ? 'Con gái' : 'Con trai',
-        children: [],
-      }));
-
-      // Ego spouses
-      const egoSpouses = getSpouses(focusM).map((s) => ({
-        ...s,
-        focusRole: s.gender === 'female' ? 'Vợ' : 'Chồng',
-      }));
-
-      // Ego Node (0)
-      const egoNode: ErgoTreeNode = {
-        ...convertNode(focusM),
-        spouses: egoSpouses,
-        isFocusPerson: true,
-        focusRole: 'Đang chọn',
-        children: egoChildNodes,
-      };
-
-      const fatherId = (focusM as any).fatherId;
-      const motherId = (focusM as any).motherId;
-      const fatherM = fatherId ? memberMap.get(fatherId) : undefined;
-      const motherM = motherId ? memberMap.get(motherId) : undefined;
-
-      if (fatherM) {
-        const fatherNode: ErgoTreeNode = {
-          ...convertNode(fatherM),
-          focusRole: 'Cha',
-          children: [egoNode],
-        };
-        if (motherM) {
-          fatherNode.spouses = [
-            {
-              id: motherM.id,
-              fullName: motherM.fullName,
-              gender: motherM.gender,
-              birthDate: motherM.birthDate,
-              avatarUrl: motherM.avatarUrl,
-              isAlive: motherM.isAlive,
-              occupation: motherM.occupation,
-              focusRole: 'Mẹ',
-            },
-          ];
-        }
-        return { rootNodes: [fatherNode], allMembers };
-      } else if (motherM) {
-        const motherNode: ErgoTreeNode = {
-          ...convertNode(motherM),
-          focusRole: 'Mẹ',
-          children: [egoNode],
-        };
-        return { rootNodes: [motherNode], allMembers };
-      } else {
-        return { rootNodes: [egoNode], allMembers };
-      }
-    }
+    // Maintain full genealogical tree structure even when focusMemberId is active,
+    // ensuring natal lineage remains visible and can seamlessly connect with in-law branches.
 
     // Build recursive children with cycle detection for full tree
     const visitedInTree = new Set<string>();
@@ -223,6 +246,7 @@ export async function buildErgoTreeFromDB(
 
       return uniqueChildren.map((c) => {
         visitedInTree.add(c.id);
+        getSpouses(c).forEach((s) => visitedInTree.add(s.id));
         const node = convertNode(c);
         node.children = buildChildrenRecursive(c.id, new Set(visited));
         return node;
@@ -282,7 +306,19 @@ export async function buildErgoTreeFromDB(
 
     // 3. Tìm tất cả các thành viên chưa được kết nối vào cây phả hệ (Unconnected Members)
     // Đảm bảo không ai bị sót khỏi giao diện cây dù thiếu liên kết phả hệ trực tiếp từ cụ tổ
-    const unconnectedMembers = allMembers.filter((m) => !visitedInTree.has(m.id));
+    const unconnectedMembers = allMembers.filter((m) => {
+      if (visitedInTree.has(m.id)) return false;
+      // Nếu là vợ/chồng của bất kỳ ai đã có trong cây thì họ đã được hiển thị trên card của người đó
+      const isSpouseOfVisited = Array.from(visitedInTree).some((vid) => {
+        const vm = memberMap.get(vid);
+        return vm ? getSpouses(vm).some((s) => s.id === m.id) : false;
+      });
+      if (isSpouseOfVisited) {
+        visitedInTree.add(m.id);
+        return false;
+      }
+      return true;
+    });
 
     unconnectedMembers.forEach((um) => {
       if (visitedInTree.has(um.id)) return;

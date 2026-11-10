@@ -49,5 +49,21 @@ from app.models.user_access.entities import (  # noqa: F401
     UserRole,
     UserSession,
 )
+from app.models.ai.entities import ClanAISetting, AIConsent  # noqa: F401
+from app.models.activity_fund.entities import (  # noqa: F401
+    Fund,
+    ClanBankAccount,
+    Donation,
+    DonationEvidence,
+    FundAuditLog,
+)
+from app.models.inter_family.entities import (  # noqa: F401
+    InterClanRequest,
+    InterClanLink,
+    InterClanSharedPolicy,
+    InterClanPersonMapping,
+    LineageAccessRequest,
+    LineageAccessGrant,
+)
 
 target_metadata = Base.metadata

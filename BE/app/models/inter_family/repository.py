@@ -14,8 +14,13 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.family.entities import Clan
-from app.models.genealogy.entities import Person, Relationship
-from app.models.inter_family.entities import InterClanLink, InterClanRequest, InterClanSharedPolicy
+from app.models.genealogy.entities import Person, Relationship, PersonPrivacySetting
+from app.models.inter_family.entities import (
+    InterClanLink,
+    InterClanPersonMapping,
+    InterClanRequest,
+    InterClanSharedPolicy,
+)
 
 
 class InterFamilyRepository:
@@ -78,6 +83,18 @@ class InterFamilyRepository:
             )
         return list((await self._session.execute(stmt.order_by(InterClanLink.linked_at))).scalars().all())
 
+    async def find_active_link_between(
+        self, clan_a: uuid.UUID, clan_b: uuid.UUID
+    ) -> Optional[InterClanLink]:
+        stmt = select(InterClanLink).where(
+            InterClanLink.status == "ACTIVE",
+            or_(
+                and_(InterClanLink.clan_a_id == clan_a, InterClanLink.clan_b_id == clan_b),
+                and_(InterClanLink.clan_a_id == clan_b, InterClanLink.clan_b_id == clan_a),
+            ),
+        )
+        return (await self._session.execute(stmt)).scalars().first()
+
     # ----- policies -----
 
     async def list_policies(self, link_id: uuid.UUID) -> list[InterClanSharedPolicy]:
@@ -93,6 +110,18 @@ class InterFamilyRepository:
 
     # ----- requests -----
 
+    async def find_pending_request_between(
+        self, clan_a: uuid.UUID, clan_b: uuid.UUID
+    ) -> Optional[InterClanRequest]:
+        stmt = select(InterClanRequest).where(
+            InterClanRequest.status == "PENDING",
+            or_(
+                and_(InterClanRequest.source_clan_id == clan_a, InterClanRequest.target_clan_id == clan_b),
+                and_(InterClanRequest.source_clan_id == clan_b, InterClanRequest.target_clan_id == clan_a),
+            ),
+        )
+        return (await self._session.execute(stmt)).scalars().first()
+
     async def get_request(self, request_id: uuid.UUID) -> Optional[InterClanRequest]:
         stmt = select(InterClanRequest).where(InterClanRequest.id == request_id)
         return (await self._session.execute(stmt)).scalar_one_or_none()
@@ -107,6 +136,41 @@ class InterFamilyRepository:
             )
         return list((await self._session.execute(stmt)).scalars().all())
 
+    # ----- person mappings (Phase 2) -----
+
+    async def list_person_mappings(
+        self, link_id: uuid.UUID, *, status: Optional[str] = None
+    ) -> list[InterClanPersonMapping]:
+        stmt = select(InterClanPersonMapping).where(InterClanPersonMapping.link_id == link_id)
+        if status:
+            stmt = stmt.where(InterClanPersonMapping.status == status)
+        stmt = stmt.order_by(InterClanPersonMapping.created_at.desc())
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def find_person_mapping_between(
+        self, person_a: uuid.UUID, person_b: uuid.UUID
+    ) -> Optional[InterClanPersonMapping]:
+        stmt = select(InterClanPersonMapping).where(
+            InterClanPersonMapping.status.in_(["PENDING", "VERIFIED"]),
+            or_(
+                and_(
+                    InterClanPersonMapping.person_a_id == person_a,
+                    InterClanPersonMapping.person_b_id == person_b,
+                ),
+                and_(
+                    InterClanPersonMapping.person_a_id == person_b,
+                    InterClanPersonMapping.person_b_id == person_a,
+                ),
+            ),
+        )
+        return (await self._session.execute(stmt)).scalars().first()
+
+    async def get_person_mapping(
+        self, mapping_id: uuid.UUID
+    ) -> Optional[InterClanPersonMapping]:
+        stmt = select(InterClanPersonMapping).where(InterClanPersonMapping.id == mapping_id)
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
     # ----- tree of a clan -----
 
     async def get_person(self, person_id: uuid.UUID) -> Optional[Person]:
@@ -118,6 +182,26 @@ class InterFamilyRepository:
     async def relationships_of(self, clan_id: uuid.UUID) -> list[Relationship]:
         stmt = select(Relationship).where(Relationship.family_id == clan_id)
         return list((await self._session.execute(stmt)).scalars().all())
+
+    async def has_inlaw_relationship(self, person_a: uuid.UUID, person_b: uuid.UUID) -> bool:
+        stmt = select(Relationship).where(
+            Relationship.relationship_type == "SPOUSE",
+            or_(
+                and_(Relationship.from_member_id == person_a, Relationship.to_member_id == person_b),
+                and_(Relationship.from_member_id == person_b, Relationship.to_member_id == person_a),
+            ),
+        )
+        res = (await self._session.execute(stmt)).scalars().first()
+        return res is not None
+
+
+    async def privacy_settings_of(self, person_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, PersonPrivacySetting]:
+        pids = list(person_ids)
+        if not pids:
+            return {}
+        stmt = select(PersonPrivacySetting).where(PersonPrivacySetting.person_id.in_(pids))
+        res = await self._session.execute(stmt)
+        return {p.person_id: p for p in res.scalars().all()}
 
     # ----- unit of work -----
 
