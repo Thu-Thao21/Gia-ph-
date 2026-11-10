@@ -1435,7 +1435,7 @@
 }
 
 .ancestral-hall-page .hall3d-mode-toggle button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 18px;
   color: var(--hall-muted);
   background: transparent;
@@ -1457,6 +1457,11 @@
   background: #eef3fb;
 }
 
+.ancestral-hall-page .hall3d-mode-toggle button:focus-visible {
+  outline: 2px solid var(--hall-blue);
+  outline-offset: 2px;
+}
+
 .ancestral-hall-page .hall3d-mode-toggle button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1470,8 +1475,10 @@
 .ancestral-hall-page .hall3d-section {
   padding: 16px;
   color: #ffffff;
-  background: linear-gradient(145deg, #2a1710 0%, #1a0e09 60%, #2b1a14 100%);
-  border: 1px solid rgba(213, 177, 91, 0.35);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(231, 182, 74, 0.14), transparent 60%),
+    linear-gradient(145deg, #2a1710 0%, #1a0e09 60%, #2b1a14 100%);
+  border: 1px solid rgba(217, 173, 69, 0.45);
   border-radius: 22px;
   box-shadow: 0 18px 48px rgba(15, 27, 58, 0.2);
 }
@@ -1480,12 +1487,43 @@
   display: flex;
   height: min(70vh, 560px);
   min-height: 360px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 239, 192, 0.85);
-  background: #120a07;
+  gap: 16px;
+  color: #eacb77;
+  background: radial-gradient(ellipse at 50% 45%, #2a140b 0%, #120a07 75%);
+  border: 1px solid rgba(217, 173, 69, 0.35);
   border-radius: 16px;
-  font-size: 14px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+.ancestral-hall-page .hall3d-loading-flame {
+  position: relative;
+  width: 14px;
+  height: 26px;
+  background: radial-gradient(ellipse at 50% 70%, #fff3c4 0%, #ffb84a 45%, #ff6a1f 100%);
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  box-shadow: 0 0 18px 6px rgba(255, 166, 60, 0.55);
+  animation: hall3d-flame 1.4s ease-in-out infinite;
+}
+
+.ancestral-hall-page .hall3d-loading-flame::after {
+  position: absolute;
+  top: 28px;
+  left: 4px;
+  width: 6px;
+  height: 22px;
+  background: #e9dcc0;
+  border-radius: 2px;
+  content: '';
+}
+
+@keyframes hall3d-flame {
+  0%, 100% { transform: scale(1, 1) rotate(-1.5deg); opacity: 0.95; }
+  50% { transform: scale(0.92, 1.1) rotate(1.5deg); opacity: 1; }
 }
 
 .ancestral-hall-page .hall3d-caption {
@@ -1493,7 +1531,12 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  margin-top: 14px;
+  margin: 14px auto 0;
+  padding: 12px 20px;
+  max-width: 520px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(217, 173, 69, 0.4);
+  border-radius: 14px;
   text-align: center;
 }
 
@@ -1512,6 +1555,10 @@
 .ancestral-hall-page .hall3d-caption small {
   color: rgba(255, 244, 209, 0.78);
   font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ancestral-hall-page .hall3d-loading-flame { animation: none; }
 }
 
 @media (max-width: 480px) {

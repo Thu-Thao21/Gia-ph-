@@ -356,12 +356,13 @@ export const DigitalAncestralHallModule: React.FC = () => {
             </div>
           </header>
           <div className="hall3d-section">
-            <React.Suspense fallback={<div className="hall3d-loading" role="status">Đang dựng phòng thờ 3D…</div>}>
+            <React.Suspense fallback={<div className="hall3d-loading" role="status"><span className="hall3d-loading-flame" aria-hidden="true" /><span>Đang thắp đèn…</span></div>}>
               <AncestralHall3D
                 ancestors={NO_ANCESTORS}
                 selectedIndex={-1}
                 onSelect={selectAncestor}
                 emptyHint={EMPTY_HALL_HINT}
+                hallTitle={activeClanName || undefined}
                 onError={() => setHall3DFailed(true)}
               />
             </React.Suspense>
@@ -395,13 +396,14 @@ export const DigitalAncestralHallModule: React.FC = () => {
 
   const altar3D = (
     <div className="hall3d-section">
-      <React.Suspense fallback={<div className="hall3d-loading" role="status">Đang dựng phòng thờ 3D…</div>}>
+      <React.Suspense fallback={<div className="hall3d-loading" role="status"><span className="hall3d-loading-flame" aria-hidden="true" /><span>Đang thắp đèn…</span></div>}>
         <AncestralHall3D
           ancestors={ancestors3D}
           selectedIndex={selectedAncestorIndex}
           onSelect={selectAncestor}
           incenseCount={incenseCounts[selectedAncestor.id] || 0}
           isBurning={isSelectedAncestorBurning}
+          hallTitle={activeClanName || undefined}
           onError={() => setHall3DFailed(true)}
         />
       </React.Suspense>
