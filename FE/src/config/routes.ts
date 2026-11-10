@@ -65,7 +65,6 @@ export const ROUTES = {
     AI_ASSISTANT: '/user/ai-assistant',
     AI_CONSENT: '/user/ai-consent',
     ANCESTRAL_HALL: '/user/ancestral-hall',
-    ANCESTRAL_LIBRARY: '/user/ancestral-library',
     NOTIFICATIONS: '/user/notifications',
     PRIVACY_SETTINGS: '/user/privacy-settings',
     PRIVACY_PREVIEW: '/user/privacy-preview',

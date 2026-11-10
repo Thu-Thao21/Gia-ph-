@@ -1416,3 +1416,135 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* ===== Phòng thờ 3D ===== */
+.ancestral-hall-page .hall3d-mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.ancestral-hall-page .hall3d-mode-toggle {
+  display: inline-flex;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid var(--hall-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(18, 33, 63, 0.06);
+}
+
+.ancestral-hall-page .hall3d-mode-toggle button {
+  min-height: 38px;
+  padding: 8px 18px;
+  color: var(--hall-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.ancestral-hall-page .hall3d-mode-toggle button.active {
+  color: #ffffff;
+  background: var(--hall-blue);
+}
+
+.ancestral-hall-page .hall3d-mode-toggle button:not(.active):not(:disabled):hover {
+  color: var(--hall-ink);
+  background: #eef3fb;
+}
+
+.ancestral-hall-page .hall3d-mode-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ancestral-hall-page .hall3d-mode-note {
+  color: var(--hall-muted);
+  font-size: 12px;
+}
+
+.ancestral-hall-page .hall3d-section {
+  padding: 16px;
+  color: #ffffff;
+  background: linear-gradient(145deg, #2a1710 0%, #1a0e09 60%, #2b1a14 100%);
+  border: 1px solid rgba(213, 177, 91, 0.35);
+  border-radius: 22px;
+  box-shadow: 0 18px 48px rgba(15, 27, 58, 0.2);
+}
+
+.ancestral-hall-page .hall3d-loading {
+  display: flex;
+  height: min(70vh, 560px);
+  min-height: 360px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 239, 192, 0.85);
+  background: #120a07;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.ancestral-hall-page .hall3d-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: 14px;
+  text-align: center;
+}
+
+.ancestral-hall-page .hall3d-caption strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.ancestral-hall-page .hall3d-caption span {
+  color: #eacb77;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ancestral-hall-page .hall3d-caption small {
+  color: rgba(255, 244, 209, 0.78);
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .ancestral-hall-page .hall3d-section {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .ancestral-hall-page .hall3d-mode-toggle { width: 100%; }
+  .ancestral-hall-page .hall3d-mode-toggle button { flex: 1; padding: 8px 10px; }
+  .ancestral-hall-page .hall3d-caption strong { font-size: 17px; }
+}
+
+.ancestral-hall-page .hall3d-empty-note {
+  padding: 16px 20px;
+  color: var(--hall-muted);
+  background: #ffffff;
+  border: 1px solid var(--hall-border);
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.ancestral-hall-page .hall3d-empty-note strong { color: var(--hall-ink); }
+
+.ancestral-hall-page .hall3d-demo-banner {
+  padding: 8px 14px;
+  color: #7a4a00;
+  background: var(--hall-gold-soft);
+  border: 1px dashed var(--hall-gold);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}

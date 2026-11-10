@@ -59,7 +59,6 @@ export const memberNavigation: NavGroup[] = [
 
       { id: 'funds', label: 'Quỹ & Đóng góp', route: ROUTES.USER.FUNDS },
       { id: 'ancestral-hall', label: 'Phòng thờ số', route: ROUTES.USER.ANCESTRAL_HALL },
-      { id: 'ancestral-library', label: 'Thư viện Tổ tiên 3D/360°', route: ROUTES.USER.ANCESTRAL_LIBRARY },
     ],
   },
   {

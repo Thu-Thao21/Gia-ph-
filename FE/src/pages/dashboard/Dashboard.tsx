@@ -21,7 +21,6 @@ import { DigitalAncestralHallModule } from '../../components/member/DigitalAnces
 import { ClanLocationsModule } from '../../components/clan/ClanLocationsModule';
 import { NotificationCenterModule } from '../../components/member/NotificationCenterModule';
 import { AIConsentModule } from '../../components/member/AIConsentModule';
-import { AncestralLibraryModule } from '../../components/member/AncestralLibraryModule';
 import { DataExchangeModule } from '../../components/member/DataExchangeModule';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { FamilyPaternalTab } from '../../components/network/FamilyPaternalTab';
@@ -82,7 +81,6 @@ const TAB_TO_ROUTE: Record<string, string> = {
   'ai-assistant':         ROUTES.USER.AI_ASSISTANT,
   'ai-consent':           ROUTES.USER.AI_CONSENT,
   'ancestral-hall':       ROUTES.USER.ANCESTRAL_HALL,
-  'ancestral-library':    ROUTES.USER.ANCESTRAL_LIBRARY,
   'privacy-settings':     ROUTES.USER.PRIVACY_SETTINGS,
   'privacy-preview':      ROUTES.USER.PRIVACY_PREVIEW,
   'family-members':       ROUTES.USER.FAMILY_MANAGEMENT,
@@ -184,7 +182,6 @@ const ROUTE_TO_TAB: Array<[string, string]> = [
   [ROUTES.USER.AI_ASSISTANT,       'ai-assistant'],
   [ROUTES.USER.AI_CONSENT,         'ai-consent'],
   [ROUTES.USER.ANCESTRAL_HALL,     'ancestral-hall'],
-  [ROUTES.USER.ANCESTRAL_LIBRARY,  'ancestral-library'],
   [ROUTES.USER.PRIVACY_SETTINGS,   'privacy-settings'],
   [ROUTES.USER.PRIVACY_PREVIEW,    'privacy-preview'],
   [ROUTES.USER.FAMILY_BRANCHES,    'family-branches'],
@@ -222,7 +219,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [isProcessingToastOpen, setIsProcessingToastOpen] = useState(false);
   const [isFloatingAIChatOpen, setIsFloatingAIChatOpen] = useState(false);
-  const [selectedAncestorId, setSelectedAncestorId] = useState<string | undefined>();
   const [adminSelectedFamilyId, setAdminSelectedFamilyId] = useState<string | undefined>();
 
   const primaryRole = account?.primary_role || 'member';
@@ -508,8 +504,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       );
     }
     if (activeTab === 'ai-consent') return <AIConsentModule />;
-    if (activeTab === 'ancestral-hall') return <DigitalAncestralHallModule onOpenLibrary={(ancestorId) => { setSelectedAncestorId(ancestorId); handleSelectTab('ancestral-library'); }} />;
-    if (activeTab === 'ancestral-library') return <AncestralLibraryModule initialAncestorId={selectedAncestorId} onOpenWorship={(ancestorId) => { setSelectedAncestorId(ancestorId); handleSelectTab('ancestral-hall'); }} />;
+    if (activeTab === 'ancestral-hall') return <DigitalAncestralHallModule />;
     if (activeTab === 'clan-locations' || activeTab === 'family-locations') return <ClanLocationsModule clanId={effectiveClanId || undefined} canManage={canManageFamily} />;
     if (activeTab === 'privacy-settings' || activeTab === 'privacy-preview' || activeTab === 'family-privacy') return <PrivacySettingsTab />;
 

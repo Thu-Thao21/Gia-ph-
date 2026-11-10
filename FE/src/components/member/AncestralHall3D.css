@@ -1,0 +1,84 @@
+.hall3d-root {
+  width: 100%;
+}
+
+.hall3d-wrap {
+  position: relative;
+  width: 100%;
+  height: min(70vh, 560px);
+  min-height: 360px;
+  overflow: hidden;
+  background: #120a07;
+  border: 1px solid rgba(213, 177, 91, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 14px 38px rgba(18, 10, 7, 0.35);
+}
+
+.hall3d-wrap canvas {
+  display: block;
+  outline: none;
+  touch-action: none;
+}
+
+.hall3d-hint {
+  margin: 8px 0 0;
+  color: rgba(255, 239, 192, 0.7);
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.hall3d-label {
+  display: flex;
+  width: max-content;
+  min-width: 150px;
+  max-width: 260px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  color: #fff4d1;
+  background: rgba(30, 14, 8, 0.88);
+  border: 1px solid rgba(231, 182, 74, 0.7);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  white-space: normal;
+  user-select: none;
+  pointer-events: none;
+}
+
+.hall3d-label strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.hall3d-label span {
+  color: #eacb77;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hall3d-label small {
+  color: rgba(255, 244, 209, 0.78);
+  font-size: 11px;
+}
+
+@media (max-width: 480px) {
+  .hall3d-wrap {
+    min-height: 360px;
+    border-radius: 14px;
+  }
+
+  .hall3d-label {
+    min-width: 120px;
+    padding: 6px 10px;
+  }
+
+  .hall3d-label strong { font-size: 13px; }
+  .hall3d-label span { font-size: 11px; }
+  .hall3d-label small { font-size: 10px; }
+  .hall3d-hint { font-size: 10px; }
+}

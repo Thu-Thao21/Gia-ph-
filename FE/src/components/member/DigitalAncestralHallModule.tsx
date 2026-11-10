@@ -12,16 +12,72 @@ import {
 import './DigitalAncestralHallModule.css';
 import { useLocalPreviewState } from '../../features/familyAdmin/useLocalPreviewState';
 
+// Three.js chỉ được tải khi người dùng vào chế độ Phòng thờ 3D (không nằm trong bundle chính).
+const AncestralHall3D = React.lazy(() => import('./AncestralHall3D'));
+
+// Kiểm tra nhanh WebGL, cố ý không import tĩnh từ AncestralHall3D để không kéo three vào bundle chính.
+const detectWebGL = (): boolean => {
+  try {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+    if (!(window as unknown as { WebGLRenderingContext?: unknown }).WebGLRenderingContext) return false;
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl2') ||
+      canvas.getContext('webgl') ||
+      canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
+    if (!gl) return false;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// Danh sách rỗng ổn định cho cảnh 3D khi chưa có tiền nhân.
+const NO_ANCESTORS: never[] = [];
+const EMPTY_HALL_HINT = 'Bàn thờ đang chờ dữ liệu tiền nhân';
+
+// CHỈ dùng cho chế độ minh họa khi chạy dev (?demo=1). Hàm này chỉ được gọi trong nhánh import.meta.env.DEV
+// nên bị loại hoàn toàn khỏi bản build production.
+const buildDemoAncestors = (): AncestorRecord[] => {
+  const tones = ['indigo', 'teal', 'amber', 'rose'] as const;
+  const make = (
+    id: string, name: string, initials: string, title: string,
+    generation: number, birthYear: string, deathYear: string, memorialDate: string
+  ): AncestorRecord => ({
+    id,
+    name,
+    initials,
+    title,
+    generation,
+    branch: 'Trực hệ',
+    relationship: generation === 1 ? 'Thủy tổ dòng họ' : `Tiền nhân đời thứ ${generation}`,
+    birthYear,
+    deathYear,
+    lifespan: `Sinh ${birthYear} · Mất ${deathYear}`,
+    memorialDate,
+    memorialPlace: 'Từ đường dòng tộc',
+    restingPlace: 'Khu lăng mộ gia tộc',
+    biography: 'Dữ liệu minh họa, không phải hồ sơ thật.',
+    legacy: 'Đức trọng lưu quang · Gia phong trường tồn',
+    portraitTone: tones[generation % 4],
+    incenseCount: 0,
+  });
+  return [
+    make('demo-1', 'Cụ Dương Văn Tổ', 'DT', 'Cụ Khởi Tổ', 1, '1868', '1941', 'Ngày 12-03'),
+    make('demo-2', 'Cụ bà Nguyễn Thị Cả', 'NC', 'Cụ Bà Khởi Tổ', 1, '1872', '1950', 'Ngày 05-08'),
+    make('demo-3', 'Dương Văn Hòa', 'DH', 'Tiền nhân đời thứ 2', 2, '1895', '1968', 'Ngày 21-10'),
+    make('demo-4', 'Đỗ Thị Ngọc', 'ĐN', 'Tiền nhân đời thứ 2', 2, '1900', '1975', 'Ngày 02-01'),
+    make('demo-5', 'Dương Anh Tuấn', 'DT', 'Tiền nhân đời thứ 3', 3, '1925', '1999', 'Ngày 17-06'),
+    make('demo-6', 'Lê Thị Mai', 'LM', 'Tiền nhân đời thứ 3', 3, '1930', '2004', 'Ngày 09-11'),
+  ];
+};
+
 type IncenseType = 'Hương trầm' | 'Hương sen' | 'Hương quế';
 
 interface LastOffering {
   ancestorId: string;
   incenseType: IncenseType;
   note: string;
-}
-
-export interface DigitalAncestralHallModuleProps {
-  onOpenLibrary?: (ancestorId: string) => void;
 }
 
 const INCENSE_OPTIONS: Array<{ id: IncenseType; description: string }> = [
@@ -54,12 +110,22 @@ const PortraitPlaceholder: React.FC<{ ancestor: AncestorRecord; compact?: boolea
   </div>
 );
 
-export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProps> = ({ onOpenLibrary }) => {
+export const DigitalAncestralHallModule: React.FC = () => {
+  const { account } = useAuth();
   const { activeClanId, activeClanName } = useClanContext();
+  // Chế độ minh họa: chỉ tồn tại khi chạy dev; ở production điều kiện này luôn là false.
+  const [isDemo] = useState<boolean>(
+    () => import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === '1'
+  );
   const [ancestors, setAncestors] = useState<AncestorRecord[]>([]);
   const [loadingAncestors, setLoadingAncestors] = useState(true);
 
   useEffect(() => {
+    if (import.meta.env.DEV && isDemo) {
+      setAncestors(buildDemoAncestors());
+      setLoadingAncestors(false);
+      return;
+    }
     if (!activeClanId) {
       setAncestors([]);
       setLoadingAncestors(false);
@@ -104,7 +170,7 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
       })
       .catch(() => setAncestors([]))
       .finally(() => setLoadingAncestors(false));
-  }, [activeClanId, activeClanName]);
+  }, [activeClanId, activeClanName, isDemo]);
 
   const [selectedAncestorIndex, setSelectedAncestorIndex] = useState(0);
   const [incenseCounts, setIncenseCounts] = useLocalPreviewState<Record<string, number>>('incense-counts', {});
@@ -126,6 +192,11 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
 
+  const [prefer3D, setPrefer3D] = useState(true);
+  const [webglOk] = useState<boolean>(detectWebGL);
+  const [hall3DFailed, setHall3DFailed] = useState(false);
+  const show3D = prefer3D && webglOk && !hall3DFailed;
+
   const burnTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -134,6 +205,11 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
       setMessageTargetId(ancestors[0].id);
     }
   }, [ancestors, messageTargetId]);
+
+  // Đổi dòng họ làm danh sách ngắn lại: đưa vị trí chọn về đầu để không bị coi nhầm là bàn thờ trống.
+  useEffect(() => {
+    if (ancestors.length > 0 && selectedAncestorIndex >= ancestors.length) setSelectedAncestorIndex(0);
+  }, [ancestors, selectedAncestorIndex]);
 
   const selectedAncestor = ancestors[selectedAncestorIndex] || null;
   const selectedMessages = useMemo(
@@ -145,6 +221,10 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
     [selectedAncestor]
   );
   const isSelectedAncestorBurning = selectedAncestor ? burningAncestorId === selectedAncestor.id : false;
+  const ancestors3D = useMemo(
+    () => ancestors.map((a) => ({ id: a.id, name: a.name, generation: a.generation, lifespan: a.lifespan })),
+    [ancestors]
+  );
 
   useEffect(() => {
     return () => {
@@ -256,10 +336,6 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
 
   const openAncestralMedia = () => {
     if (!selectedAncestor) return;
-    if (onOpenLibrary) {
-      onOpenLibrary(selectedAncestor.id);
-      return;
-    }
     setIsMediaModalOpen(true);
   };
 
@@ -268,6 +344,34 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
   }
 
   if (ancestors.length === 0 || !selectedAncestor) {
+    // Chưa có tiền nhân: vẫn hiển thị bàn thờ 3D trống (các ô bài vị mờ) nếu thiết bị hỗ trợ.
+    if (show3D) {
+      return (
+        <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
+          <header className="ancestral-hall-header">
+            <div>
+              <span className="ancestral-hall-eyebrow">KHÔNG GIAN TƯỞNG NIỆM GIA TỘC</span>
+              <h1 id="ancestral-hall-title">Phòng Thờ Số · {activeClanName || 'Dòng Họ'}</h1>
+              <p>Thành kính tưởng nhớ tiền nhân, gìn giữ ký ức và kết nối lòng tri ân của con cháu.</p>
+            </div>
+          </header>
+          <div className="hall3d-section">
+            <React.Suspense fallback={<div className="hall3d-loading" role="status">Đang dựng phòng thờ 3D…</div>}>
+              <AncestralHall3D
+                ancestors={NO_ANCESTORS}
+                selectedIndex={-1}
+                onSelect={selectAncestor}
+                emptyHint={EMPTY_HALL_HINT}
+                onError={() => setHall3DFailed(true)}
+              />
+            </React.Suspense>
+          </div>
+          <div className="hall3d-empty-note" role="status">
+            <strong>Chưa có thông tin tiền nhân đã khuất.</strong> Khi dữ liệu gia phả được cập nhật (thành viên có trạng thái đã mất hoặc ngày mất), bài vị sẽ tự động hiển thị trên bàn thờ.
+          </div>
+        </section>
+      );
+    }
     return (
       <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
         <header className="ancestral-hall-header">
@@ -289,8 +393,109 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
     );
   }
 
+  const altar3D = (
+    <div className="hall3d-section">
+      <React.Suspense fallback={<div className="hall3d-loading" role="status">Đang dựng phòng thờ 3D…</div>}>
+        <AncestralHall3D
+          ancestors={ancestors3D}
+          selectedIndex={selectedAncestorIndex}
+          onSelect={selectAncestor}
+          incenseCount={incenseCounts[selectedAncestor.id] || 0}
+          isBurning={isSelectedAncestorBurning}
+          onError={() => setHall3DFailed(true)}
+        />
+      </React.Suspense>
+
+      <div className="hall3d-caption" aria-live="polite">
+        <strong>{selectedAncestor.name}</strong>
+        <span>{selectedAncestor.title} · Đời thứ {selectedAncestor.generation}</span>
+        <small>{selectedAncestor.birthYear} – {selectedAncestor.deathYear}</small>
+        <small>
+          {isSelectedAncestorBurning
+            ? 'Tâm hương đang được dâng lên…'
+            : `${incenseCounts[selectedAncestor.id] || 0} nén tâm hương`}
+        </small>
+      </div>
+
+      <div className="digital-altar-actions">
+        <button
+          type="button"
+          className="light-incense-button"
+          onClick={openIncenseModal}
+          disabled={isSelectedAncestorBurning}
+        >
+          <span aria-hidden="true">✦</span>
+          {isSelectedAncestorBurning ? 'Đang dâng tâm hương…' : 'Thắp hương tưởng niệm'}
+        </button>
+        <button type="button" className="write-memorial-button" onClick={openCreateMessage}>
+          Viết lời tưởng niệm
+        </button>
+      </div>
+    </div>
+  );
+
+  const altar2D = (
+    <article className="digital-altar-card" aria-labelledby="digital-altar-title">
+      <div className="digital-altar-glow" aria-hidden="true" />
+      <div className="altar-lantern altar-lantern-left" aria-hidden="true"><span /></div>
+      <div className="altar-lantern altar-lantern-right" aria-hidden="true"><span /></div>
+
+      <div className="digital-altar-content">
+        <span className="digital-altar-kicker">TỪ ĐƯỜNG {activeClanName ? activeClanName.toUpperCase() : 'GIA TỘC'}</span>
+        <h2 id="digital-altar-title">Bài Vị Tiền Nhân</h2>
+
+        <div className="digital-altar-tablet" aria-label={`Bài vị của ${selectedAncestor.name}`}>
+          <span className="digital-altar-crest">福</span>
+          <strong>{selectedAncestor.name.toLocaleUpperCase('vi-VN')}</strong>
+          <small>{selectedAncestor.title} · {selectedAncestor.birthYear}—{selectedAncestor.deathYear}</small>
+        </div>
+
+        <div className="altar-offerings" aria-label="Lễ vật tưởng niệm số">
+          <div className="altar-offering altar-offering-flower"><span aria-hidden="true">❀</span><small>Hoa sen</small></div>
+          <div className="altar-offering altar-offering-fruit"><span aria-hidden="true">● ● ●</span><small>Mâm ngũ quả</small></div>
+          <div className="altar-offering altar-offering-light"><span aria-hidden="true">✦</span><small>Nến tâm đăng</small></div>
+        </div>
+
+        <div className={`digital-incense-burner ${isSelectedAncestorBurning ? 'is-burning' : ''}`} aria-live="polite">
+          <div className="incense-smoke" aria-hidden="true">
+            <span /><span /><span />
+          </div>
+          <div className="incense-sticks" aria-hidden="true"><i /><i /><i /></div>
+          <div className="incense-pot" aria-hidden="true"><span>THỌ</span></div>
+          <strong>{incenseCounts[selectedAncestor.id] || 0} nén tâm hương</strong>
+          <small>{isSelectedAncestorBurning ? 'Tâm hương đang được dâng lên…' : 'Được con cháu thành kính dâng tưởng niệm'}</small>
+        </div>
+
+        {lastOffering?.ancestorId === selectedAncestor.id && (
+          <div className="latest-offering-note">
+            <span>Lời nguyện gần nhất · {lastOffering.incenseType}</span>
+            {lastOffering.note && <p>“{lastOffering.note}”</p>}
+          </div>
+        )}
+
+        <div className="digital-altar-actions">
+          <button
+            type="button"
+            className="light-incense-button"
+            onClick={openIncenseModal}
+            disabled={isSelectedAncestorBurning}
+          >
+            <span aria-hidden="true">✦</span>
+            {isSelectedAncestorBurning ? 'Đang dâng tâm hương…' : 'Thắp hương tưởng niệm'}
+          </button>
+          <button type="button" className="write-memorial-button" onClick={openCreateMessage}>
+            Viết lời tưởng niệm
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+
   return (
     <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
+      {import.meta.env.DEV && isDemo && (
+        <div className="hall3d-demo-banner" role="note">Chế độ minh họa (dữ liệu giả, không lưu vào hệ thống)</div>
+      )}
       <header className="ancestral-hall-header">
         <div>
           <span className="ancestral-hall-eyebrow">KHÔNG GIAN TƯỞNG NIỆM GIA TỘC</span>
@@ -380,60 +585,32 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
         ))}
       </div>
 
-      <article className="digital-altar-card" aria-labelledby="digital-altar-title">
-        <div className="digital-altar-glow" aria-hidden="true" />
-        <div className="altar-lantern altar-lantern-left" aria-hidden="true"><span /></div>
-        <div className="altar-lantern altar-lantern-right" aria-hidden="true"><span /></div>
-
-        <div className="digital-altar-content">
-          <span className="digital-altar-kicker">TỪ ĐƯỜNG {activeClanName ? activeClanName.toUpperCase() : 'GIA TỘC'}</span>
-          <h2 id="digital-altar-title">Bài Vị Tiền Nhân</h2>
-
-          <div className="digital-altar-tablet" aria-label={`Bài vị của ${selectedAncestor.name}`}>
-            <span className="digital-altar-crest">福</span>
-            <strong>{selectedAncestor.name.toLocaleUpperCase('vi-VN')}</strong>
-            <small>{selectedAncestor.title} · {selectedAncestor.birthYear}—{selectedAncestor.deathYear}</small>
-          </div>
-
-          <div className="altar-offerings" aria-label="Lễ vật tưởng niệm số">
-            <div className="altar-offering altar-offering-flower"><span aria-hidden="true">❀</span><small>Hoa sen</small></div>
-            <div className="altar-offering altar-offering-fruit"><span aria-hidden="true">● ● ●</span><small>Mâm ngũ quả</small></div>
-            <div className="altar-offering altar-offering-light"><span aria-hidden="true">✦</span><small>Nến tâm đăng</small></div>
-          </div>
-
-          <div className={`digital-incense-burner ${isSelectedAncestorBurning ? 'is-burning' : ''}`} aria-live="polite">
-            <div className="incense-smoke" aria-hidden="true">
-              <span /><span /><span />
-            </div>
-            <div className="incense-sticks" aria-hidden="true"><i /><i /><i /></div>
-            <div className="incense-pot" aria-hidden="true"><span>THỌ</span></div>
-            <strong>{incenseCounts[selectedAncestor.id] || 0} nén tâm hương</strong>
-            <small>{isSelectedAncestorBurning ? 'Tâm hương đang được dâng lên…' : 'Được con cháu thành kính dâng tưởng niệm'}</small>
-          </div>
-
-          {lastOffering?.ancestorId === selectedAncestor.id && (
-            <div className="latest-offering-note">
-              <span>Lời nguyện gần nhất · {lastOffering.incenseType}</span>
-              {lastOffering.note && <p>“{lastOffering.note}”</p>}
-            </div>
-          )}
-
-          <div className="digital-altar-actions">
-            <button
-              type="button"
-              className="light-incense-button"
-              onClick={openIncenseModal}
-              disabled={isSelectedAncestorBurning}
-            >
-              <span aria-hidden="true">✦</span>
-              {isSelectedAncestorBurning ? 'Đang dâng tâm hương…' : 'Thắp hương tưởng niệm'}
-            </button>
-            <button type="button" className="write-memorial-button" onClick={openCreateMessage}>
-              Viết lời tưởng niệm
-            </button>
-          </div>
+      <div className="hall3d-mode-bar">
+        <div className="hall3d-mode-toggle" role="group" aria-label="Chế độ hiển thị bàn thờ">
+          <button
+            type="button"
+            className={show3D ? 'active' : ''}
+            aria-pressed={show3D}
+            disabled={!webglOk || hall3DFailed}
+            onClick={() => setPrefer3D(true)}
+          >
+            Phòng thờ 3D
+          </button>
+          <button
+            type="button"
+            className={!show3D ? 'active' : ''}
+            aria-pressed={!show3D}
+            onClick={() => setPrefer3D(false)}
+          >
+            Bàn thờ 2D
+          </button>
         </div>
-      </article>
+        {(!webglOk || hall3DFailed) && (
+          <small className="hall3d-mode-note">Thiết bị không hỗ trợ 3D, đang hiển thị bàn thờ 2D.</small>
+        )}
+      </div>
+
+      {show3D ? altar3D : altar2D}
 
       <section className="memorial-messages-section" aria-labelledby="memorial-messages-title">
         <div className="memorial-section-header">
@@ -684,7 +861,6 @@ export const DigitalAncestralHallModule: React.FC<DigitalAncestralHallModuleProp
             )}
             <div className="ancestral-modal-actions">
               <button type="button" className="ancestral-cancel-button" onClick={() => setIsMediaModalOpen(false)}>Đóng</button>
-              {onOpenLibrary && <button type="button" className="ancestral-confirm-button" onClick={() => onOpenLibrary(selectedAncestor.id)}>Mở trình xem 3D/360</button>}
             </div>
           </div>
         </div>

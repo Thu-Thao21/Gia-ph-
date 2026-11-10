@@ -132,7 +132,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'ancestral-hall', label: 'Phòng thờ số' },
         { id: 'clan-locations', label: 'Bản đồ & Địa điểm dòng họ' },
-        { id: 'ancestral-library', label: 'Thư viện 3D/360' },
       ],
     },
     {
