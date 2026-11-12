@@ -57,6 +57,13 @@ from app.models.activity_fund.entities import (  # noqa: F401
     DonationEvidence,
     FundAuditLog,
 )
+from app.models.worship.entities import (  # noqa: F401
+    WorshipSpace,
+    WorshipTier,
+    WorshipPerson,
+    WorshipDailyOffering,
+    WorshipStreak,
+)
 from app.models.inter_family.entities import (  # noqa: F401
     InterClanRequest,
     InterClanLink,

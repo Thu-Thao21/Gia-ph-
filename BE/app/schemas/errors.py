@@ -63,6 +63,8 @@ class ErrorCode(StrEnum):
     # Neither login nor password reset can help: only an administrator can.
     EMAIL_ACCOUNT_NEEDS_ADMIN = "EMAIL_ACCOUNT_NEEDS_ADMIN"
     IDEMPOTENCY_KEY_CONFLICT = "IDEMPOTENCY_KEY_CONFLICT"
+    # Phòng thờ: đã thắp hương / viết Lời viếng hôm nay (ngày giờ Việt Nam); details.next_offer_at
+    ALREADY_OFFERED_TODAY = "ALREADY_OFFERED_TODAY"
 
     # 422 - input validation
     VALIDATION_ERROR = "VALIDATION_ERROR"
@@ -109,6 +111,7 @@ ERROR_HTTP_STATUS: dict[ErrorCode, int] = {
     ErrorCode.EMAIL_ALREADY_REGISTERED: 409,
     ErrorCode.EMAIL_ACCOUNT_NEEDS_ADMIN: 409,
     ErrorCode.IDEMPOTENCY_KEY_CONFLICT: 409,
+    ErrorCode.ALREADY_OFFERED_TODAY: 409,
     ErrorCode.VALIDATION_ERROR: 422,
     ErrorCode.RATE_LIMITED: 429,
     ErrorCode.OTP_RATE_LIMITED: 429,
@@ -156,6 +159,7 @@ DEFAULT_ERROR_MESSAGE: dict[ErrorCode, str] = {
         "Gmail này đã có tài khoản trên hệ thống nhưng chưa được kích hoạt. Vui lòng liên hệ quản trị viên."
     ),
     ErrorCode.IDEMPOTENCY_KEY_CONFLICT: "Idempotency-Key was reused with a different payload.",
+    ErrorCode.ALREADY_OFFERED_TODAY: "Hôm nay bạn đã thực hiện rồi. Hãy quay lại vào ngày mai.",
     ErrorCode.VALIDATION_ERROR: "Invalid input.",
     ErrorCode.RATE_LIMITED: "Too many requests. Please try again later.",
     ErrorCode.OTP_RATE_LIMITED: "Địa chỉ email này tạm thời không thể nhận hoặc xác thực mã. Vui lòng thử lại sau.",
@@ -185,7 +189,8 @@ class ErrorBody(BaseModel):
     request_id: str
     # Omitted from the JSON when None (error_response dumps with exclude_none). Numbers (OTP),
     # or "fields": the request fields that failed validation (VALIDATION_ERROR, Mốc M5c).
-    details: dict[str, int | list[str]] | None = None
+    # Phòng thờ: details.next_offer_at is an ISO timestamp (a server time, never user data).
+    details: dict[str, int | str | list[str]] | None = None
 
 
 class ErrorResponse(BaseModel):

@@ -279,6 +279,7 @@ app.include_router(inter_family_router)
 from app.controllers.member_api_router import router as member_api_router
 from app.controllers.activity_fund import router as activity_fund_router
 from app.controllers.worship_space import router as worship_space_router
+from app.controllers.worship_hall import router as worship_hall_router
 from app.controllers.archive_media import router as archive_media_router
 from app.controllers.ai import router as ai_router
 
@@ -290,6 +291,9 @@ app.include_router(activity_fund_router, prefix=API_PREFIX)
 # C06. Worship Space Controller
 app.include_router(worship_space_router)
 app.include_router(worship_space_router, prefix=API_PREFIX)
+# C06b. Worship Hall Controller (phong tho 3D: tang bai vi, thap huong, Loi vieng)
+app.include_router(worship_hall_router)
+app.include_router(worship_hall_router, prefix=API_PREFIX)
 # C07. Archive & Media Controller
 app.include_router(archive_media_router)
 app.include_router(archive_media_router, prefix=API_PREFIX)
