@@ -347,6 +347,12 @@ class Viewer:
     def can_view_private(self) -> bool:
         return self.can_manage or self.is_member
 
+    @property
+    def can_offer(self) -> bool:
+        """Duoc thap huong / viet Loi vieng: thanh vien dang hoat dong, Truong toc, System Admin (da dang nhap).
+        Day la ham kiem quyen DUY NHAT: POST incense/blessing (offer) va `me.canOffer` cua GET /hall deu dung no."""
+        return self.authenticated and self.can_view_private
+
 
 def check_view_access(visibility: Optional[str], viewer: Viewer) -> None:
     """PUBLIC: ai cung xem. Con lai (CLAN_ONLY va gia tri la): chi thanh vien dang hoat dong, Truong toc, Admin."""
@@ -681,7 +687,7 @@ class WorshipHallService:
         today = vn_today(now)
         me = None
         if viewer.authenticated and hall is None:
-            me = MeInfo()
+            me = MeInfo(can_offer=viewer.can_offer)
         if hall is None:
             return HallResponse(hall=self._hall_info(clan, None), tiers=[], today=TodayInfo(), me=me,
                                 can_manage=viewer.can_manage)
@@ -704,6 +710,7 @@ class WorshipHallService:
                 blessing_done_today=BLESSING in done,
                 incense_streak=streaks[INCENSE],
                 blessing_streak=streaks[BLESSING],
+                can_offer=viewer.can_offer,
             )
         return HallResponse(
             hall=self._hall_info(clan, hall),
@@ -735,7 +742,7 @@ class WorshipHallService:
         hall = await self.get_hall(clan_id)
         check_view_access(hall.visibility if hall else VISIBILITY_CLAN_ONLY, viewer)
         # Phong PUBLIC cho khach XEM; thap huong / Loi vieng chi danh cho thanh vien dong ho (Truong toc, Admin)
-        if not viewer.can_view_private:
+        if not viewer.can_offer:
             raise AppError(ErrorCode.FORBIDDEN, "Chỉ thành viên của dòng họ mới được thắp hương hoặc viết Lời viếng.")
         hall = hall or await self.ensure_hall(clan, viewer.user_id)
         today = vn_today(now)

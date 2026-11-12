@@ -31,7 +31,9 @@ from app.schemas.errors import DEFAULT_ERROR_MESSAGE, ERROR_HTTP_STATUS, ErrorCo
 from app.schemas.worship_hall import (
     BlessingCreate,
     HallUpdate,
+    MeInfo,
     TabletBulkCreate,
+    TabletItem,
     TierCreate,
     TierUpdate,
 )
@@ -360,6 +362,85 @@ def test_only_leader_or_admin_can_manage():
         assert exc.value.status_code == 403
     require_manager(Viewer(uid, is_leader=True))
     require_manager(Viewer(uid, is_system_admin=True))
+
+
+# =============================================================================
+# A5b. canOffer (me.canOffer) VÀ BÀI VỊ ẨN CHO NGƯỜI QUẢN LÝ - logic thuần, không cần DB
+# =============================================================================
+
+def _viewers_for_offer():
+    uid = uuid.uuid4()
+    return {
+        "guest": (Viewer(), False),
+        "outsider": (Viewer(uid), False),
+        "member": (Viewer(uid, is_member=True), True),
+        "leader": (Viewer(uid, is_leader=True), True),
+        "admin": (Viewer(uid, is_system_admin=True), True),
+    }
+
+
+@pytest.mark.parametrize("who", ["guest", "outsider", "member", "leader", "admin"])
+def test_viewer_can_offer(who):
+    viewer, expected = _viewers_for_offer()[who]
+    assert viewer.can_offer is expected
+
+
+def test_offer_and_hall_view_share_the_same_permission_check():
+    """POST incense/blessing (offer) và me.canOffer của GET /hall phải dùng cùng một hàm kiểm quyền."""
+    import inspect
+
+    offer_src = inspect.getsource(WorshipHallService.offer)
+    assert "viewer.can_offer" in offer_src
+    assert "viewer.can_offer" in inspect.getsource(WorshipHallService.get_hall_view)
+    # sau bước check_view_access, offer không được tự kiểm quyền bằng logic khác
+    assert "can_view_private" not in offer_src.split("check_view_access", 1)[1]
+
+
+def test_me_info_exposes_can_offer_camel_case_default_false():
+    assert MeInfo().can_offer is False
+    assert MeInfo(can_offer=True).model_dump(by_alias=True)["canOffer"] is True
+    assert "canOffer" in MeInfo().model_dump(by_alias=True)
+
+
+def test_tablet_item_exposes_is_visible_camel_case():
+    item = TabletItem(id=uuid.uuid4(), person_id=uuid.uuid4(), full_name="A")
+    assert item.is_visible is True
+    assert item.model_dump(by_alias=True)["isVisible"] is True
+    hidden = TabletItem(id=uuid.uuid4(), person_id=uuid.uuid4(), full_name="A", is_visible=False)
+    assert hidden.model_dump(by_alias=True)["isVisible"] is False
+
+
+def _filter_sql(viewer) -> str:
+    from sqlalchemy.dialects import postgresql
+
+    conds = WorshipHallService(None)._tablet_filters(viewer)
+    return " AND ".join(str(c.compile(dialect=postgresql.dialect())) for c in conds)
+
+
+def test_regular_viewers_filter_out_hidden_tablets_but_managers_do_not():
+    uid = uuid.uuid4()
+    for viewer in (Viewer(), Viewer(uid), Viewer(uid, is_member=True)):
+        assert "is_visible IS true" in _filter_sql(viewer)
+    for viewer in (Viewer(uid, is_leader=True), Viewer(uid, is_system_admin=True)):
+        assert WorshipHallService(None)._tablet_filters(viewer) == []
+
+
+def test_tablet_item_reports_is_visible_from_the_row():
+    """Người quản lý nhận cả bài vị ẩn (isVisible=False); người xem thường đã bị loại bài vị ẩn ở truy vấn."""
+    from types import SimpleNamespace
+
+    wp = SimpleNamespace(
+        worship_person_id=uuid.uuid4(), portrait_image_path=None, note=None, display_order=0,
+        tier_id=uuid.uuid4(), is_visible=False,
+    )
+    person = SimpleNamespace(
+        id=uuid.uuid4(), full_name="Nguyễn Văn A", generation=2, birth_date=None, death_date=None, avatar_url=None,
+    )
+    svc = WorshipHallService(None)
+    item = svc._tablet_item(wp, person, None, uuid.uuid4(), Viewer(uuid.uuid4(), is_leader=True))
+    assert item.is_visible is False
+    wp.is_visible = True
+    assert svc._tablet_item(wp, person, None, uuid.uuid4(), Viewer(uuid.uuid4(), is_member=True)).is_visible is True
 
 
 # =============================================================================
@@ -1100,3 +1181,110 @@ class TestWorshipHallIntegration:
         assert (await _call(w, "DELETE", w.clan_a, "/hall/cover", w.leader_a)).status_code == 200
         assert (await _call(w, "GET", w.clan_a, "/hall", w.member_a)).json()["hall"]["coverImageUrl"] is None
         assert (await w.client.get(cover, headers=_h(w.member_a))).status_code == 404
+
+    # ------------------------------------------------------------------ me.canOffer
+    async def test_me_can_offer_matches_who_may_light_incense(self, world):
+        w = world
+        await _make_hall(w)
+        assert (await _call(w, "PATCH", w.clan_a, "/hall", w.leader_a, json={"visibility": "PUBLIC"})).status_code == 200
+
+        async def can_offer(user):
+            resp = await _call(w, "GET", w.clan_a, "/hall", user)
+            assert resp.status_code == 200, resp.text
+            me = resp.json()["me"]
+            return None if me is None else me["canOffer"]
+
+        assert await can_offer(None) is None  # khách: không có `me`
+        assert await can_offer(w.member_a) is True
+        assert await can_offer(w.leader_a) is True
+        assert await can_offer(w.outsider) is False
+        assert await can_offer(w.member_b) is False  # thành viên dòng họ khác = người ngoài
+        # nhất quán với POST: người ngoài bị 403, thành viên thắp được
+        assert (await _call(w, "POST", w.clan_a, "/incense", w.outsider)).status_code == 403
+        assert (await _call(w, "POST", w.clan_a, "/incense", w.member_b)).status_code == 403
+        assert (await _call(w, "POST", w.clan_a, "/incense", w.member_a)).status_code == 200
+
+    async def test_me_can_offer_without_hall_and_for_system_admin(self, world):
+        from sqlalchemy import delete, select
+
+        from app.models.user_access.entities import Role, UserRole
+
+        w = world
+        # dòng họ chưa có phòng: khung rỗng nhưng `me.canOffer` vẫn đúng với từng người xem
+        empty = await _call(w, "GET", w.clan_a, "/hall", w.member_a)
+        assert empty.status_code == 200 and empty.json()["me"]["canOffer"] is True
+        assert (await _call(w, "GET", w.clan_a, "/hall", w.leader_a)).json()["me"]["canOffer"] is True
+
+        await _make_hall(w)
+        await _call(w, "PATCH", w.clan_a, "/hall", w.leader_a, json={"visibility": "PUBLIC"})
+        admin = w.outsider  # không thuộc dòng họ A; được cấp quyền System Admin (clan_id NULL)
+        assert (await _call(w, "GET", w.clan_a, "/hall", admin)).json()["me"]["canOffer"] is False
+        created_role = None
+        async with w.maker() as s:
+            role = (await s.execute(select(Role).where(Role.code == "admin"))).scalar_one_or_none()
+            if role is None:
+                role = created_role = Role(role_id=uuid.uuid4(), code="admin", name="itest admin")
+                s.add(role)
+                await s.flush()
+            grant = UserRole(user_id=admin.user_id, role_id=role.role_id, clan_id=None)
+            s.add(grant)
+            await s.commit()
+            grant_id = grant.user_role_id
+        try:
+            body = (await _call(w, "GET", w.clan_a, "/hall", admin)).json()
+            assert body["me"]["canOffer"] is True and body["canManage"] is True
+        finally:
+            async with w.maker() as s:
+                await s.execute(delete(UserRole).where(UserRole.user_role_id == grant_id))
+                if created_role is not None:
+                    await s.execute(delete(Role).where(Role.role_id == created_role.role_id))
+                await s.commit()
+
+    # ------------------------------------------------------------------ bài vị ẩn
+    async def test_hidden_tablets_visible_only_to_managers(self, world):
+        w = world
+        shown = (await _add(w, w.p5)).json()
+        hidden = (await _add(w, w.p6)).json()
+        assert hidden["isVisible"] is True
+        patched = await _call(w, "PATCH", w.clan_a, f"/tablets/{hidden['id']}", w.leader_a, json={"isVisible": False})
+        assert patched.status_code == 200, patched.text
+        assert patched.json()["isVisible"] is False
+        tier_id = hidden["tierId"]
+        assert shown["tierId"] != tier_id  # đời 5 và đời 6 ở hai tầng khác nhau
+
+        # Thành viên thường: không thấy bài vị ẩn, total không đếm, mọi tablet isVisible=True
+        member_tiers = {t["tierId"]: t for t in await _tiers(w, w.member_a)}
+        assert member_tiers[tier_id]["total"] == 0 and member_tiers[tier_id]["tablets"] == []
+        assert member_tiers[shown["tierId"]]["total"] == 1
+        page = (await _call(w, "GET", w.clan_a, f"/tiers/{tier_id}/tablets", w.member_a)).json()
+        assert page["total"] == 0 and page["tablets"] == []
+        assert hidden["personId"] not in str((await _call(w, "GET", w.clan_a, "/hall", w.member_a)).json())
+        for tier in member_tiers.values():
+            assert all(t["isVisible"] is True for t in tier["tablets"])
+
+        # Trưởng tộc: thấy cả bài vị ẩn với isVisible=False, total đếm cả bài vị ẩn
+        leader_tiers = {t["tierId"]: t for t in await _tiers(w, w.leader_a)}
+        assert leader_tiers[tier_id]["total"] == 1
+        only = leader_tiers[tier_id]["tablets"]
+        assert [t["personId"] for t in only] == [hidden["personId"]] and only[0]["isVisible"] is False
+        assert leader_tiers[shown["tierId"]]["tablets"][0]["isVisible"] is True
+        lpage = (await _call(w, "GET", w.clan_a, f"/tiers/{tier_id}/tablets", w.leader_a)).json()
+        assert lpage["total"] == 1 and lpage["tablets"][0]["isVisible"] is False
+
+        # Hiện lại bài vị: thành viên thường thấy lại và total tăng
+        shown_again = await _call(w, "PATCH", w.clan_a, f"/tablets/{hidden['id']}", w.leader_a, json={"isVisible": True})
+        assert shown_again.status_code == 200
+        again = (await _call(w, "GET", w.clan_a, f"/tiers/{tier_id}/tablets", w.member_a)).json()
+        assert again["total"] == 1 and again["tablets"][0]["isVisible"] is True
+
+    async def test_hidden_tablets_never_leak_to_outsider_or_guest_on_public_hall(self, world):
+        w = world
+        assert (await _call(w, "PATCH", w.clan_a, "/hall", w.leader_a, json={"visibility": "PUBLIC"})).status_code == 200
+        hidden = (await _add(w, w.p1)).json()
+        await _call(w, "PATCH", w.clan_a, f"/tablets/{hidden['id']}", w.leader_a, json={"isVisible": False})
+        for viewer in (None, w.outsider, w.member_b):
+            hall = (await _call(w, "GET", w.clan_a, "/hall", viewer)).json()
+            assert hidden["personId"] not in str(hall)
+            assert all(t["total"] == 0 for t in hall["tiers"])
+            page = await _call(w, "GET", w.clan_a, f"/tiers/{hidden['tierId']}/tablets", viewer)
+            assert page.status_code == 200 and page.json()["total"] == 0 and page.json()["tablets"] == []
