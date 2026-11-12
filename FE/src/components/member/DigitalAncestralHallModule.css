@@ -1602,3 +1602,105 @@
   font-size: 13px;
   text-align: center;
 }
+
+/* ===== Phòng thờ: trạng thái tải / lỗi, khóa hành động, lời viếng từ API ===== */
+.ancestral-hall-page .hall3d-skeleton {
+  display: grid;
+  min-height: 360px;
+  place-items: center;
+}
+
+.ancestral-hall-page .hall-state-card {
+  margin: 24px 0;
+  padding: 40px 24px;
+  background: #ffffff;
+  border: 1px solid var(--hall-border);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.ancestral-hall-page .hall-state-card h3 {
+  margin: 0 0 8px;
+  color: var(--hall-ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ancestral-hall-page .hall-state-card p {
+  max-width: 520px;
+  margin: 0 auto 18px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ancestral-hall-page .hall3d-streak {
+  margin: 6px 0 0;
+  color: rgba(255, 239, 192, 0.9);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ancestral-hall-page .hall3d-streak b {
+  color: #f1d37e;
+}
+
+.ancestral-hall-page .hall3d-lock-note {
+  margin: 10px 0 0;
+  color: #f1d37e;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.ancestral-hall-page .light-incense-button.is-done {
+  opacity: 0.85;
+}
+
+.ancestral-hall-page .light-incense-button:disabled:not(.is-done),
+.ancestral-hall-page .write-memorial-button:disabled {
+  cursor: not-allowed;
+}
+
+.ancestral-toast.is-warn {
+  color: #8a4b08;
+  border-color: #f2cf8e;
+}
+
+.ancestral-toast.is-warn span {
+  background: #d98a14;
+}
+
+.memorial-form-error {
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  color: #a12222;
+  background: #fdecec;
+  border: 1px solid #f3b8b8;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.memorial-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.memorial-load-more button {
+  padding: 9px 20px;
+  color: var(--hall-ink);
+  background: #ffffff;
+  border: 1px solid var(--hall-border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.memorial-load-more button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

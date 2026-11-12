@@ -54,12 +54,29 @@ export interface Hall3DAncestor {
   deathDate?: string | null;
 }
 
+/** Một tầng bàn thờ (tầng đầu = đời cao nhất, đặt trên cùng). `tablets` là các bài vị của trang đang xem (tối đa 9). */
+export interface Hall3DTier {
+  id: string;
+  /** Nhãn nhỏ của tầng, ví dụ "Đời 1". */
+  label: string;
+  tablets: Hall3DAncestor[];
+  /** Trang đang xem (bắt đầu từ 1) và tổng số trang của tầng (mỗi trang tối đa 9 khung). */
+  page: number;
+  pageCount: number;
+  /** Đang tải trang khác của tầng này. */
+  pageLoading?: boolean;
+}
+
 export type HallQuality = 'high' | 'low';
 
 export interface AncestralHall3DProps {
-  ancestors: Hall3DAncestor[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
+  /** Các tầng, từ trên xuống (tối đa 6). Rỗng hoặc mọi tầng không có bài vị: bàn thờ trống 5 khung mờ. */
+  tiers: Hall3DTier[];
+  /** id bài vị đang chọn (null: không chọn). */
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** Chuyển trang trong một tầng (page bắt đầu từ 1). */
+  onTierPage?: (tierId: string, page: number) => void;
   /** Số nén hương đã dâng của người đang chọn. */
   incenseCount?: number;
   /** Đang dâng hương (hiệu ứng ~1,6s): hiện thêm 1 nén hương tạm. */
@@ -149,8 +166,16 @@ const usePageVisible = (): boolean => {
 /* Hằng số bố cục                                                      */
 /* ------------------------------------------------------------------ */
 
-const PAGE_SIZE = 9;
 const TABLET_SPACING = 0.95;
+const MAX_TIERS = 6;
+// Giá bậc thang khi có từ 2 tầng: đáy giá cao hơn nến, bình hoa, lư hương ở bàn trước; đỉnh sát hoành phi (thấp nhất ở y 3.35).
+const RACK_BOTTOM_Y = 1.3;
+const RACK_TOP_Y = 3.3;
+const RACK_ROW_GAP = 0.1; // ván giá + khoảng thở giữa hai hàng (và dưới hàng trên cùng)
+const RACK_SHIFT_Z = -0.1; // các hàng trên lùi sát tường
+const RACK_DEPTH = 0.42;
+const FRAME_UNIT_H = 0.86; // cao khung + đế ở cỡ 1
+const TIER_SCALE_MAX = 1.5; // chừa chỗ cho nhãn tầng ở đầu hàng, không đụng hạc đồng ở hai đầu bàn
 const MAX_INCENSE = 9;
 const EMPTY_SLOT_COUNT = 5;
 const EMPTY_SLOT_IDS = Array.from({ length: EMPTY_SLOT_COUNT }, (_, i) => i);
@@ -237,13 +262,37 @@ const FLOWER_LAYOUT = Array.from({ length: 11 }, (_, i) => {
 });
 
 
-const clampIndex = (index: number, length: number): number => {
-  if (length <= 0) return 0;
-  if (!Number.isFinite(index)) return 0;
-  return Math.min(Math.max(Math.trunc(index), 0), length - 1);
-};
+// Khoảng cách giữa các khung tỉ lệ theo cỡ khung (cỡ 1.8 là cỡ gốc).
+const tabletX = (localIndex: number, count: number, scale: number = TABLET_SCALE): number =>
+  (localIndex - (count - 1) / 2) * TABLET_SPACING * (scale / TABLET_SCALE);
 
-const tabletX = (localIndex: number, count: number): number => (localIndex - (count - 1) / 2) * TABLET_SPACING;
+interface TierLayout {
+  /** Cỡ khung ảnh thờ của mọi hàng. */
+  scale: number;
+  /** Độ cao mặt đế của từng hàng (hàng 0 = tầng trên cùng). */
+  baseY: number[];
+  /** Có giá bậc thang (từ 2 tầng trở lên). */
+  rack: boolean;
+  /** z của hàng khung (một tầng: trên mặt bàn sau; nhiều tầng: trên ván giá sát tường). */
+  rowZ: number[];
+}
+
+/**
+ * Bố cục các tầng: tầng 1 trên cùng. Khoảng cao dùng được từ mặt bàn sau tới sát hoành phi chia đều cho các tầng;
+ * nhiều tầng thì giảm cỡ khung (không vượt bàn thờ). Một tầng: giữ nguyên bố cục gốc (cỡ 1.8, đứng trên bàn).
+ */
+const computeTierLayout = (count: number): TierLayout => {
+  const rows = Math.max(1, Math.min(MAX_TIERS, count));
+  if (rows === 1) {
+    return { scale: TABLET_SCALE, baseY: [TOP_Y.back], rack: false, rowZ: [BACK.z] };
+  }
+  const fit = (RACK_TOP_Y - RACK_BOTTOM_Y - RACK_ROW_GAP * (rows - 1)) / (FRAME_UNIT_H * rows);
+  const scale = Math.min(TIER_SCALE_MAX, Math.max(0.25, fit));
+  const pitch = FRAME_UNIT_H * scale + RACK_ROW_GAP;
+  const baseY = Array.from({ length: rows }, (_, i) => RACK_BOTTOM_Y + (rows - 1 - i) * pitch);
+  const rowZ = baseY.map(() => BACK.z + RACK_SHIFT_Z);
+  return { scale, baseY, rack: true, rowZ };
+};
 
 const easeInOutCubic = (t: number): number => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
@@ -616,6 +665,31 @@ const createNamePlateTexture = (name: string, deathText: string): CanvasTexture 
     ctx.font = `500 ${subSize}px ${FONT_FAMILY}`;
     ctx.fillText(line, w / 2, 198);
   }
+  return toTexture(canvas);
+};
+
+// Nhãn tầng nhỏ ("Đời 1") đặt ở đầu mỗi hàng ảnh thờ.
+const createTierLabelTexture = (text: string): CanvasTexture => {
+  const w = 256;
+  const h = 102;
+  const { canvas, ctx } = makeCanvas(w, h);
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, '#6a1410');
+  bg.addColorStop(1, '#430c09');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+  const gold = goldGradient(ctx, w, h);
+  ctx.strokeStyle = gold;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(6, 6, w - 12, h - 12);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = gold;
+  const label = text.trim() || '—';
+  const size = fitFontSize(ctx, label, 700, w - 40, 58, 22);
+  const font = `700 ${size}px ${FONT_FAMILY}`;
+  ctx.font = font;
+  ctx.fillText(truncateToFit(ctx, label, font, w - 40), w / 2, h / 2 + 2);
   return toTexture(canvas);
 };
 
@@ -1391,15 +1465,17 @@ const Altar = React.memo(function Altar() {
 interface PortraitFrameProps {
   ancestor: Hall3DAncestor;
   x: number;
-  raise: number;
-  globalIndex: number;
+  /** Độ cao mặt đế và z của hàng chứa khung. */
+  y: number;
+  z: number;
+  scale: number;
   selected: boolean;
   hovered: boolean;
-  onSelect: (index: number) => void;
-  onHover: (index: number | null) => void;
+  onSelect: (id: string) => void;
+  onHover: (id: string | null) => void;
 }
 
-const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, raise, globalIndex, selected, hovered, onSelect, onHover }) => {
+const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, y, z, scale, selected, hovered, onSelect, onHover }) => {
   const { res, high, drag } = useHall();
   const { mat, geo, soft, defaultPortrait } = res;
   const liftRef = useRef<Group>(null);
@@ -1479,12 +1555,12 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, raise, globa
   const handleUp = (event: ThreeEvent<PointerEvent>) => {
     if (drag.current.wasDrag) return;
     event.stopPropagation();
-    onSelect(globalIndex);
+    onSelect(ancestor.id);
   };
   const handleOver = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
     if (drag.current.dragging) return;
-    onHover(globalIndex);
+    onHover(ancestor.id);
   };
   const handleOut = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
@@ -1492,15 +1568,9 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, raise, globa
   };
 
   return (
-    <group position={[x, TOP_Y.back, BACK.z]} onPointerUp={handleUp} onPointerOver={handleOver} onPointerOut={handleOut}>
-      <group scale={TABLET_SCALE}>
-        {raise > 0.01 && (
-          <>
-            <RBox p={[0, raise / 2, 0]} size={[0.56, raise, 0.26]} radius={0.03} m={mat.lacquerDark} cast recv />
-            <RBox p={[0, raise + 0.004, 0]} size={[0.58, 0.014, 0.28]} radius={0.03} m={mat.gold} />
-          </>
-        )}
-        <group position={[0, raise, 0]}>
+    <group position={[x, y, z]} onPointerUp={handleUp} onPointerOver={handleOver} onPointerOut={handleOut}>
+      <group scale={scale}>
+        <group>
           <group ref={liftRef}>
             {/* Đế gỗ bo cạnh */}
             <RBox p={[0, 0.025, 0]} size={[0.52, 0.05, 0.2]} radius={0.03} m={mat.woodDark} cast recv />
@@ -1521,12 +1591,58 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, raise, globa
   );
 };
 
+/** Nhãn tầng nhỏ (đứng ở đầu hàng ảnh thờ). */
+const TierLabel: React.FC<{ text: string; x: number; y: number; z: number }> = ({ text, x, y, z }) => {
+  const { res } = useHall();
+  const tex = useMemo(() => createTierLabelTexture(text), [text]);
+  useEffect(() => () => tex.dispose(), [tex]);
+  return (
+    <group position={[x, y + 0.12, z]} rotation={[-0.08, 0, 0]}>
+      <Box p={[0, 0, -0.012]} s={[0.54, 0.24, 0.02]} m={res.mat.gold} />
+      <mesh>
+        <planeGeometry args={[0.5, 0.2]} />
+        <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.3} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+};
+
+/** Giá bậc thang đỡ các hàng ảnh thờ phía trên (từ 2 tầng): hai trụ sơn son + ván từng hàng. */
+const TierRack: React.FC<{ layout: TierLayout }> = ({ layout }) => {
+  const { res } = useHall();
+  const { mat } = res;
+  const topShelf = layout.baseY[0];
+  const postH = topShelf - TOP_Y.back + 0.1;
+  const postX = BACK.w / 2 - 0.3;
+  return (
+    <group>
+      {[-postX, postX].map((px) => (
+        <group key={px}>
+          <RBox p={[px, TOP_Y.back + postH / 2, BACK.z + RACK_SHIFT_Z]} size={[0.12, postH, RACK_DEPTH - 0.02]} radius={0.03} m={mat.lacquerDark} cast recv />
+          <RBox p={[px, TOP_Y.back + postH + 0.015, BACK.z + RACK_SHIFT_Z]} size={[0.16, 0.03, RACK_DEPTH + 0.02]} radius={0.02} m={mat.gold} />
+        </group>
+      ))}
+      {layout.baseY.map((by) => (
+        <group key={by}>
+          <RBox p={[0, by - 0.025, BACK.z + RACK_SHIFT_Z]} size={[BACK.w - 0.5, 0.05, RACK_DEPTH]} radius={0.02} m={mat.lacquerDark} cast recv />
+          <RBox p={[0, by - 0.02, BACK.z + RACK_SHIFT_Z + RACK_DEPTH / 2 - 0.006]} size={[BACK.w - 0.5, 0.034, 0.014]} radius={0.006} m={mat.gold} />
+        </group>
+      ))}
+    </group>
+  );
+};
+
 /** Khung ảnh mờ khi bàn thờ chưa có tiền nhân: không bấm được, không nhãn. */
-const EmptyTabletSlot: React.FC<{ x: number }> = ({ x }) => {
+const EmptyTabletSlot: React.FC<{ x: number; y?: number; z?: number; scale?: number }> = ({
+  x,
+  y = TOP_Y.back,
+  z = BACK.z,
+  scale = TABLET_SCALE,
+}) => {
   const { res } = useHall();
   const { mat, geo } = res;
   return (
-    <group position={[x, TOP_Y.back, BACK.z]} scale={TABLET_SCALE}>
+    <group position={[x, y, z]} scale={scale}>
       <RBox p={[0, 0.025, 0]} size={[0.52, 0.05, 0.2]} radius={0.03} m={mat.ghost} />
       <group position={[0, 0.06, 0]} rotation={[-0.06, 0, 0]}>
         <mesh geometry={geo.frameOuter} material={mat.ghost} />
@@ -1713,7 +1829,7 @@ const CupsAndWine: React.FC = () => {
 };
 
 /** Đồ thờ tĩnh: không phụ thuộc dữ liệu tiền nhân nên chỉ render một lần. */
-const Offerings = React.memo(function Offerings() {
+const Offerings = React.memo(function Offerings({ showCranes }: { showCranes: boolean }) {
   const { high } = useHall();
   return (
     <group>
@@ -1723,8 +1839,8 @@ const Offerings = React.memo(function Offerings() {
       <Candle x={-1.1} phase={0} withLight />
       <Candle x={1.1} phase={1.9} withLight={high} />
       <CupsAndWine />
-      {high && <Crane x={-4.45} flip={1} />}
-      {high && <Crane x={4.45} flip={-1} />}
+      {high && showCranes && <Crane x={-4.45} flip={1} />}
+      {high && showCranes && <Crane x={4.45} flip={-1} />}
     </group>
   );
 });
@@ -1932,7 +2048,7 @@ interface RigFocus {
 interface FirstPersonRigProps {
   apiRef: React.MutableRefObject<RigApi | null>;
   focus: RigFocus | null;
-  hovered: number | null;
+  hovered: string | null;
   offeringToken: number;
 }
 
@@ -2215,23 +2331,23 @@ const ResponsiveCamera: React.FC = () => {
 /* ------------------------------------------------------------------ */
 
 interface HallSceneProps {
-  ancestors: Hall3DAncestor[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
+  tiers: Hall3DTier[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
   incenseCount: number;
   isBurning: boolean;
   hallTitle: string;
   quality: HallQuality;
   reduced: boolean;
-  hovered: number | null;
-  onHover: (index: number | null) => void;
+  hovered: string | null;
+  onHover: (id: string | null) => void;
   rigApi: React.MutableRefObject<RigApi | null>;
   offeringToken: number;
 }
 
 const HallScene: React.FC<HallSceneProps> = ({
-  ancestors,
-  selectedIndex,
+  tiers,
+  selectedId,
   onSelect,
   incenseCount,
   isBurning,
@@ -2303,36 +2419,37 @@ const HallScene: React.FC<HallSceneProps> = ({
     [high]
   );
 
-  const safeSelected = clampIndex(selectedIndex, ancestors.length);
-  const pageStart = Math.floor(safeSelected / PAGE_SIZE) * PAGE_SIZE;
-  const pageItems = useMemo(() => ancestors.slice(pageStart, pageStart + PAGE_SIZE), [ancestors, pageStart]);
-  const isEmpty = ancestors.length === 0;
+  // Chỉ vẽ tối đa 6 tầng. Không tầng nào có bài vị: bàn thờ trống (5 khung mờ), không vẽ tầng.
+  const shownTiers = useMemo(() => tiers.slice(0, MAX_TIERS), [tiers]);
+  const isEmpty = !shownTiers.some((tier) => tier.tablets.length > 0);
+  const layout = useMemo(() => (isEmpty ? null : computeTierLayout(shownTiers.length)), [isEmpty, shownTiers.length]);
   // Có nén hương thì khói mảnh; lúc thắp hương khói đậm hơn vài giây (Smoke tự cộng theo đồng hồ offer).
   const smokeStrength = sticks.count > 0 ? (isBurning ? 0.7 : 0.4) : 0;
 
-  // Thế hệ cao (đời nhỏ) được nâng lên bệ cao hơn, tối đa 2 bậc.
-  const raises = useMemo(() => {
-    const gens = pageItems.map((a) => (Number.isFinite(a.generation) ? a.generation : 1));
-    const minGen = gens.length ? Math.min(...gens) : 1;
-    const levels = gens.map((g) => Math.min(2, Math.max(0, g - minGen)));
-    const lowest = levels.length ? Math.max(...levels) : 0;
-    return levels.map((level) => (lowest - level) * 0.08);
-  }, [pageItems]);
-
-  // Chuyển trang thì bỏ trạng thái rê chuột cũ.
+  // Chuyển trang trong tầng thì bỏ trạng thái rê chuột cũ.
+  const pagesKey = shownTiers.map((tier) => `${tier.id}:${tier.page}`).join('|');
   useEffect(() => {
     onHover(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageStart]);
+  }, [pagesKey]);
 
   // Ảnh thờ đang chọn (tọa độ thế giới) để camera quay đầu về phía đó.
-  const focus = useMemo<RigFocus | null>(
-    () =>
-      isEmpty
-        ? null
-        : { x: tabletX(safeSelected - pageStart, pageItems.length), y: TOP_Y.back + 1.0, z: BACK.z + ALTAR_Z, token: safeSelected },
-    [isEmpty, safeSelected, pageStart, pageItems.length]
-  );
+  const focus = useMemo<RigFocus | null>(() => {
+    if (!layout || !selectedId) return null;
+    for (let row = 0; row < shownTiers.length; row += 1) {
+      const items = shownTiers[row].tablets;
+      const col = items.findIndex((item) => item.id === selectedId);
+      if (col >= 0) {
+        return {
+          x: tabletX(col, items.length, layout.scale),
+          y: layout.baseY[row] + 0.555 * layout.scale,
+          z: layout.rowZ[row] + ALTAR_Z,
+          token: row * 16 + col,
+        };
+      }
+    }
+    return null;
+  }, [layout, shownTiers, selectedId]);
 
   return (
     <HallContext.Provider value={context}>
@@ -2374,26 +2491,42 @@ const HallScene: React.FC<HallSceneProps> = ({
       <group position={[0, 0, ALTAR_Z]}>
         <Inscriptions hallTitle={hallTitle} />
         <Altar />
-        <Offerings />
+        <Offerings showCranes={!layout?.rack} />
 
         {isEmpty && EMPTY_SLOT_IDS.map((slot) => <EmptyTabletSlot key={slot} x={tabletX(slot, EMPTY_SLOT_COUNT)} />)}
 
-        {pageItems.map((ancestor, localIndex) => {
-          const globalIndex = pageStart + localIndex;
-          return (
-            <PortraitFrame
-              key={ancestor.id}
-              ancestor={ancestor}
-              x={tabletX(localIndex, pageItems.length)}
-              raise={raises[localIndex] ?? 0}
-              globalIndex={globalIndex}
-              selected={globalIndex === safeSelected}
-              hovered={globalIndex === hovered}
-              onSelect={onSelect}
-              onHover={onHover}
-            />
-          );
-        })}
+        {layout?.rack && <TierRack layout={layout} />}
+        {layout &&
+          shownTiers.map((tier, row) => {
+            const y = layout.baseY[row];
+            const z = layout.rowZ[row];
+            const items = tier.tablets;
+            // Nhãn tầng đứng ở đầu hàng: sát hàng khi hàng hẹp, nhưng ngoài bình hoa (x=±2) và trong hạc đồng ở đầu bàn.
+            const labelX = -Math.min(3.95, Math.max(2.6, 2.37 * layout.scale + 0.45));
+            return (
+              <group key={tier.id}>
+                <TierLabel text={tier.label} x={labelX} y={y} z={z + 0.05} />
+                {items.length === 0 &&
+                  [0, 1, 2].map((slot) => (
+                    <EmptyTabletSlot key={slot} x={tabletX(slot, 3, layout.scale)} y={y} z={z} scale={layout.scale} />
+                  ))}
+                {items.map((ancestor, col) => (
+                  <PortraitFrame
+                    key={ancestor.id}
+                    ancestor={ancestor}
+                    x={tabletX(col, items.length, layout.scale)}
+                    y={y}
+                    z={z}
+                    scale={layout.scale}
+                    selected={ancestor.id === selectedId}
+                    hovered={ancestor.id === hovered}
+                    onSelect={onSelect}
+                    onHover={onHover}
+                  />
+                ))}
+              </group>
+            );
+          })}
 
         <IncenseBurner count={sticks.count} newGroup={sticks.newGroup} smokeStrength={smokeStrength} />
       </group>
@@ -2437,9 +2570,10 @@ class Hall3DErrorBoundary extends React.Component<Hall3DErrorBoundaryProps, { ha
 /* ------------------------------------------------------------------ */
 
 export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
-  ancestors,
-  selectedIndex,
+  tiers,
+  selectedId,
   onSelect,
+  onTierPage,
   incenseCount = 0,
   isBurning = false,
   fallback = null,
@@ -2453,7 +2587,7 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
   const quality = useMemo<HallQuality>(() => qualityProp ?? detectQuality(), [qualityProp]);
   const reduced = usePrefersReducedMotion();
   const pageVisible = usePageVisible();
-  const [hovered, setHovered] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const rigApi = useRef<RigApi | null>(null);
 
   const onErrorRef = useRef(onError);
@@ -2473,17 +2607,13 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
   if (!webglOk) return <>{fallback}</>;
 
   const high = quality === 'high';
-  const isEmpty = ancestors.length === 0;
-  const safeSelected = clampIndex(selectedIndex, ancestors.length);
-  const totalPages = Math.max(1, Math.ceil(ancestors.length / PAGE_SIZE));
-  const currentPage = Math.floor(safeSelected / PAGE_SIZE) + 1;
-  const hoveredAncestor = hovered !== null && hovered !== safeSelected ? ancestors[hovered] : undefined;
-
-  const goToPage = (page: number) => {
-    const target = Math.min(Math.max(page, 1), totalPages);
-    if (target === currentPage) return;
-    onSelect((target - 1) * PAGE_SIZE);
-  };
+  const isEmpty = !tiers.some((tier) => tier.tablets.length > 0);
+  const hoveredAncestor =
+    hovered !== null && hovered !== selectedId
+      ? tiers.flatMap((tier) => tier.tablets).find((item) => item.id === hovered)
+      : undefined;
+  // Mỗi tầng có nhiều hơn 9 bài vị thì có bộ chuyển trang riêng.
+  const pagedTiers = tiers.slice(0, MAX_TIERS).filter((tier) => tier.pageCount > 1);
 
   return (
     <Hall3DErrorBoundary fallback={fallback} onError={onError}>
@@ -2503,8 +2633,8 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
             }}
           >
             <HallScene
-              ancestors={ancestors}
-              selectedIndex={safeSelected}
+              tiers={tiers}
+              selectedId={selectedId}
               onSelect={onSelect}
               incenseCount={incenseCount}
               isBurning={isBurning}
@@ -2540,18 +2670,33 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
               Về cửa
             </button>
           </div>
-          {totalPages > 1 && (
-            <div className="hall3d-pager" role="group" aria-label="Chuyển trang ảnh thờ">
-              <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Trang ảnh thờ trước">
-                ‹
-              </button>
-              <span>Trang {currentPage}/{totalPages}</span>
-              <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Trang ảnh thờ sau">
-                ›
-              </button>
-            </div>
-          )}
         </div>
+        {pagedTiers.length > 0 && (
+          <div className="hall3d-tier-pagers">
+            {pagedTiers.map((tier) => (
+              <div key={tier.id} className="hall3d-pager" role="group" aria-label={`Chuyển trang ảnh thờ ${tier.label}`}>
+                <b>{tier.label}</b>
+                <button
+                  type="button"
+                  onClick={() => onTierPage?.(tier.id, tier.page - 1)}
+                  disabled={tier.page <= 1 || tier.pageLoading}
+                  aria-label={`${tier.label}: trang trước`}
+                >
+                  ‹
+                </button>
+                <span aria-live="polite">{tier.pageLoading ? 'Đang tải…' : `${tier.page}/${tier.pageCount}`}</span>
+                <button
+                  type="button"
+                  onClick={() => onTierPage?.(tier.id, tier.page + 1)}
+                  disabled={tier.page >= tier.pageCount || tier.pageLoading}
+                  aria-label={`${tier.label}: trang sau`}
+                >
+                  ›
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Hall3DErrorBoundary>
   );

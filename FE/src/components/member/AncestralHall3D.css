@@ -99,6 +99,24 @@
   font-weight: 700;
 }
 
+/* Chuyển trang theo từng tầng (chỉ hiện ở tầng có hơn 9 bài vị) */
+.hall3d-tier-pagers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  margin-top: 6px;
+}
+
+.hall3d-tier-pagers .hall3d-pager {
+  margin: 0;
+}
+
+.hall3d-tier-pagers .hall3d-pager b {
+  color: #f1d37e;
+  font-weight: 800;
+}
+
 .hall3d-controls {
   display: inline-flex;
   flex-wrap: wrap;

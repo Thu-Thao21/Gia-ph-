@@ -1,16 +1,26 @@
-import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useClanContext } from '../../context/ClanContext';
-import { fetchFamilyPersons } from '../../services/genealogy.service';
 import {
-  ANCESTOR_RECORDS,
-  ANCESTRAL_MEDIA,
-  INITIAL_MEMORIAL_MESSAGES,
-  type AncestorRecord,
-  type MemorialMessageRecord,
-} from './ancestralExperience.data';
+  fetchBlessings,
+  fetchMyStreaks,
+  fetchTierTablets,
+  fetchWorshipHall,
+  fetchWorshipImageObjectUrl,
+  formatVietnamDateTime,
+  lightIncense,
+  releaseWorshipImages,
+  toWorshipError,
+  writeBlessing,
+  type BlessingItem,
+  type HallResponse,
+  type MeInfo,
+  type StreakInfo,
+  type TabletItem,
+  type WorshipApiError,
+} from '../../services/worshipHall.service';
+import { ANCESTRAL_MEDIA, type AncestorRecord } from './ancestralExperience.data';
+import type { Hall3DAncestor, Hall3DTier } from './AncestralHall3D';
 import './DigitalAncestralHallModule.css';
-import { useLocalPreviewState } from '../../features/familyAdmin/useLocalPreviewState';
 
 // Three.js chỉ được tải khi người dùng vào chế độ Phòng thờ 3D (không nằm trong bundle chính).
 const AncestralHall3D = React.lazy(() => import('./AncestralHall3D'));
@@ -32,16 +42,32 @@ const detectWebGL = (): boolean => {
   }
 };
 
-// Danh sách rỗng ổn định cho cảnh 3D khi chưa có tiền nhân.
-const NO_ANCESTORS: never[] = [];
-const EMPTY_HALL_HINT = 'Bàn thờ đang chờ dữ liệu tiền nhân';
+// Danh sách rỗng ổn định cho cảnh 3D khi chưa có bài vị.
+const NO_TIERS: Hall3DTier[] = [];
+const EMPTY_HALL_HINT = 'Bàn thờ đang chờ bài vị tiền nhân';
 
-// Tiền nhân hiển thị trong phòng thờ: thêm ảnh và ngày sinh/mất thô lấy từ PersonItem
-// (avatarUrl, birthDate, deathDate của genealogy.service).
+const TIER_PAGE_SIZE = 9; // số khung ảnh thờ tối đa hiển thị cùng lúc trong một tầng
+const MAX_TIERS = 6;
+const BLESSING_PAGE_SIZE = 20;
+const BLESSING_MAX_LENGTH = 300; // khớp BE (MAX_BLESSING_LENGTH)
+
+// Bài vị hiển thị trong phòng thờ (dữ liệu từ API phòng thờ).
 interface HallAncestor extends AncestorRecord {
   portraitUrl: string | null;
   birthDate: string | null;
   deathDate: string | null;
+  note: string;
+}
+
+// Một tầng bàn thờ + các trang bài vị đã tải (trang 1 lấy từ GET /hall, các trang sau từ API phân trang).
+interface TierState {
+  tierId: string;
+  tierNo: number;
+  title: string;
+  total: number;
+  page: number;
+  pages: Record<number, TabletItem[]>;
+  loading: boolean;
 }
 
 /** "1941-03-12" -> "12/03/1941"; chỉ có năm thì trả năm; không rõ thì trả chuỗi rỗng. */
@@ -54,8 +80,49 @@ const formatVnDate = (raw?: string | null): string => {
   return year ? year[1] : '';
 };
 
+const makeInitials = (fullName: string): string => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'TV';
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0].slice(0, 2).toUpperCase();
+};
+
+/** Thời điểm 00:00 ngày kế tiếp theo giờ Việt Nam (UTC+7, không có giờ mùa hè). Chỉ dùng khi BE chưa báo next_offer_at. */
+const nextVietnamMidnightIso = (now: number = Date.now()): string => {
+  const OFFSET = 7 * 3600 * 1000;
+  const DAY = 24 * 3600 * 1000;
+  const localDay = Math.floor((now + OFFSET) / DAY);
+  return new Date((localDay + 1) * DAY - OFFSET).toISOString();
+};
+
+const pageCountOf = (total: number): number => Math.max(1, Math.ceil(total / TIER_PAGE_SIZE));
+
+const isApiRelativePath = (url: string): boolean => url.startsWith('/') && !url.startsWith('//');
+
+const EMPTY_STREAK: StreakInfo = { current: 0, longest: 0, total: 0, lastDate: null };
+const EMPTY_ME: MeInfo = {
+  incenseDoneToday: false,
+  blessingDoneToday: false,
+  incenseStreak: EMPTY_STREAK,
+  blessingStreak: EMPTY_STREAK,
+};
+
+const toTierStates = (res: HallResponse): TierState[] =>
+  [...res.tiers]
+    .sort((a, b) => a.tierNo - b.tierNo)
+    .slice(0, MAX_TIERS)
+    .map((tier) => ({
+      tierId: tier.tierId,
+      tierNo: tier.tierNo,
+      title: tier.title,
+      total: tier.total,
+      page: 1,
+      pages: { 1: tier.tablets.slice(0, TIER_PAGE_SIZE) },
+      loading: false,
+    }));
+
 // CHỈ dùng cho chế độ minh họa khi chạy dev (?demo=1). Các hàm này chỉ được gọi trong nhánh import.meta.env.DEV
-// nên bị loại hoàn toàn khỏi bản build production.
+// nên bị loại hoàn toàn khỏi bản build production. Chế độ này KHÔNG gọi API.
 const buildDemoPortrait = (initials: string, hue: number): string => {
   try {
     const canvas = document.createElement('canvas');
@@ -96,65 +163,74 @@ const buildDemoPortrait = (initials: string, hue: number): string => {
   }
 };
 
-const buildDemoAncestors = (): HallAncestor[] => {
-  const tones = ['indigo', 'teal', 'amber', 'rose'] as const;
+const buildDemoHall = (): HallResponse => {
   const make = (
-    id: string, name: string, initials: string, title: string, generation: number,
-    birthDate: string | null, deathDate: string | null, withPortrait: boolean
-  ): HallAncestor => {
-    const birthYear = birthDate ? birthDate.slice(0, 4) : '—';
-    const deathYear = deathDate ? deathDate.slice(0, 4) : '—';
-    return {
-      id,
-      name,
-      initials,
-      title,
-      generation,
-      branch: 'Trực hệ',
-      relationship: generation === 1 ? 'Thủy tổ dòng họ' : `Tiền nhân đời thứ ${generation}`,
-      birthYear,
-      deathYear,
-      lifespan: birthDate && deathDate ? `Sinh ${birthYear} · Mất ${deathYear}` : 'Đã khuất',
-      memorialDate: formatVnDate(deathDate) ? `Ngày ${formatVnDate(deathDate)}` : 'Chưa cập nhật ngày giỗ',
-      memorialPlace: 'Từ đường dòng tộc',
-      restingPlace: 'Khu lăng mộ gia tộc',
-      biography: 'Dữ liệu minh họa, không phải hồ sơ thật.',
-      legacy: 'Đức trọng lưu quang · Gia phong trường tồn',
-      portraitTone: tones[generation % 4],
-      incenseCount: 0,
-      portraitUrl: withPortrait ? buildDemoPortrait(initials, 20 + generation * 35) || null : null,
-      birthDate,
-      deathDate,
-    };
-  };
+    id: string, name: string, initials: string, generation: number, tierId: string,
+    birthDate: string | null, deathDate: string | null, withPortrait: boolean, order: number
+  ): TabletItem => ({
+    id,
+    personId: id,
+    fullName: name,
+    generation,
+    birthYear: birthDate ? Number(birthDate.slice(0, 4)) : null,
+    deathYear: deathDate ? Number(deathDate.slice(0, 4)) : null,
+    birthDate,
+    deathDate,
+    portraitUrl: withPortrait ? buildDemoPortrait(initials, 20 + generation * 35) || null : null,
+    note: 'Dữ liệu minh họa, không phải hồ sơ thật.',
+    displayOrder: order,
+    tierId,
+    isVisible: true,
+  });
   // Cố ý có đủ trường hợp: có ảnh mẫu / không ảnh; ngày mất đủ ngày / chỉ có năm / không có.
-  return [
-    make('demo-1', 'Cụ Dương Văn Tổ', 'DT', 'Cụ Khởi Tổ', 1, '1868-02-10', '1941-03-12', true),
-    make('demo-2', 'Cụ bà Nguyễn Thị Cả', 'NC', 'Cụ Bà Khởi Tổ', 1, '1872-06-01', '1950-08-05', true),
-    make('demo-3', 'Dương Văn Hòa', 'DH', 'Tiền nhân đời thứ 2', 2, '1895-01-20', '1968', false),
-    make('demo-4', 'Đỗ Thị Ngọc', 'ĐN', 'Tiền nhân đời thứ 2', 2, '1900-09-09', '1975-01-02', true),
-    make('demo-5', 'Dương Anh Tuấn', 'DT', 'Tiền nhân đời thứ 3', 3, '1925-04-30', null, false),
-    make('demo-6', 'Lê Thị Mai', 'LM', 'Tiền nhân đời thứ 3', 3, '1930-12-25', '2004-11-09', true),
+  const tiers = [
+    {
+      tierId: 'demo-tier-1', tierNo: 1, title: 'Thủy tổ / Đời 1', total: 2,
+      tablets: [
+        make('demo-1', 'Cụ Dương Văn Tổ', 'DT', 1, 'demo-tier-1', '1868-02-10', '1941-03-12', true, 0),
+        make('demo-2', 'Cụ bà Nguyễn Thị Cả', 'NC', 1, 'demo-tier-1', '1872-06-01', '1950-08-05', true, 1),
+      ],
+    },
+    {
+      tierId: 'demo-tier-2', tierNo: 2, title: 'Đời 2', total: 2,
+      tablets: [
+        make('demo-3', 'Dương Văn Hòa', 'DH', 2, 'demo-tier-2', '1895-01-20', '1968', false, 0),
+        make('demo-4', 'Đỗ Thị Ngọc', 'ĐN', 2, 'demo-tier-2', '1900-09-09', '1975-01-02', true, 1),
+      ],
+    },
+    {
+      tierId: 'demo-tier-3', tierNo: 3, title: 'Đời 3', total: 2,
+      tablets: [
+        make('demo-5', 'Dương Anh Tuấn', 'DT', 3, 'demo-tier-3', '1925-04-30', null, false, 0),
+        make('demo-6', 'Lê Thị Mai', 'LM', 3, 'demo-tier-3', '1930-12-25', '2004-11-09', true, 1),
+      ],
+    },
   ];
+  return {
+    hall: {
+      id: 'demo-hall', title: 'Dòng họ minh họa', clanName: 'Dòng họ minh họa',
+      visibility: 'PUBLIC', blessingsEnabled: true, coverImageUrl: null,
+    },
+    tiers,
+    today: { incenseCount: 0, blessingCount: 0 },
+    me: EMPTY_ME,
+    canManage: false,
+  };
 };
 
 /* ------------------------------------------------------------------ */
 /* Thắp hương cho CẢ BÀN THỜ                                           */
 /* ------------------------------------------------------------------ */
 
-// idle -> requesting (chờ kết quả thắp) -> animating (cảnh 3D chạy ~2,5s) -> idle
+// idle -> requesting (chờ API thắp hương) -> animating (cảnh 3D chạy ~2,5s) -> idle
 type OfferingPhase = 'idle' | 'requesting' | 'animating';
-type OfferingResult = { ok: true } | { ok: false; message: string };
 
 const OFFERING_MS = 2500;
 const OFFERING_REDUCED_MS = 900;
-const STICKS_PER_OFFERING = 3;
-// Lời viếng gửi cho cả bàn thờ: lưu chung một khóa theo dòng họ trong trường ancestorId sẵn có.
-const ALTAR_TARGET_PREFIX = 'altar:';
+const STICKS_PER_OFFERING = 3; // mỗi lượt thắp cắm 3 nén; lư hiển thị tối đa 9 nén
+const MAX_STICKS = 9;
 
-// ĐIỂM GẮN API SAU NÀY: hiện chưa có API thắp hương nên luôn thành công (chỉ lưu cục bộ như trước).
-// Khi có API: gọi ở đây; nếu máy chủ báo "hôm nay đã thắp" thì trả { ok: false, message } để KHÔNG chạy animation.
-const requestOffering = async (): Promise<OfferingResult> => ({ ok: true });
+type LockKind = 'login' | 'member' | null;
 
 const prefersReducedMotion = (): boolean => {
   try {
@@ -188,89 +264,55 @@ const PortraitPlaceholder: React.FC<{ ancestor: AncestorRecord; compact?: boolea
   </div>
 );
 
+type LoadState = { status: 'loading' } | { status: 'ready' } | { status: 'error'; error: WorshipApiError };
+
+const loadErrorMessage = (error: WorshipApiError): string => {
+  if (error.kind === 'UNAUTHENTICATED') return 'Đăng nhập để vào phòng thờ của dòng họ.';
+  if (error.kind === 'FORBIDDEN') return 'Phòng thờ này chỉ dành cho thành viên của dòng họ.';
+  if (error.kind === 'NOT_FOUND') return 'Không tìm thấy phòng thờ của dòng họ này.';
+  if (error.kind === 'NETWORK') return error.message;
+  return 'Chưa tải được phòng thờ. Vui lòng thử lại.';
+};
+
 export const DigitalAncestralHallModule: React.FC = () => {
-  const { account } = useAuth();
   const { activeClanId, activeClanName } = useClanContext();
   // Chế độ minh họa: chỉ tồn tại khi chạy dev; ở production điều kiện này luôn là false.
   const [isDemo] = useState<boolean>(
     () => import.meta.env.DEV && new URLSearchParams(window.location.search).get('demo') === '1'
   );
-  const [ancestors, setAncestors] = useState<HallAncestor[]>([]);
-  const [loadingAncestors, setLoadingAncestors] = useState(true);
 
-  useEffect(() => {
-    if (import.meta.env.DEV && isDemo) {
-      setAncestors(buildDemoAncestors());
-      setLoadingAncestors(false);
-      return;
-    }
-    if (!activeClanId) {
-      setAncestors([]);
-      setLoadingAncestors(false);
-      return;
-    }
-    setLoadingAncestors(true);
-    fetchFamilyPersons(activeClanId)
-      .then((persons) => {
-        const deceased = (Array.isArray(persons) ? persons : []).filter(
-          (p) => !p.isLiving || p.deathDate
-        );
-        const mapped: HallAncestor[] = deceased.map((p) => {
-          const parts = p.fullName.trim().split(/\s+/);
-          const initials = parts.length >= 2
-            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-            : p.fullName.slice(0, 2).toUpperCase();
-          const birthYear = p.birthDate ? p.birthDate.slice(0, 4) : '—';
-          const deathYear = p.deathDate ? p.deathDate.slice(0, 4) : '—';
-          const gen = p.generation || 1;
+  // ----- dữ liệu phòng thờ từ API -----
+  const [load, setLoad] = useState<LoadState>({ status: 'loading' });
+  const [reloadKey, setReloadKey] = useState(0);
+  const [hall, setHall] = useState<HallResponse | null>(null);
+  const [tiersState, setTiersState] = useState<TierState[]>([]);
+  const [me, setMe] = useState<MeInfo | null>(null);
+  const [todayIncense, setTodayIncense] = useState(0);
+  const [portraits, setPortraits] = useState<Record<string, string>>({});
+  const portraitRequested = useRef<Set<string>>(new Set());
+  // Mỗi lần nạp lại phòng thờ (đổi dòng họ, thử lại) tăng 1 để bỏ kết quả của lần nạp cũ.
+  const loadSeq = useRef(0);
 
-          return {
-            id: p.id,
-            name: p.fullName,
-            initials,
-            title: gen === 1 ? 'Cụ Khởi Tổ' : `Tiền nhân đời thứ ${gen}`,
-            generation: gen,
-            branch: p.branchId || 'Trực hệ',
-            relationship: gen === 1 ? 'Thủy tổ dòng họ' : `Tiền nhân đời thứ ${gen}`,
-            birthYear,
-            deathYear,
-            lifespan: p.birthDate && p.deathDate ? `Sinh ${birthYear} · Mất ${deathYear}` : 'Đã khuất',
-            memorialDate: p.deathDate ? `Ngày ${p.deathDate}` : 'Chưa cập nhật ngày giỗ',
-            memorialPlace: `Từ đường ${activeClanName || 'dòng tộc'}`,
-            restingPlace: 'Khu lăng mộ gia tộc',
-            biography: `Hồ sơ tiền nhân thuộc ${activeClanName || 'dòng tộc'}.`,
-            legacy: 'Đức trọng lưu quang · Gia phong trường tồn',
-            portraitTone: (['indigo', 'teal', 'amber', 'rose'] as const)[gen % 4],
-            incenseCount: 0,
-            portraitUrl: p.avatarUrl || null,
-            birthDate: p.birthDate || null,
-            deathDate: p.deathDate || null,
-          };
-        });
-        setAncestors(mapped);
-      })
-      .catch(() => setAncestors([]))
-      .finally(() => setLoadingAncestors(false));
-  }, [activeClanId, activeClanName, isDemo]);
+  // ----- lời viếng -----
+  const [blessings, setBlessings] = useState<BlessingItem[]>([]);
+  const [blessingsNext, setBlessingsNext] = useState<string | null>(null);
+  const [blessingsStatus, setBlessingsStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
-  const [selectedAncestorIndex, setSelectedAncestorIndex] = useState(0);
-  const [toast, setToast] = useState('');
-
-  // Nén hương và lời viếng là của CẢ BÀN THỜ (theo dòng họ), không gắn với người đang chọn.
-  const altarKey = isDemo ? 'demo' : activeClanId || 'none';
-  const altarTarget = `${ALTAR_TARGET_PREFIX}${altarKey}`;
-  const [incenseByAltar, setIncenseByAltar] = useLocalPreviewState<Record<string, number>>('altar-incense', {});
-  const altarIncense = incenseByAltar[altarKey] || 0;
+  // ----- thắp hương / lời viếng -----
+  const [lockKind, setLockKind] = useState<LockKind>(null);
+  const [nextIncenseAt, setNextIncenseAt] = useState<string | null>(null);
+  const [nextBlessingAt, setNextBlessingAt] = useState<string | null>(null);
   const [offeringPhase, setOfferingPhase] = useState<OfferingPhase>('idle');
   const [offeringToken, setOfferingToken] = useState(0);
   const isOffering = offeringPhase !== 'idle';
 
-  const [messages, setMessages] = useLocalPreviewState<MemorialMessageRecord[]>('worship-messages', []);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageContent, setMessageContent] = useState('');
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [pendingDeleteMessage, setPendingDeleteMessage] = useState<MemorialMessageRecord | null>(null);
+  const [messageError, setMessageError] = useState('');
+  const [messageSending, setMessageSending] = useState(false);
 
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
 
@@ -282,34 +324,7 @@ export const DigitalAncestralHallModule: React.FC = () => {
   const offeringTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
-
-  // Đổi dòng họ làm danh sách ngắn lại: đưa vị trí chọn về đầu để không bị coi nhầm là bàn thờ trống.
-  useEffect(() => {
-    if (ancestors.length > 0 && selectedAncestorIndex >= ancestors.length) setSelectedAncestorIndex(0);
-  }, [ancestors, selectedAncestorIndex]);
-
-  const selectedAncestor = ancestors[selectedAncestorIndex] || null;
-  // Lời viếng của bàn thờ: gồm lời gửi chung và các lời cũ từng gửi riêng cho từng vị của dòng họ này.
-  const altarMessages = useMemo(() => {
-    const ids = new Set(ancestors.map((a) => a.id));
-    return messages.filter((message) => message.ancestorId === altarTarget || ids.has(message.ancestorId));
-  }, [messages, ancestors, altarTarget]);
-  const selectedMedia = useMemo(
-    () => (selectedAncestor ? ANCESTRAL_MEDIA.filter((item) => item.ancestorId === selectedAncestor.id) : []),
-    [selectedAncestor]
-  );
-  const ancestors3D = useMemo(
-    () =>
-      ancestors.map((a) => ({
-        id: a.id,
-        name: a.name,
-        generation: a.generation,
-        lifespan: a.lifespan,
-        portraitUrl: a.portraitUrl,
-        deathDate: a.deathDate,
-      })),
-    [ancestors]
-  );
+  const demoBlessingId = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -320,99 +335,385 @@ export const DigitalAncestralHallModule: React.FC = () => {
     };
   }, []);
 
-  const showToast = (message: string) => {
-    setToast(message);
+  // Giải phóng ảnh bài vị (blob URL) khi đổi dòng họ hoặc rời trang.
+  useEffect(
+    () => () => {
+      releaseWorshipImages();
+    },
+    [activeClanId]
+  );
+
+  const showToast = (text: string, warn = false) => {
+    setToast({ text, warn });
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = window.setTimeout(() => setToast(''), 3200);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), warn ? 5200 : 3200);
   };
+
+  const loadBlessings = async (clanId: string, seq: number, before: string | null) => {
+    setBlessingsStatus('loading');
+    try {
+      const res = await fetchBlessings(clanId, { limit: BLESSING_PAGE_SIZE, before });
+      if (seq !== loadSeq.current) return;
+      setBlessings((current) => (before ? [...current, ...res.items] : res.items));
+      setBlessingsNext(res.nextBefore);
+      setBlessingsStatus('idle');
+    } catch {
+      if (seq !== loadSeq.current) return;
+      setBlessingsStatus('error');
+    }
+  };
+
+  // Nạp phòng thờ: demo (dữ liệu giả, không gọi API) hoặc GET /families/{clanId}/worship/hall.
+  useEffect(() => {
+    loadSeq.current += 1;
+    const seq = loadSeq.current;
+    setHall(null);
+    setTiersState([]);
+    setMe(null);
+    setTodayIncense(0);
+    setPortraits({});
+    portraitRequested.current = new Set();
+    setBlessings([]);
+    setBlessingsNext(null);
+    setBlessingsStatus('idle');
+    setLockKind(null);
+    setNextIncenseAt(null);
+    setNextBlessingAt(null);
+    setSelectedId(null);
+
+    const apply = (res: HallResponse) => {
+      setHall(res);
+      setTiersState(toTierStates(res));
+      setMe(res.me);
+      setTodayIncense(res.today.incenseCount);
+      setLoad({ status: 'ready' });
+    };
+
+    if (import.meta.env.DEV && isDemo) {
+      apply(buildDemoHall());
+      return undefined;
+    }
+    if (!activeClanId) {
+      setLoad({ status: 'ready' });
+      return undefined;
+    }
+    setLoad({ status: 'loading' });
+    fetchWorshipHall(activeClanId)
+      .then((res) => {
+        if (seq !== loadSeq.current) return;
+        apply(res);
+        void loadBlessings(activeClanId, seq, null);
+      })
+      .catch((err) => {
+        if (seq !== loadSeq.current) return;
+        setLoad({ status: 'error', error: toWorshipError(err) });
+      });
+    return () => {
+      // Bỏ kết quả của lần nạp này nếu đổi dòng họ / thử lại / rời trang.
+      loadSeq.current += 1;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeClanId, isDemo, reloadKey]);
+
+  const clanLabel = hall?.hall.title || hall?.hall.clanName || activeClanName || 'Dòng Họ';
+  const clanShortName = hall?.hall.clanName || activeClanName || '';
+
+  const toHallAncestor = (tablet: TabletItem, tier: TierState): HallAncestor => {
+    const gen = tablet.generation ?? tier.tierNo ?? 1;
+    const birthYear = tablet.birthYear ? String(tablet.birthYear) : tablet.birthDate ? tablet.birthDate.slice(0, 4) : '—';
+    const deathYear = tablet.deathYear ? String(tablet.deathYear) : tablet.deathDate ? tablet.deathDate.slice(0, 4) : '—';
+    const deathText = formatVnDate(tablet.deathDate);
+    const rawPortrait = tablet.portraitUrl ? tablet.portraitUrl.trim() : '';
+    const portraitUrl = !rawPortrait ? null : isApiRelativePath(rawPortrait) ? portraits[tablet.id] || null : rawPortrait;
+    return {
+      id: tablet.id,
+      name: tablet.fullName,
+      initials: makeInitials(tablet.fullName),
+      title: gen === 1 ? 'Cụ Khởi Tổ' : `Tiền nhân đời thứ ${gen}`,
+      generation: gen,
+      branch: tier.title,
+      relationship: gen === 1 ? 'Thủy tổ dòng họ' : `Tiền nhân đời thứ ${gen}`,
+      birthYear,
+      deathYear,
+      lifespan: birthYear !== '—' && deathYear !== '—' ? `Sinh ${birthYear} · Mất ${deathYear}` : 'Đã khuất',
+      memorialDate: deathText ? `Ngày ${deathText}` : 'Chưa cập nhật ngày giỗ',
+      memorialPlace: `Từ đường ${clanShortName || 'dòng tộc'}`,
+      restingPlace: '',
+      biography: tablet.note || '',
+      legacy: 'Đức trọng lưu quang · Gia phong trường tồn',
+      portraitTone: (['indigo', 'teal', 'amber', 'rose'] as const)[gen % 4],
+      incenseCount: 0,
+      portraitUrl,
+      birthDate: tablet.birthDate,
+      deathDate: tablet.deathDate,
+      note: tablet.note || '',
+    };
+  };
+
+  // Từng tầng với các bài vị của trang đang xem.
+  const tierViews = tiersState.map((tier) => ({
+    tier,
+    items: (tier.pages[tier.page] || []).map((tablet) => toHallAncestor(tablet, tier)),
+  }));
+  // Danh sách phẳng các bài vị đang hiển thị (trên xuống dưới, trái sang phải) cho thẻ thông tin và chế độ 2D.
+  const ancestors = tierViews.flatMap((view) => view.items);
+
+  // Ảnh bài vị: đường dẫn tương đối của BE cần token nên tải bằng apiClient rồi dùng blob URL.
+  const wantedPortraits = tiersState
+    .flatMap((tier) => tier.pages[tier.page] || [])
+    .filter((tablet) => tablet.portraitUrl && isApiRelativePath(tablet.portraitUrl.trim()))
+    .map((tablet) => `${tablet.id}|${tablet.portraitUrl!.trim()}`)
+    .join(',');
+  useEffect(() => {
+    if (!wantedPortraits) return;
+    const seq = loadSeq.current;
+    wantedPortraits.split(',').forEach((entry) => {
+      const sep = entry.indexOf('|');
+      const id = entry.slice(0, sep);
+      const path = entry.slice(sep + 1);
+      if (portraitRequested.current.has(entry)) return;
+      portraitRequested.current.add(entry);
+      fetchWorshipImageObjectUrl(path)
+        .then((url) => {
+          if (seq !== loadSeq.current) return;
+          setPortraits((current) => ({ ...current, [id]: url }));
+        })
+        .catch(() => {
+          /* tải ảnh lỗi: giữ ảnh mặc định */
+        });
+    });
+  }, [wantedPortraits]);
+
+  const tiers3D = useMemo<Hall3DTier[]>(
+    () =>
+      tierViews.map(({ tier, items }) => ({
+        id: tier.tierId,
+        label: `Đời ${tier.tierNo}`,
+        tablets: items.map<Hall3DAncestor>((a) => ({
+          id: a.id,
+          name: a.name,
+          generation: a.generation,
+          lifespan: a.lifespan,
+          portraitUrl: a.portraitUrl,
+          deathDate: a.deathDate,
+        })),
+        page: tier.page,
+        pageCount: pageCountOf(tier.total),
+        pageLoading: tier.loading,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tiersState, portraits, clanShortName]
+  );
+
+  const selectedIndex = Math.max(0, ancestors.findIndex((a) => a.id === selectedId));
+  const selectedAncestor = ancestors[selectedIndex] || null;
+  const selectedMedia = useMemo(
+    () => (selectedAncestor ? ANCESTRAL_MEDIA.filter((item) => item.ancestorId === selectedAncestor.id) : []),
+    [selectedAncestor]
+  );
 
   const selectAncestor = (index: number) => {
     if (ancestors.length === 0) return;
     const normalizedIndex = (index + ancestors.length) % ancestors.length;
-    setSelectedAncestorIndex(normalizedIndex);
+    setSelectedId(ancestors[normalizedIndex].id);
   };
 
-  // Thắp hương cho cả bàn thờ. Animation chỉ chạy khi thắp THÀNH CÔNG; trong lúc chạy nút bị khóa.
-  const startOffering = async () => {
-    if (offeringPhase !== 'idle') return;
-    setOfferingPhase('requesting');
-    let result: OfferingResult;
-    try {
-      result = await requestOffering();
-    } catch {
-      result = { ok: false, message: 'Chưa thắp được hương, vui lòng thử lại.' };
-    }
-    if (!mountedRef.current) return;
-    if (!result.ok) {
-      setOfferingPhase('idle');
-      showToast(result.message);
+  const patchTier = (tierId: string, patch: Partial<TierState>) =>
+    setTiersState((current) => current.map((tier) => (tier.tierId === tierId ? { ...tier, ...patch } : tier)));
+
+  // Chuyển trang trong một tầng: trang đã tải thì đổi ngay, chưa có thì gọi API phân trang.
+  const goTierPage = async (tierId: string, page: number) => {
+    const tier = tiersState.find((t) => t.tierId === tierId);
+    if (!tier || tier.loading) return;
+    const target = Math.min(Math.max(page, 1), pageCountOf(tier.total));
+    if (target === tier.page) return;
+    if (tier.pages[target]) {
+      patchTier(tierId, { page: target });
       return;
     }
+    if (isDemo || !activeClanId) return;
+    const seq = loadSeq.current;
+    patchTier(tierId, { loading: true });
+    try {
+      const res = await fetchTierTablets(activeClanId, tierId, (target - 1) * TIER_PAGE_SIZE, TIER_PAGE_SIZE);
+      if (seq !== loadSeq.current) return;
+      setTiersState((current) =>
+        current.map((t) =>
+          t.tierId === tierId
+            ? {
+                ...t,
+                loading: false,
+                total: res.total,
+                pages: { ...t.pages, [target]: res.tablets },
+                page: Math.min(target, pageCountOf(res.total)),
+              }
+            : t
+        )
+      );
+    } catch (err) {
+      if (seq !== loadSeq.current) return;
+      patchTier(tierId, { loading: false });
+      showToast(toWorshipError(err).message, true);
+    }
+  };
+
+  /* ---------------------------- thắp hương ---------------------------- */
+
+  const blessingsEnabled = hall ? hall.hall.blessingsEnabled : true;
+  const lockNote =
+    !me || lockKind === 'login'
+      ? 'Đăng nhập để thắp hương'
+      : lockKind === 'member'
+        ? 'Chỉ thành viên dòng họ'
+        : '';
+  const locked = lockNote !== '';
+
+  const applyOfferError = (err: WorshipApiError, kind: 'incense' | 'blessing') => {
+    const what = kind === 'incense' ? 'thắp hương' : 'viết lời viếng';
+    if (err.kind === 'ALREADY_OFFERED') {
+      const next = err.nextOfferAt || nextVietnamMidnightIso();
+      if (kind === 'incense') {
+        setNextIncenseAt(next);
+        setMe((current) => ({ ...(current ?? EMPTY_ME), incenseDoneToday: true }));
+      } else {
+        setNextBlessingAt(next);
+        setMe((current) => ({ ...(current ?? EMPTY_ME), blessingDoneToday: true }));
+      }
+      const when = formatVietnamDateTime(next);
+      showToast(
+        `Hôm nay bạn đã ${what}.${when ? ` Bạn có thể ${what} lại từ ${when} (giờ Việt Nam).` : ''}`,
+        true
+      );
+      // Đồng bộ chuỗi ngày với BE (không chặn luồng chính).
+      if (activeClanId && !isDemo) {
+        const seq = loadSeq.current;
+        fetchMyStreaks(activeClanId)
+          .then((streaks) => {
+            if (seq !== loadSeq.current) return;
+            setMe((current) => ({ ...(current ?? EMPTY_ME), ...streaks }));
+          })
+          .catch(() => undefined);
+      }
+    } else if (err.kind === 'UNAUTHENTICATED') {
+      setLockKind('login');
+      showToast('Đăng nhập để thắp hương', true);
+    } else if (err.kind === 'FORBIDDEN') {
+      setLockKind('member');
+      showToast('Chỉ thành viên dòng họ', true);
+    } else {
+      showToast(err.message, true);
+    }
+  };
+
+  // Thắp hương cho cả bàn thờ. Animation chỉ chạy khi API báo thành công; trong lúc chạy nút bị khóa.
+  const startOffering = async () => {
+    if (offeringPhase !== 'idle' || locked) return;
+    // Đã thắp hôm nay và đã biết giờ được thắp lại: báo luôn, không gọi API thừa.
+    if (me?.incenseDoneToday && nextIncenseAt) {
+      const when = formatVietnamDateTime(nextIncenseAt);
+      showToast(`Hôm nay bạn đã thắp hương.${when ? ` Bạn có thể thắp lại từ ${when} (giờ Việt Nam).` : ''}`, true);
+      return;
+    }
+    const seq = loadSeq.current;
+    setOfferingPhase('requesting');
+    let newCount: number | null = null;
+    try {
+      if (isDemo) {
+        newCount = todayIncense + 1;
+      } else if (activeClanId) {
+        const res = await lightIncense(activeClanId);
+        if (seq !== loadSeq.current || !mountedRef.current) return;
+        newCount = res.todayCount;
+        setMe((current) => ({ ...(current ?? EMPTY_ME), incenseDoneToday: true, incenseStreak: res.streak }));
+        setNextIncenseAt(nextVietnamMidnightIso());
+      }
+    } catch (err) {
+      if (seq !== loadSeq.current || !mountedRef.current) return;
+      applyOfferError(toWorshipError(err), 'incense');
+    }
+    if (!mountedRef.current) return;
+    if (newCount === null) {
+      setOfferingPhase('idle');
+      return;
+    }
+    const countAfter = newCount;
     setOfferingPhase('animating');
     setOfferingToken((token) => token + 1);
-    const key = altarKey;
     if (offeringTimerRef.current !== null) window.clearTimeout(offeringTimerRef.current);
     offeringTimerRef.current = window.setTimeout(() => {
       offeringTimerRef.current = null;
-      setIncenseByAltar((current) => ({ ...current, [key]: (current[key] || 0) + STICKS_PER_OFFERING }));
+      if (seq === loadSeq.current) setTodayIncense(countAfter);
       setOfferingPhase('idle');
       showToast('Đã thắp hương');
     }, prefersReducedMotion() ? OFFERING_REDUCED_MS : OFFERING_MS);
   };
 
+  /* ---------------------------- lời viếng ---------------------------- */
+
   const openCreateMessage = () => {
-    setEditingMessageId(null);
-    setMessageContent('');
-    setIsMessageModalOpen(true);
-  };
-
-  const openEditMessage = (message: MemorialMessageRecord) => {
-    setEditingMessageId(message.id);
-    setMessageContent(message.message);
-    setIsMessageModalOpen(true);
-  };
-
-  const saveMessage = (event: React.FormEvent) => {
-    event.preventDefault();
-    const cleanMessage = messageContent.trim();
-    if (!cleanMessage) return;
-
-    if (editingMessageId) {
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === editingMessageId
-            ? { ...message, message: cleanMessage, createdAt: 'Vừa chỉnh sửa' }
-            : message
-        )
-      );
-      showToast('Đã cập nhật lời viếng của bạn.');
-    } else {
-      const senderName = account?.display_name || 'Thành viên dòng họ';
-      const senderInitials = senderName.split(' ').map((s) => s[0]).slice(-2).join('').toUpperCase() || 'TV';
-      const newMessage: MemorialMessageRecord = {
-        id: `message-${Date.now()}`,
-        ancestorId: altarTarget,
-        sender: senderName,
-        initials: senderInitials,
-        relationship: 'Thành viên gia tộc',
-        message: cleanMessage,
-        createdAt: 'Vừa xong',
-        isOwn: true,
-      };
-      setMessages((current) => [newMessage, ...current]);
-      showToast('Lời viếng đã được lưu trong không gian gia tộc.');
+    if (locked) {
+      showToast(lockKind === 'member' ? lockNote : 'Đăng nhập để viết lời viếng', true);
+      return;
     }
-
-    setIsMessageModalOpen(false);
-    setEditingMessageId(null);
+    if (!blessingsEnabled) {
+      showToast('Phòng thờ đang tạm tắt tính năng lời viếng.', true);
+      return;
+    }
+    if (me?.blessingDoneToday) {
+      const when = formatVietnamDateTime(nextBlessingAt || nextVietnamMidnightIso());
+      showToast(`Hôm nay bạn đã viết lời viếng.${when ? ` Bạn có thể viết lại từ ${when} (giờ Việt Nam).` : ''}`, true);
+      return;
+    }
     setMessageContent('');
+    setMessageError('');
+    setIsMessageModalOpen(true);
   };
 
-  const confirmDeleteMessage = () => {
-    if (!pendingDeleteMessage) return;
-    setMessages((current) => current.filter((message) => message.id !== pendingDeleteMessage.id));
-    setPendingDeleteMessage(null);
-    showToast('Đã xóa lời viếng của bạn.');
+  const closeMessageModal = () => {
+    if (messageSending) return;
+    setIsMessageModalOpen(false);
+  };
+
+  const saveMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const clean = messageContent.trim();
+    if (!clean || messageSending) return;
+    setMessageError('');
+    setMessageSending(true);
+    const seq = loadSeq.current;
+    try {
+      if (isDemo) {
+        demoBlessingId.current += 1;
+        setBlessings((current) => [
+          { id: `demo-blessing-${demoBlessingId.current}`, content: clean, authorName: 'Bạn (minh họa)', createdAt: new Date().toISOString() },
+          ...current,
+        ]);
+        setMe((current) => ({ ...(current ?? EMPTY_ME), blessingDoneToday: true }));
+      } else if (activeClanId) {
+        const res = await writeBlessing(activeClanId, clean);
+        if (seq !== loadSeq.current || !mountedRef.current) return;
+        setMe((current) => ({ ...(current ?? EMPTY_ME), blessingDoneToday: true, blessingStreak: res.streak }));
+        setNextBlessingAt(nextVietnamMidnightIso());
+        void loadBlessings(activeClanId, seq, null);
+      }
+      setIsMessageModalOpen(false);
+      setMessageContent('');
+      showToast('Lời viếng đã được gửi tới bàn thờ gia tộc.');
+    } catch (err) {
+      if (seq !== loadSeq.current || !mountedRef.current) return;
+      const failure = toWorshipError(err);
+      if (failure.kind === 'CONTENT_REJECTED') {
+        // Giữ hộp thoại và nội dung để người dùng sửa lại.
+        setMessageError(failure.message || 'Nội dung lời viếng chưa phù hợp. Vui lòng chỉnh sửa và thử lại.');
+      } else if (failure.kind === 'NETWORK' || failure.kind === 'UNKNOWN' || failure.kind === 'NOT_FOUND') {
+        setMessageError(failure.message);
+      } else {
+        setIsMessageModalOpen(false);
+        applyOfferError(failure, 'blessing');
+      }
+    } finally {
+      if (mountedRef.current) setMessageSending(false);
+    }
   };
 
   const openAncestralMedia = () => {
@@ -420,29 +721,88 @@ export const DigitalAncestralHallModule: React.FC = () => {
     setIsMediaModalOpen(true);
   };
 
-  if (loadingAncestors) {
-    return <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Đang tải dữ liệu tiền nhân dòng họ...</div>;
-  }
+  /* ---------------------------- giao diện ---------------------------- */
 
   const hallLoading = (
     <div className="hall3d-loading" role="status"><span className="hall3d-loading-flame" aria-hidden="true" /><span>Đang thắp đèn…</span></div>
   );
 
+  const pageHeader = (
+    <header className="ancestral-hall-header">
+      <div>
+        <span className="ancestral-hall-eyebrow">KHÔNG GIAN TƯỞNG NIỆM GIA TỘC</span>
+        <h1 id="ancestral-hall-title">Phòng Thờ Số · {clanLabel}</h1>
+        <p>Thành kính tưởng nhớ tiền nhân, gìn giữ ký ức và kết nối lòng tri ân của con cháu.</p>
+      </div>
+    </header>
+  );
+
+  if (load.status === 'loading') {
+    return (
+      <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title" aria-busy="true">
+        {pageHeader}
+        <div className="hall3d-section hall3d-skeleton">{hallLoading}</div>
+      </section>
+    );
+  }
+
+  if (load.status === 'error') {
+    return (
+      <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
+        {pageHeader}
+        <div className="hall-state-card" role="alert">
+          <h3>Chưa vào được phòng thờ</h3>
+          <p>{loadErrorMessage(load.error)}</p>
+          <button type="button" className="ancestral-primary-button" onClick={() => setReloadKey((key) => key + 1)}>
+            Thử lại
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const incense3D = Math.min(todayIncense * STICKS_PER_OFFERING, MAX_STICKS);
+  const incenseDone = !!me?.incenseDoneToday;
+  const incenseStreak = me?.incenseStreak;
+  const incenseAgain = incenseDone && nextIncenseAt ? formatVietnamDateTime(nextIncenseAt) : '';
+
   // Thành viên chỉ có đúng 2 hành động với bàn thờ: Thắp hương và Viết lời viếng.
   const altarActions = (
     <>
       <p className="hall3d-altar-stat" aria-live="polite">
-        {isOffering ? 'Đang thắp hương…' : `${altarIncense} nén hương đã được con cháu dâng lên bàn thờ`}
+        {isOffering ? 'Đang thắp hương…' : `Hôm nay đã có ${todayIncense} lượt thắp hương dâng lên bàn thờ`}
       </p>
+      {incenseStreak && !locked && (
+        <p className="hall3d-streak" aria-label="Chuỗi ngày thắp hương">
+          Chuỗi ngày thắp hương: <b>{incenseStreak.current}</b> ngày · dài nhất <b>{incenseStreak.longest}</b> ngày
+        </p>
+      )}
       <div className="digital-altar-actions">
-        <button type="button" className="light-incense-button" onClick={startOffering} disabled={isOffering}>
-          <span aria-hidden="true">✦</span>
-          {isOffering ? 'Đang thắp hương…' : 'Thắp hương'}
+        <button
+          type="button"
+          className={`light-incense-button ${incenseDone ? 'is-done' : ''}`}
+          onClick={startOffering}
+          disabled={isOffering || locked}
+          title={locked ? lockNote : undefined}
+        >
+          <span aria-hidden="true">{incenseDone ? '✓' : '✦'}</span>
+          {isOffering ? 'Đang thắp hương…' : incenseDone ? 'Hôm nay bạn đã thắp hương' : 'Thắp hương'}
         </button>
-        <button type="button" className="write-memorial-button" onClick={openCreateMessage}>
+        <button
+          type="button"
+          className="write-memorial-button"
+          onClick={openCreateMessage}
+          disabled={locked || !blessingsEnabled}
+          title={locked ? (lockKind === 'member' ? lockNote : 'Đăng nhập để viết lời viếng') : undefined}
+        >
           Viết lời viếng
         </button>
       </div>
+      {locked && <p className="hall3d-lock-note" role="status">{lockNote}</p>}
+      {!locked && !blessingsEnabled && <p className="hall3d-lock-note" role="status">Phòng thờ đang tạm tắt lời viếng</p>}
+      {!locked && incenseAgain && (
+        <p className="hall3d-lock-note" role="status">Bạn có thể thắp hương lại từ {incenseAgain} (giờ Việt Nam)</p>
+      )}
     </>
   );
 
@@ -452,55 +812,79 @@ export const DigitalAncestralHallModule: React.FC = () => {
         <div>
           <span>LƯU BÚT GIA TỘC</span>
           <h2 id="memorial-messages-title">Lời Viếng</h2>
-          <p>Kính gửi bàn thờ tổ tiên {activeClanName || 'dòng họ'}</p>
+          <p>Kính gửi bàn thờ tổ tiên {clanShortName || 'dòng họ'}</p>
         </div>
-        <button type="button" className="ancestral-primary-button" onClick={openCreateMessage}>
+        <button
+          type="button"
+          className="ancestral-primary-button"
+          onClick={openCreateMessage}
+          disabled={locked || !blessingsEnabled}
+          title={locked ? lockNote : undefined}
+        >
           + Viết lời viếng
         </button>
       </div>
 
-      {altarMessages.length === 0 ? (
+      {blessingsStatus === 'error' && blessings.length === 0 ? (
+        <div className="memorial-empty-state" role="alert">
+          <h3>Chưa tải được lời viếng</h3>
+          <p>Vui lòng kiểm tra kết nối và thử lại.</p>
+          <button type="button" onClick={() => activeClanId && void loadBlessings(activeClanId, loadSeq.current, null)}>Thử lại</button>
+        </div>
+      ) : blessings.length === 0 && blessingsStatus === 'loading' ? (
+        <div className="memorial-empty-state" role="status"><p>Đang tải lời viếng…</p></div>
+      ) : blessings.length === 0 ? (
         <div className="memorial-empty-state">
           <div aria-hidden="true">✦</div>
           <h3>Chưa có lời viếng</h3>
           <p>Hãy là người đầu tiên lưu lại một lời tri ân trước bàn thờ tổ tiên.</p>
-          <button type="button" onClick={openCreateMessage}>Viết lời đầu tiên</button>
+          {!locked && blessingsEnabled && <button type="button" onClick={openCreateMessage}>Viết lời đầu tiên</button>}
         </div>
       ) : (
-        <div className="memorial-message-list">
-          {altarMessages.map((message) => (
-            <article key={message.id} className="memorial-message-card">
-              <div className="memorial-message-avatar" aria-hidden="true">{message.initials}</div>
-              <div className="memorial-message-content">
-                <header>
-                  <div>
-                    <strong>{message.sender}</strong>
-                    {message.isOwn && <span className="own-message-badge">Lời của bạn</span>}
-                    <small>{message.relationship}</small>
-                  </div>
-                  <time>{message.createdAt}</time>
-                </header>
-                <p>“{message.message}”</p>
-                {message.isOwn && (
-                  <div className="memorial-message-actions">
-                    <button type="button" onClick={() => openEditMessage(message)}>Chỉnh sửa</button>
-                    <button type="button" className="danger" onClick={() => setPendingDeleteMessage(message)}>Xóa</button>
-                  </div>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
+        <>
+          <div className="memorial-message-list">
+            {blessings.map((item) => (
+              <article key={item.id} className="memorial-message-card">
+                <div className="memorial-message-avatar" aria-hidden="true">{makeInitials(item.authorName)}</div>
+                <div className="memorial-message-content">
+                  <header>
+                    <div>
+                      <strong>{item.authorName}</strong>
+                    </div>
+                    <time dateTime={item.createdAt}>{formatVietnamDateTime(item.createdAt)}</time>
+                  </header>
+                  <p>“{item.content}”</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          {blessingsNext && (
+            <div className="memorial-load-more">
+              <button
+                type="button"
+                disabled={blessingsStatus === 'loading'}
+                onClick={() => activeClanId && void loadBlessings(activeClanId, loadSeq.current, blessingsNext)}
+              >
+                {blessingsStatus === 'loading' ? 'Đang tải…' : 'Xem thêm lời viếng'}
+              </button>
+            </div>
+          )}
+          {blessingsStatus === 'error' && <p className="memorial-form-error" role="alert">Chưa tải thêm được lời viếng, vui lòng thử lại.</p>}
+        </>
       )}
     </section>
   );
 
   const sharedOverlays = (
     <>
-      {toast && <div className="ancestral-toast" role="status" aria-live="polite"><span>✓</span>{toast}</div>}
+      {toast && (
+        <div className={`ancestral-toast ${toast.warn ? 'is-warn' : ''}`} role="status" aria-live="polite">
+          <span>{toast.warn ? '!' : '✓'}</span>{toast.text}
+        </div>
+      )}
 
       {isMessageModalOpen && (
-        <div className="ancestral-modal-backdrop" role="presentation" onMouseDown={() => setIsMessageModalOpen(false)}>
+        <div className="ancestral-modal-backdrop" role="presentation" onMouseDown={closeMessageModal}>
           <div
             className="ancestral-modal"
             role="dialog"
@@ -511,10 +895,10 @@ export const DigitalAncestralHallModule: React.FC = () => {
             <div className="ancestral-modal-header">
               <div>
                 <span>LƯU BÚT GIA TỘC</span>
-                <h2 id="message-modal-title">{editingMessageId ? 'Chỉnh sửa lời viếng' : 'Viết lời viếng'}</h2>
-                <p>Lời viếng được gửi chung tới bàn thờ tổ tiên {activeClanName || 'dòng họ'}.</p>
+                <h2 id="message-modal-title">Viết lời viếng</h2>
+                <p>Lời viếng được gửi chung tới bàn thờ tổ tiên {clanShortName || 'dòng họ'}. Mỗi người viết một lời mỗi ngày.</p>
               </div>
-              <button type="button" onClick={() => setIsMessageModalOpen(false)} aria-label="Đóng hộp thoại">×</button>
+              <button type="button" onClick={closeMessageModal} aria-label="Đóng hộp thoại">×</button>
             </div>
 
             <form onSubmit={saveMessage}>
@@ -524,43 +908,23 @@ export const DigitalAncestralHallModule: React.FC = () => {
                   autoFocus
                   required
                   rows={6}
-                  minLength={5}
-                  maxLength={500}
+                  maxLength={BLESSING_MAX_LENGTH}
                   value={messageContent}
-                  onChange={(event) => setMessageContent(event.target.value)}
+                  onChange={(event) => { setMessageContent(event.target.value); if (messageError) setMessageError(''); }}
                   placeholder="Viết lời tri ân và những điều bạn muốn lưu lại…"
+                  disabled={messageSending}
                 />
-                <small>{messageContent.length}/500 ký tự</small>
+                <small>{messageContent.length}/{BLESSING_MAX_LENGTH} ký tự</small>
               </label>
+              {messageError && <p className="memorial-form-error" role="alert">{messageError}</p>}
               <div className="ancestral-modal-note">Vui lòng sử dụng ngôn từ trang trọng, phù hợp với không gian tưởng niệm chung.</div>
               <div className="ancestral-modal-actions">
-                <button type="button" className="ancestral-cancel-button" onClick={() => setIsMessageModalOpen(false)}>Hủy</button>
-                <button type="submit" className="ancestral-confirm-button" disabled={messageContent.trim().length < 5}>
-                  {editingMessageId ? 'Lưu thay đổi' : 'Gửi lời viếng'}
+                <button type="button" className="ancestral-cancel-button" onClick={closeMessageModal} disabled={messageSending}>Hủy</button>
+                <button type="submit" className="ancestral-confirm-button" disabled={messageSending || messageContent.trim().length === 0}>
+                  {messageSending ? 'Đang gửi…' : 'Gửi lời viếng'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {pendingDeleteMessage && (
-        <div className="ancestral-modal-backdrop" role="presentation" onMouseDown={() => setPendingDeleteMessage(null)}>
-          <div
-            className="ancestral-modal ancestral-confirm-modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="delete-message-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className="ancestral-confirm-icon" aria-hidden="true">!</div>
-            <h2 id="delete-message-title">Xóa lời viếng?</h2>
-            <p>Lời viếng này sẽ bị gỡ khỏi không gian gia tộc trong phiên trình diễn.</p>
-            <blockquote>“{pendingDeleteMessage.message}”</blockquote>
-            <div className="ancestral-modal-actions">
-              <button type="button" className="ancestral-cancel-button" onClick={() => setPendingDeleteMessage(null)}>Giữ lại</button>
-              <button type="button" className="ancestral-delete-button" onClick={confirmDeleteMessage}>Xác nhận xóa</button>
-            </div>
           </div>
         </div>
       )}
@@ -568,36 +932,36 @@ export const DigitalAncestralHallModule: React.FC = () => {
   );
 
   if (ancestors.length === 0 || !selectedAncestor) {
-    // Chưa có tiền nhân: vẫn hiển thị bàn thờ 3D trống (các khung ảnh mờ) nếu thiết bị hỗ trợ;
+    // Chưa có bài vị (hoặc dòng họ chưa lập phòng thờ): vẫn hiển thị bàn thờ 3D trống (5 khung ảnh mờ);
     // thắp hương và lời viếng là của cả bàn thờ nên vẫn dùng được.
+    const emptyNote =
+      !activeClanId && !isDemo
+        ? 'Chưa chọn dòng họ nào để vào phòng thờ.'
+        : hall && !hall.hall.id
+          ? 'Dòng họ chưa lập phòng thờ. Bàn thờ sẽ có bài vị khi Trưởng tộc thêm tiền nhân.'
+          : 'Phòng thờ chưa có bài vị nào. Bàn thờ sẽ hiển thị ảnh thờ khi Trưởng tộc thêm tiền nhân.';
     if (show3D) {
       return (
         <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
-          <header className="ancestral-hall-header">
-            <div>
-              <span className="ancestral-hall-eyebrow">KHÔNG GIAN TƯỞNG NIỆM GIA TỘC</span>
-              <h1 id="ancestral-hall-title">Phòng Thờ Số · {activeClanName || 'Dòng Họ'}</h1>
-              <p>Thành kính tưởng nhớ tiền nhân, gìn giữ ký ức và kết nối lòng tri ân của con cháu.</p>
-            </div>
-          </header>
+          {pageHeader}
           <div className="hall3d-section">
             <React.Suspense fallback={hallLoading}>
               <AncestralHall3D
-                ancestors={NO_ANCESTORS}
-                selectedIndex={-1}
-                onSelect={selectAncestor}
-                incenseCount={altarIncense}
+                tiers={NO_TIERS}
+                selectedId={null}
+                onSelect={setSelectedId}
+                incenseCount={incense3D}
                 isBurning={isOffering}
                 offeringToken={offeringToken}
                 emptyHint={EMPTY_HALL_HINT}
-                hallTitle={activeClanName || undefined}
+                hallTitle={clanLabel}
                 onError={() => setHall3DFailed(true)}
               />
             </React.Suspense>
             {altarActions}
           </div>
           <div className="hall3d-empty-note" role="status">
-            <strong>Chưa có thông tin tiền nhân đã khuất.</strong> Khi dữ liệu gia phả được cập nhật (thành viên có trạng thái đã mất hoặc ngày mất), ảnh thờ sẽ tự động hiển thị trên bàn thờ.
+            <strong>Chưa có bài vị.</strong> {emptyNote}
           </div>
           {messagesSection}
           {sharedOverlays}
@@ -606,21 +970,15 @@ export const DigitalAncestralHallModule: React.FC = () => {
     }
     return (
       <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
-        <header className="ancestral-hall-header">
-          <div>
-            <span className="ancestral-hall-eyebrow">KHÔNG GIAN TƯỞNG NIỆM GIA TỘC</span>
-            <h1 id="ancestral-hall-title">Phòng Thờ Số · {activeClanName || 'Dòng Họ'}</h1>
-            <p>Thành kính tưởng nhớ tiền nhân, gìn giữ ký ức và kết nối lòng tri ân của con cháu.</p>
-          </div>
-        </header>
+        {pageHeader}
         <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '24px 0' }}>
           <div style={{ marginBottom: '16px' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2c1 2 2 3.5 2 5a2 2 0 1 1-4 0c0-1.5 1-3 2-5zM9 11h6v11H9z" /></svg></div>
-          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có thông tin Tiền nhân đã khuất</h3>
-          <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '560px', margin: '0 auto' }}>
-            Không gian Phòng Thờ Số kết nối trực tiếp với các vị tiền nhân đã khuất trong cơ sở dữ liệu gia phả của {activeClanName || 'dòng họ'}.
-            Hãy cập nhật trạng thái đã mất hoặc ngày mất cho thành viên trong Cây Gia Phả để đưa vào tưởng niệm.
-          </p>
+          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Chưa có bài vị tiền nhân</h3>
+          <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '560px', margin: '0 auto' }}>{emptyNote}</p>
         </div>
+        <div className="hall3d-section">{altarActions}</div>
+        {messagesSection}
+        {sharedOverlays}
       </section>
     );
   }
@@ -632,13 +990,14 @@ export const DigitalAncestralHallModule: React.FC = () => {
     <div className="hall3d-section">
       <React.Suspense fallback={hallLoading}>
         <AncestralHall3D
-          ancestors={ancestors3D}
-          selectedIndex={selectedAncestorIndex}
-          onSelect={selectAncestor}
-          incenseCount={altarIncense}
+          tiers={tiers3D}
+          selectedId={selectedAncestor.id}
+          onSelect={setSelectedId}
+          onTierPage={goTierPage}
+          incenseCount={incense3D}
           isBurning={isOffering}
           offeringToken={offeringToken}
-          hallTitle={activeClanName || undefined}
+          hallTitle={clanLabel}
           onError={() => setHall3DFailed(true)}
         />
       </React.Suspense>
@@ -661,7 +1020,7 @@ export const DigitalAncestralHallModule: React.FC = () => {
       <div className="altar-lantern altar-lantern-right" aria-hidden="true"><span /></div>
 
       <div className="digital-altar-content">
-        <span className="digital-altar-kicker">TỪ ĐƯỜNG {activeClanName ? activeClanName.toUpperCase() : 'GIA TỘC'}</span>
+        <span className="digital-altar-kicker">TỪ ĐƯỜNG {clanShortName ? clanShortName.toUpperCase() : 'GIA TỘC'}</span>
         <h2 id="digital-altar-title">Bài Vị Tiền Nhân</h2>
 
         <div className="digital-altar-tablet" aria-label={`Bài vị của ${selectedAncestor.name}`}>
@@ -692,7 +1051,7 @@ export const DigitalAncestralHallModule: React.FC = () => {
   return (
     <section className="ancestral-hall-page" aria-labelledby="ancestral-hall-title">
       {import.meta.env.DEV && isDemo && (
-        <div className="hall3d-demo-banner" role="note">Chế độ minh họa (dữ liệu giả và ảnh mẫu, không lưu vào hệ thống)</div>
+        <div className="hall3d-demo-banner" role="note">Chế độ minh họa (dữ liệu giả và ảnh mẫu, không gọi API, không lưu vào hệ thống)</div>
       )}
       <header className="ancestral-hall-header">
         <div>
@@ -701,7 +1060,7 @@ export const DigitalAncestralHallModule: React.FC = () => {
           <p>Thành kính tưởng nhớ tiền nhân, gìn giữ ký ức và kết nối lòng tri ân của con cháu.</p>
         </div>
         <div className="ancestral-hall-position" aria-label="Vị trí trong danh sách tổ tiên">
-          <strong>{String(selectedAncestorIndex + 1).padStart(2, '0')}</strong>
+          <strong>{String(selectedIndex + 1).padStart(2, '0')}</strong>
           <span>/ {String(ancestors.length).padStart(2, '0')}</span>
         </div>
       </header>
@@ -710,7 +1069,7 @@ export const DigitalAncestralHallModule: React.FC = () => {
         <button
           type="button"
           className="ancestor-nav-button ancestor-nav-previous"
-          onClick={() => selectAncestor(selectedAncestorIndex - 1)}
+          onClick={() => selectAncestor(selectedIndex - 1)}
           aria-label="Xem vị tiền nhân trước"
         >
           ‹
@@ -757,7 +1116,7 @@ export const DigitalAncestralHallModule: React.FC = () => {
         <button
           type="button"
           className="ancestor-nav-button ancestor-nav-next"
-          onClick={() => selectAncestor(selectedAncestorIndex + 1)}
+          onClick={() => selectAncestor(selectedIndex + 1)}
           aria-label="Xem vị tiền nhân tiếp theo"
         >
           ›
@@ -770,8 +1129,8 @@ export const DigitalAncestralHallModule: React.FC = () => {
             key={ancestor.id}
             type="button"
             role="tab"
-            aria-selected={index === selectedAncestorIndex}
-            className={index === selectedAncestorIndex ? 'active' : ''}
+            aria-selected={index === selectedIndex}
+            className={index === selectedIndex ? 'active' : ''}
             onClick={() => selectAncestor(index)}
           >
             <PortraitPlaceholder ancestor={ancestor} compact />
@@ -835,13 +1194,12 @@ export const DigitalAncestralHallModule: React.FC = () => {
               <dl>
                 <div><dt>Ngày sinh</dt><dd>{birthText || 'Chưa rõ'}</dd></div>
                 <div><dt>Ngày mất</dt><dd>{deathText || 'Chưa rõ'}</dd></div>
-                <div><dt>Chi / Nhánh</dt><dd>{selectedAncestor.branch}</dd></div>
-                <div><dt>An nghỉ</dt><dd>{selectedAncestor.restingPlace}</dd></div>
+                <div><dt>Tầng bàn thờ</dt><dd>{selectedAncestor.branch}</dd></div>
               </dl>
             </div>
             <div className="ancestor-biography-copy">
-              <h3>Tiểu sử lưu truyền</h3>
-              <p>{selectedAncestor.biography}</p>
+              <h3>Ghi chú</h3>
+              <p>{selectedAncestor.biography || 'Chưa có ghi chú.'}</p>
               <blockquote>{selectedAncestor.legacy}</blockquote>
             </div>
             <div className="ancestral-modal-actions">
