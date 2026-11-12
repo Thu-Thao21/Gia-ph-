@@ -47,7 +47,7 @@ class TabletItem(CamelModel):
     note: Optional[str] = None
     display_order: int = 0
     tier_id: Optional[uuid.UUID] = None
-    is_visible: bool = True
+    is_visible: bool = True  # nguoi xem thuong luon thay True; chi Truong toc / Admin thay bai vi an (False)
 
 
 class TierItem(CamelModel):
@@ -64,6 +64,7 @@ class TodayInfo(CamelModel):
 
 
 class MeInfo(CamelModel):
+    can_offer: bool = False  # duoc thap huong / viet Loi vieng (thanh vien dang hoat dong, Truong toc, System Admin)
     incense_done_today: bool = False
     blessing_done_today: bool = False
     incense_streak: StreakInfo = StreakInfo()
