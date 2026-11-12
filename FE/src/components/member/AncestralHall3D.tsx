@@ -1,11 +1,13 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { Environment, Lightformer, OrbitControls } from '@react-three/drei';
+import { Environment, Lightformer } from '@react-three/drei';
 import {
   AdditiveBlending,
+  BackSide,
   BoxGeometry,
   BufferGeometry,
   CanvasTexture,
+  CatmullRomCurve3,
   CylinderGeometry,
   DoubleSide,
   EdgesGeometry,
@@ -17,20 +19,27 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
+  PlaneGeometry,
   PointsMaterial,
+  QuadraticBezierCurve3,
   RepeatWrapping,
   Shape,
-  ShapeGeometry,
   SphereGeometry,
+  SplineCurve,
   SpriteMaterial,
   SRGBColorSpace,
+  TextureLoader,
+  TubeGeometry,
   Vector2,
+  Vector3,
   type Group,
   type InstancedMesh,
   type Material,
   type Mesh,
+  type PerspectiveCamera,
   type PointLight,
   type Sprite,
+  type Texture,
 } from 'three';
 import './AncestralHall3D.css';
 
@@ -39,6 +48,10 @@ export interface Hall3DAncestor {
   name: string;
   generation: number;
   lifespan?: string;
+  /** Ảnh chân dung (PersonItem.avatarUrl). Không có hoặc tải lỗi thì dùng ảnh mặc định vẽ bằng canvas. */
+  portraitUrl?: string | null;
+  /** Ngày mất thô (PersonItem.deathDate, dạng yyyy-mm-dd hoặc chỉ có năm). */
+  deathDate?: string | null;
 }
 
 export type HallQuality = 'high' | 'low';
@@ -61,6 +74,8 @@ export interface AncestralHall3DProps {
   hallTitle?: string;
   /** Ép chất lượng đồ họa; mặc định tự chọn theo thiết bị. */
   quality?: HallQuality;
+  /** Tăng 1 mỗi lần thắp hương THÀNH CÔNG: cảnh 3D chạy chuỗi animation thắp hương (~2,5s). */
+  offeringToken?: number;
 }
 
 export const DEFAULT_EMPTY_HINT = 'Bàn thờ đang chờ dữ liệu tiền nhân';
@@ -135,35 +150,54 @@ const usePageVisible = (): boolean => {
 /* ------------------------------------------------------------------ */
 
 const PAGE_SIZE = 9;
-const TABLET_SPACING = 0.7;
+const TABLET_SPACING = 0.95;
 const MAX_INCENSE = 9;
 const EMPTY_SLOT_COUNT = 5;
 const EMPTY_SLOT_IDS = Array.from({ length: EMPTY_SLOT_COUNT }, (_, i) => i);
 
 // Ba tầng: bàn sau (bài vị) > bàn giữa (ngũ quả, hoa, nến) > hương án (lư hương).
-const BACK = { z: -2.9, w: 7.0, h: 1.0, d: 0.75 } as const;
-const MID = { z: -2.15, w: 5.2, h: 0.78, d: 0.7 } as const;
-const FRONT = { z: -1.4, w: 3.4, h: 0.62, d: 0.8 } as const;
+const BACK = { z: -2.9, w: 9.6, h: 1.0, d: 0.75 } as const;
+const MID = { z: -2.15, w: 6.4, h: 0.78, d: 0.7 } as const;
+const FRONT = { z: -1.4, w: 3.6, h: 0.62, d: 0.8 } as const;
 const TOP_Y = { back: BACK.h + 0.015, mid: MID.h + 0.015, front: FRONT.h + 0.015 } as const;
 
-const BODY_W = 0.34;
-const BODY_H = 0.8;
-const FRAME_W = 0.4;
-const FRAME_H = 0.86;
-const FACE_W = 0.28;
-const FACE_H = 0.7;
-const TABLET_SCALE = 1.3;
+// Khung ảnh thờ (kích thước trước khi nhân TABLET_SCALE): ảnh 3:4 ở trên, bảng tên ở dưới.
+const FRAME_W = 0.46;
+const FRAME_H = 0.8;
+const PHOTO_W = 0.34;
+const PHOTO_H = (PHOTO_W * 4) / 3;
+const PHOTO_Y = FRAME_H - 0.045 - PHOTO_H / 2;
+const PLATE_W = 0.36;
+const PLATE_H = 0.2;
+const PLATE_Y = 0.05 + PLATE_H / 2;
+const TABLET_SCALE = 1.8;
 
-const CAMERA_POSITION: [number, number, number] = [0, 2.1, 5.0];
-const INTRO_START: [number, number, number] = [0, 2.7, 7.9];
-const ORBIT_TARGET: [number, number, number] = [0, 1.4, -2];
+// Kích thước phòng: MỌI THỨ (tường, sàn, trần, đồ thờ, camera) đều tính từ đây.
+const ROOM = { w: 12, d: 9, h: 4.8, zBack: -6, zFront: 3 } as const;
+const HX = ROOM.w / 2;
+const ROOM_CENTER_Z = (ROOM.zBack + ROOM.zFront) / 2;
+// Bộ bàn thờ được dựng trong hệ tọa độ riêng (tường sau ở z = -3.45) rồi dời sát tường sau của phòng.
+const ALTAR_Z = ROOM.zBack + 3.45;
+
+// Góc nhìn người đứng trong phòng.
+const EYE_Y = 1.6;
+const START_Z = ROOM.zFront - 1.4; // đứng cách tường cửa 1.4
+const DOOR_Z = ROOM.zFront - 0.3; // điểm bước vào lúc mở đầu
+const FRONT_EDGE_Z = ALTAR_Z + FRONT.z + FRONT.d / 2; // mép trước hương án
+const STOP_Z = FRONT_EDGE_Z + 3.2; // tiến tối đa: cách bàn thờ 3.2
+const MAX_X = 0.8;
+const DEG = Math.PI / 180;
+const YAW_LIMIT = 55 * DEG;
+const PITCH_MIN = -18 * DEG;
+const PITCH_MAX = 28 * DEG;
+const DRAG_THRESHOLD = 6; // px: vượt ngưỡng này là kéo, không phải bấm
 const INTRO_DURATION = 1.8;
-const BASE_FOV = 50;
+const BASE_FOV = 66;
 const MAX_FOV = 85;
-const MIN_HORIZONTAL_FOV_RAD = (60 * Math.PI) / 180;
+const MIN_HORIZONTAL_FOV_RAD = 80 * DEG;
 
 const COLOR = {
-  bg: '#1a0d08',
+  bg: '#2a160d',
   gold: '#d9ad45',
   red: '#8f1b14',
   redDark: '#5a100c',
@@ -175,15 +209,22 @@ const COUPLET_RIGHT = 'TỬ HIẾU TÔN HIỀN THẾ VẠN NIÊN';
 
 type V3 = [number, number, number];
 
-// Vị trí các nén hương trong lư (tính sẵn).
-const INCENSE_LAYOUT = Array.from({ length: MAX_INCENSE }, (_, i) => {
-  const angle = ((i - 1) / (MAX_INCENSE - 1)) * Math.PI * 2;
-  const radius = i === 0 ? 0 : 0.17;
+// Thắp hương: mỗi lần cắm 3 nén, tối đa 9 nén trên lư; đủ rồi thì thay nhóm cũ nhất.
+const STICKS_PER_OFFERING = 3;
+const OFFER_DURATION = 2.5;
+const OFFER_TAIL = 7; // sau đó khói về mức thường
+// 9 vị trí cắm chia 3 nhóm; mỗi nhóm 3 nén tỏa ra ba hướng (cách nhau 120°), hơi ngả ra ngoài.
+const INCENSE_SLOTS = Array.from({ length: MAX_INCENSE }, (_, i) => {
+  const group = Math.floor(i / 3);
+  const angle = (((i % 3) * 120 + group * 40 + 15) * Math.PI) / 180;
+  const radius = 0.06 + group * 0.035;
+  const tilt = 0.13 + group * 0.03;
   return {
     x: Math.cos(angle) * radius,
     z: Math.sin(angle) * radius,
-    tiltX: Math.sin(i * 1.7) * 0.07,
-    tiltZ: Math.cos(i * 2.3) * 0.07,
+    rx: Math.sin(angle) * tilt,
+    rz: -Math.cos(angle) * tilt,
+    spin: i * 1.3,
   };
 });
 
@@ -195,13 +236,6 @@ const FLOWER_LAYOUT = Array.from({ length: 11 }, (_, i) => {
   return { x: Math.cos(angle) * radius * 1.5, y: dome + 0.02, z: Math.sin(angle) * radius * 1.5, white: i % 2 === 0 };
 });
 
-const FRUIT_LAYOUT: Array<{ p: V3; mat: number }> = [
-  { p: [0, 0.16, 0], mat: 0 },
-  { p: [0.1, 0.07, 0], mat: 1 },
-  { p: [-0.1, 0.07, 0], mat: 2 },
-  { p: [0, 0.07, 0.1], mat: 3 },
-  { p: [0, 0.07, -0.1], mat: 4 },
-];
 
 const clampIndex = (index: number, length: number): number => {
   if (length <= 0) return 0;
@@ -505,9 +539,7 @@ const createPlaqueTexture = (rawText: string): CanvasTexture => {
   return toTexture(canvas);
 };
 
-const createCoupletTexture = (phrase: string): CanvasTexture => {
-  const w = 128;
-  const h = 1067;
+const createCoupletTexture = (phrase: string, w = 128, h = 1067): CanvasTexture => {
   const { canvas, ctx } = makeCanvas(w, h);
   const g = ctx.createLinearGradient(0, 0, w, 0);
   g.addColorStop(0, '#6e110d');
@@ -536,114 +568,193 @@ const createCoupletTexture = (phrase: string): CanvasTexture => {
   return toTexture(canvas);
 };
 
-// Rút gọn lifespan ("Sinh 1868 · Mất 1941") thành "1868 – 1941".
-const lifespanToYears = (lifespan?: string): string => {
-  if (!lifespan) return '';
-  const years = lifespan.match(/\d{4}/g);
-  if (years && years.length >= 2) return `${years[0]} – ${years[1]}`;
-  if (years && years.length === 1) return `${years[0]} – …`;
-  return lifespan.trim();
+/** "1941-03-12" -> "12/03/1941"; chỉ có năm thì trả năm; không rõ thì trả chuỗi rỗng. */
+export const formatDeathDate = (raw?: string | null): string => {
+  if (!raw) return '';
+  const text = String(raw).trim();
+  const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return `${iso[3].padStart(2, '0')}/${iso[2].padStart(2, '0')}/${iso[1]}`;
+  const vn = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (vn) return `${vn[1].padStart(2, '0')}/${vn[2].padStart(2, '0')}/${vn[3]}`;
+  const year = text.match(/^(\d{4})$/);
+  if (year) return year[1];
+  return '';
 };
 
-const createTabletFaceTexture = (name: string, lifespan?: string): CanvasTexture => {
-  const w = 256;
-  const h = 640;
+// Bảng tên dưới ảnh thờ: HỌ TÊN (đậm) + "Mất: dd/mm/yyyy". Chữ ngang, tự co, quá dài thì rút gọn bằng …
+const createNamePlateTexture = (name: string, deathText: string): CanvasTexture => {
+  const w = 512;
+  const h = 284;
   const { canvas, ctx } = makeCanvas(w, h);
   const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, '#5a1210');
-  bg.addColorStop(1, '#3a0a08');
+  bg.addColorStop(0, '#5e1310');
+  bg.addColorStop(1, '#3d0b09');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
   const gold = goldGradient(ctx, w, h);
-
-  // Viền vòm hai lớp.
-  const outline = (inset: number, lineWidth: number, alpha: number) => {
-    const r = (w - inset * 2) / 2;
-    ctx.beginPath();
-    ctx.moveTo(inset, h - inset);
-    ctx.lineTo(w - inset, h - inset);
-    ctx.lineTo(w - inset, inset + r);
-    ctx.arc(w / 2, inset + r, r, 0, Math.PI, true);
-    ctx.lineTo(inset, h - inset);
-    ctx.closePath();
-    ctx.globalAlpha = alpha;
-    ctx.lineWidth = lineWidth;
-    ctx.strokeStyle = gold;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  };
-  outline(12, 6, 1);
-  outline(26, 2, 0.6);
-
-  // Hoa văn nhỏ phía trên.
-  ctx.fillStyle = gold;
-  ctx.beginPath();
-  ctx.arc(w / 2, 92, 7, 0, Math.PI * 2);
-  ctx.fill();
   ctx.strokeStyle = gold;
+  ctx.lineWidth = 7;
+  ctx.strokeRect(10, 10, w - 20, h - 20);
   ctx.lineWidth = 2;
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i / 8) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.ellipse(w / 2 + Math.cos(a) * 17, 92 + Math.sin(a) * 17, 7, 3, a, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  ctx.strokeRect(22, 22, w - 44, h - 44);
 
-  const years = lifespanToYears(lifespan);
-  const top = 150;
-  const bottom = h - 52;
-  const length = bottom - top;
+  const maxWidth = w - 76;
+  const upperName = (name.trim() || '—').toLocaleUpperCase('vi-VN');
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,0.55)';
   ctx.shadowBlur = 4;
   ctx.fillStyle = gold;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-
-  // Viết dọc: xoay chữ 90° để đọc từ trên xuống.
-  const drawVertical = (text: string, cx: number, weight: number, maxSize: number, minSize: number) => {
-    const size = fitFontSize(ctx, text, weight, length, maxSize, minSize);
-    const font = `${weight} ${size}px ${FONT_FAMILY}`;
-    const shown = truncateToFit(ctx, text, font, length);
-    ctx.font = font;
-    const textWidth = ctx.measureText(shown).width;
-    ctx.save();
-    ctx.translate(cx, top + (length - textWidth) / 2);
-    ctx.rotate(Math.PI / 2);
-    ctx.fillText(shown, 0, 0);
-    ctx.restore();
-  };
-
-  const upperName = (name.trim() || '—').toLocaleUpperCase('vi-VN');
-  if (years) {
-    drawVertical(upperName, 96, 700, 64, 34);
-    drawVertical(years, 180, 500, 40, 26);
-  } else {
-    drawVertical(upperName, w / 2, 700, 64, 34);
+  const size = fitFontSize(ctx, upperName, 700, maxWidth, 74, 34);
+  const font = `700 ${size}px ${FONT_FAMILY}`;
+  const shown = truncateToFit(ctx, upperName, font, maxWidth);
+  ctx.font = font;
+  ctx.fillText(shown, w / 2, deathText ? 108 : h / 2 + 2);
+  if (deathText) {
+    const line = `Mất: ${deathText}`;
+    const subSize = fitFontSize(ctx, line, 500, maxWidth, 46, 28);
+    ctx.font = `500 ${subSize}px ${FONT_FAMILY}`;
+    ctx.fillText(line, w / 2, 198);
   }
   return toTexture(canvas);
+};
+
+// Ảnh thờ mặc định khi chưa có ảnh: nền ấm, bóng người chân dung trang nghiêm.
+const createDefaultPortraitTexture = (): CanvasTexture => {
+  const w = 300;
+  const h = 400;
+  const { canvas, ctx } = makeCanvas(w, h);
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, '#c9b08a');
+  bg.addColorStop(1, '#8a6b4c');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+  const halo = ctx.createRadialGradient(w / 2, 150, 20, w / 2, 170, 230);
+  halo.addColorStop(0, 'rgba(255,240,205,0.55)');
+  halo.addColorStop(1, 'rgba(255,240,205,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, w, h);
+  const body = ctx.createLinearGradient(0, 120, 0, h);
+  body.addColorStop(0, '#5a4130');
+  body.addColorStop(1, '#3a2a1f');
+  ctx.fillStyle = body;
+  // vai và áo
+  ctx.beginPath();
+  ctx.moveTo(18, h);
+  ctx.bezierCurveTo(22, 292, 88, 262, 150, 258);
+  ctx.bezierCurveTo(212, 262, 278, 292, 282, h);
+  ctx.closePath();
+  ctx.fill();
+  // cổ + đầu
+  ctx.fillRect(128, 210, 44, 56);
+  ctx.beginPath();
+  ctx.ellipse(150, 158, 58, 70, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // cổ áo
+  ctx.strokeStyle = 'rgba(230,205,160,0.5)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(118, 270);
+  ctx.lineTo(150, 318);
+  ctx.lineTo(182, 270);
+  ctx.stroke();
+  const vignette = ctx.createRadialGradient(w / 2, h / 2, 120, w / 2, h / 2, 290);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(30,15,5,0.5)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
+  return toTexture(canvas);
+};
+
+// Hoa văn nhẹ trên thân đỉnh đồng (nhân với màu đồng của vật liệu).
+const createBronzeTexture = (): CanvasTexture => {
+  const w = 256;
+  const h = 128;
+  const { canvas, ctx } = makeCanvas(w, h);
+  ctx.fillStyle = '#e4e4e4';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(70,45,10,0.5)';
+  ctx.fillRect(0, 18, w, 4);
+  ctx.fillRect(0, 96, w, 4);
+  ctx.fillRect(0, 108, w, 2);
+  ctx.strokeStyle = 'rgba(70,45,10,0.55)';
+  ctx.lineWidth = 3;
+  // dải hồi văn
+  for (let x = 0; x < w; x += 32) {
+    ctx.beginPath();
+    ctx.moveTo(x + 4, 82);
+    ctx.lineTo(x + 4, 38);
+    ctx.lineTo(x + 26, 38);
+    ctx.lineTo(x + 26, 70);
+    ctx.lineTo(x + 13, 70);
+    ctx.lineTo(x + 13, 52);
+    ctx.stroke();
+  }
+  const texture = toTexture(canvas, [6, 1]);
+  return texture;
+};
+
+// Cắt ảnh kiểu "cover" cho khung có tỉ lệ rộng/cao cho trước (ưu tiên giữ phần trên của ảnh chân dung).
+const applyCoverCrop = (texture: Texture, targetAspect: number) => {
+  const image = texture.image as { width?: number; height?: number } | undefined;
+  const iw = image?.width ?? 0;
+  const ih = image?.height ?? 0;
+  if (!iw || !ih) return;
+  const aspect = iw / ih;
+  if (aspect > targetAspect) {
+    texture.repeat.set(targetAspect / aspect, 1);
+    texture.offset.set((1 - texture.repeat.x) / 2, 0);
+  } else {
+    texture.repeat.set(1, aspect / targetAspect);
+    texture.offset.set(0, (1 - texture.repeat.y) * 0.7);
+  }
 };
 
 /* ------------------------------------------------------------------ */
 /* Hình học dùng chung                                                 */
 /* ------------------------------------------------------------------ */
 
-const archShape = (width: number, height: number): Shape => {
-  const r = width / 2;
+// Hình chữ nhật bo góc: x từ -w/2..w/2, y từ y0..y0+h.
+const roundedRectShape = (w: number, h: number, r: number, y0 = -h / 2): Shape => {
+  const x0 = -w / 2;
+  const radius = Math.max(0.001, Math.min(r, w / 2 - 0.001, h / 2 - 0.001));
   const shape = new Shape();
-  shape.moveTo(-r, 0);
-  shape.lineTo(r, 0);
-  shape.lineTo(r, height - r);
-  shape.absarc(0, height - r, r, 0, Math.PI, false);
-  shape.lineTo(-r, 0);
+  shape.moveTo(x0 + radius, y0);
+  shape.lineTo(x0 + w - radius, y0);
+  shape.absarc(x0 + w - radius, y0 + radius, radius, -Math.PI / 2, 0, false);
+  shape.lineTo(x0 + w, y0 + h - radius);
+  shape.absarc(x0 + w - radius, y0 + h - radius, radius, 0, Math.PI / 2, false);
+  shape.lineTo(x0 + radius, y0 + h);
+  shape.absarc(x0 + radius, y0 + h - radius, radius, Math.PI / 2, Math.PI, false);
+  shape.lineTo(x0, y0 + radius);
+  shape.absarc(x0 + radius, y0 + radius, radius, Math.PI, Math.PI * 1.5, false);
   return shape;
 };
 
-const normalizeArchUv = (geometry: ShapeGeometry, width: number, height: number) => {
-  const pos = geometry.attributes.position;
-  const uv = geometry.attributes.uv;
-  for (let i = 0; i < pos.count; i += 1) uv.setXY(i, (pos.getX(i) + width / 2) / width, pos.getY(i) / height);
-  uv.needsUpdate = true;
+// Hộp bo cạnh (thay BoxGeometry cho đồ gỗ): góc tròn + vát mép, tâm ở gốc tọa độ.
+const createRoundedBox = (w: number, h: number, d: number, r: number, high: boolean): ExtrudeGeometry => {
+  const bevel = Math.max(0.002, Math.min(r * 0.6, h * 0.3, 0.02));
+  const geometry = new ExtrudeGeometry(roundedRectShape(w - bevel * 2, d - bevel * 2, r), {
+    depth: Math.max(0.001, h - bevel * 2),
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: high ? 3 : 1,
+    curveSegments: high ? 6 : 3,
+  });
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate(0, -(h - bevel * 2) / 2, 0);
+  return geometry;
 };
+
+// Tròn xoay từ đường cong hồ sơ mượt (spline qua các điểm [bán kính, cao]).
+const latheSmooth = (points: Array<[number, number]>, segments: number, samples: number): LatheGeometry => {
+  const curve = new SplineCurve(points.map(([x, y]) => new Vector2(Math.max(0, x), y)));
+  const profile = curve.getPoints(samples).map((p) => new Vector2(Math.max(0, p.x), p.y));
+  return new LatheGeometry(profile, segments);
+};
+
+const bell = (x: number): number => (x <= 0 || x >= 1 ? 0 : Math.sin(Math.PI * x));
 
 const lathe = (points: Array<[number, number]>, segments = 24): LatheGeometry =>
   new LatheGeometry(points.map(([x, y]) => new Vector2(x, y)), segments);
@@ -661,9 +772,10 @@ const createResources = (quality: HallQuality) => {
   const high = quality === 'high';
 
   const tileTex = track(createTileTexture());
+  tileTex.repeat.set((ROOM.w + 2) / 2, (ROOM.d + 2) / 2); // ô gạch ~0.5 m
   const woodTex = track(createWoodTexture());
   const ceilingTex = track(woodTex.clone());
-  ceilingTex.repeat.set(5, 4);
+  ceilingTex.repeat.set(6, 5);
   ceilingTex.wrapS = RepeatWrapping;
   ceilingTex.wrapT = RepeatWrapping;
   const wallTex = track(createWallTexture());
@@ -671,6 +783,8 @@ const createResources = (quality: HallQuality) => {
   const clothTex = track(createClothTexture());
   const apronTex = track(createApronTexture());
   const softTex = track(createSoftDotTexture());
+  const defaultPortrait = track(createDefaultPortraitTexture());
+  const bronzeTex = track(createBronzeTexture());
 
   const apron = (width: number) => {
     const t = track(apronTex.clone());
@@ -687,8 +801,8 @@ const createResources = (quality: HallQuality) => {
     lacquer: std({ color: COLOR.red, metalness: 0.1, roughness: 0.25 }),
     lacquerDark: std({ color: COLOR.redDark, metalness: 0.1, roughness: 0.3 }),
     wood: std({ map: woodTex, roughness: 0.6, metalness: 0.05 }),
-    woodDark: std({ map: woodTex, color: '#b8947a', roughness: 0.65, metalness: 0.05 }),
-    ceiling: std({ map: ceilingTex, color: '#a58872', roughness: 0.8 }),
+    woodDark: std({ map: woodTex, color: '#b8947a', emissive: '#3a1c0e', emissiveIntensity: 0.5, roughness: 0.65, metalness: 0.05 }),
+    ceiling: std({ map: ceilingTex, color: '#c9a58a', emissive: '#4a2814', emissiveIntensity: 0.7, roughness: 0.8 }),
     bronze: std({ color: '#b07a2c', metalness: 0.85, roughness: 0.38, side: DoubleSide }),
     porcelain: std({ color: '#efeee8', roughness: 0.25, metalness: 0, side: DoubleSide }),
     stone: std({ color: '#7a746b', roughness: 0.9 }),
@@ -701,23 +815,33 @@ const createResources = (quality: HallQuality) => {
     flowerYellow: std({ color: '#f2c230', roughness: 0.7 }),
     flowerWhite: std({ color: '#f7f3e8', roughness: 0.7 }),
     candle: std({ color: '#b01e16', roughness: 0.55 }),
-    stick: std({ color: '#6b4220', roughness: 0.9 }),
+    stickFoot: std({ color: '#a3241a', roughness: 0.85 }),
+    stickBody: std({ color: '#b98a3a', roughness: 0.9 }),
+    ashGray: std({ color: '#a39e95', roughness: 1 }),
     ash: std({ color: '#8a8174', roughness: 1 }),
+    bronzeOrn: std({ map: bronzeTex, color: '#b07a2c', metalness: 0.85, roughness: 0.35, side: DoubleSide }),
+    banana: std({ color: '#a4c23e', roughness: 0.55 }),
+    pomelo: std({ color: '#d9cc55', roughness: 0.6 }),
+    orange: std({ color: '#ef8a1f', roughness: 0.5 }),
+    apple: std({ color: '#c8231c', roughness: 0.35 }),
+    mango: std({ color: '#f2b632', roughness: 0.45 }),
+    stem: std({ color: '#4a3220', roughness: 0.9 }),
     lantern: std({ color: '#d42a1c', emissive: '#ff2a14', emissiveIntensity: 0.85, roughness: 0.5 }),
     craneWhite: std({ color: '#f6f3ec', roughness: 0.6 }),
     craneDark: std({ color: '#2a2420', roughness: 0.7 }),
     craneBeak: std({ color: '#e08a2a', roughness: 0.6 }),
-    fruit: [
-      std({ color: '#d62b1f', roughness: 0.45 }),
-      std({ color: '#f0b429', roughness: 0.45 }),
-      std({ color: '#ef7d1a', roughness: 0.45 }),
-      std({ color: '#7bb33a', roughness: 0.45 }),
-      std({ color: '#8e3b8f', roughness: 0.45 }),
-    ],
     apronBack: apron(BACK.w),
     apronMid: apron(MID.w),
     apronFront: apron(FRONT.w),
     ember: track(new MeshBasicMaterial({ color: '#ff5a1f' })),
+    // Nhóm nhang vừa cắm: màu và độ sáng do animation thắp hương điều khiển.
+    emberNew: track(new MeshBasicMaterial({ color: '#ff5a1f' })),
+    emberGlowNew: track(
+      new SpriteMaterial({ map: softTex, color: '#ff6a30', transparent: true, opacity: 0.9, blending: AdditiveBlending, depthWrite: false })
+    ),
+    offerFlash: track(
+      new SpriteMaterial({ map: softTex, color: '#ffd07a', transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false })
+    ),
     flame: track(new MeshBasicMaterial({ color: '#ffd77a' })),
     flameGlow: track(
       new SpriteMaterial({ map: softTex, color: '#ffb25a', transparent: true, opacity: 0.8, blending: AdditiveBlending, depthWrite: false })
@@ -727,34 +851,92 @@ const createResources = (quality: HallQuality) => {
     ),
     ghost: track(new MeshStandardMaterial({ color: '#ead9a6', transparent: true, opacity: 0.25, depthWrite: false })),
     ghostLine: track(new LineBasicMaterial({ color: COLOR.gold, transparent: true, opacity: 0.7 })),
+    // Vỏ bao ngoài phòng (nhìn từ trong): nếu có khe hở thì chỉ thấy màu tường tối ấm.
+    shell: std({ color: COLOR.bg, side: BackSide, roughness: 1 }),
+    window: std({ color: '#7a5230', emissive: '#ffb060', emissiveIntensity: 0.55, roughness: 1 }),
+    doorDark: std({ color: '#150a06', emissive: '#2e1509', emissiveIntensity: 0.5, roughness: 1 }),
   };
 
-  const tabletBody = track(new ExtrudeGeometry(archShape(BODY_W, BODY_H), { depth: 0.07, bevelEnabled: false, curveSegments: high ? 16 : 8 }));
-  tabletBody.translate(0, 0, -0.035);
-  const tabletFrame = track(new ExtrudeGeometry(archShape(FRAME_W, FRAME_H), { depth: 0.07, bevelEnabled: false, curveSegments: high ? 16 : 8 }));
-  tabletFrame.translate(0, -0.03, -0.04);
-  const tabletFace = track(new ShapeGeometry(archShape(FACE_W, FACE_H), high ? 16 : 8));
-  normalizeArchUv(tabletFace, FACE_W, FACE_H);
+  const seg = high ? 40 : 18; // số múi tròn xoay
+  const smp = high ? 28 : 12; // số điểm lấy mẫu trên đường cong hồ sơ
+
+  // Khung ảnh thờ: viền vàng bo góc phía ngoài, lòng sơn son phía trong.
+  const frameOuter = track(
+    new ExtrudeGeometry(roundedRectShape(FRAME_W, FRAME_H, 0.035, 0), {
+      depth: 0.03,
+      bevelEnabled: true,
+      bevelThickness: 0.008,
+      bevelSize: 0.008,
+      bevelSegments: high ? 3 : 1,
+      curveSegments: high ? 8 : 4,
+    })
+  );
+  frameOuter.translate(0, 0, -0.02);
+  const frameInner = track(
+    new ExtrudeGeometry(roundedRectShape(FRAME_W - 0.045, FRAME_H - 0.045, 0.022, 0.0225), {
+      depth: 0.03,
+      bevelEnabled: true,
+      bevelThickness: 0.006,
+      bevelSize: 0.006,
+      bevelSegments: high ? 2 : 1,
+      curveSegments: high ? 8 : 4,
+    })
+  );
+  frameInner.translate(0, 0, -0.012);
+
+  const legCurve = new CatmullRomCurve3([new Vector3(0, 0.13, 0), new Vector3(0.05, 0.1, 0), new Vector3(0.072, 0.045, 0), new Vector3(0.045, 0, 0)]);
+  const bananaCurve = new QuadraticBezierCurve3(new Vector3(0, 0.05, 0), new Vector3(0, -0.012, 0.09), new Vector3(0, 0.03, 0.17));
+  const ashCurve = new QuadraticBezierCurve3(new Vector3(0, 0, 0), new Vector3(0, 0.035, 0), new Vector3(0.018, 0.055, 0));
+
+  const rboxCache = new Map<string, ExtrudeGeometry>();
+  const rbox = (w: number, h: number, d: number, r: number): ExtrudeGeometry => {
+    const key = `${w.toFixed(3)}|${h.toFixed(3)}|${d.toFixed(3)}|${r.toFixed(3)}`;
+    let geometry = rboxCache.get(key);
+    if (!geometry) {
+      geometry = track(createRoundedBox(w, h, d, r, high));
+      rboxCache.set(key, geometry);
+    }
+    return geometry;
+  };
 
   const geo = {
     box: track(new BoxGeometry(1, 1, 1)),
     cyl: track(new CylinderGeometry(1, 1, 1, high ? 24 : 14)),
     sph: track(new SphereGeometry(1, high ? 20 : 12, high ? 14 : 8)),
     plane: track(new BoxGeometry(1, 1, 0.001)),
-    tabletBody,
-    tabletFrame,
-    tabletFace,
-    tabletEdges: track(new EdgesGeometry(tabletBody, 30)),
-    vase: track(
-      lathe([[0, 0], [0.08, 0], [0.1, 0.03], [0.13, 0.14], [0.11, 0.26], [0.06, 0.31], [0.07, 0.36], [0.1, 0.4], [0.09, 0.4]], high ? 24 : 14)
-    ),
-    cup: track(lathe([[0, 0], [0.03, 0], [0.035, 0.01], [0.05, 0.05], [0.05, 0.058], [0.045, 0.058]], 16)),
+    frameOuter,
+    frameInner,
+    frameEdges: track(new EdgesGeometry(frameOuter, 40)),
+    photo: track(new PlaneGeometry(PHOTO_W, PHOTO_H)),
+    photoBorder: track(new PlaneGeometry(PHOTO_W + 0.024, PHOTO_H + 0.024)),
+    plate: track(new PlaneGeometry(PLATE_W, PLATE_H)),
+    // Chân quỳ cong (cao 1 đơn vị, kéo giãn theo chiều cao bàn).
+    leg: track(latheSmooth([[0, 0], [0.072, 0.004], [0.078, 0.04], [0.042, 0.11], [0.034, 0.32], [0.046, 0.68], [0.076, 0.9], [0.066, 0.985], [0, 1]], high ? 20 : 12, smp)),
+    // Đỉnh đồng: đáy thu, bụng phình, cổ thắt, miệng loe.
     burner: track(
-      lathe(
-        [[0, 0], [0.16, 0], [0.2, 0.03], [0.26, 0.06], [0.32, 0.14], [0.35, 0.22], [0.34, 0.28], [0.375, 0.3], [0.375, 0.33], [0.33, 0.33]],
-        high ? 28 : 16
+      latheSmooth(
+        [[0, 0.02], [0.1, 0.022], [0.17, 0.04], [0.25, 0.085], [0.305, 0.15], [0.325, 0.22], [0.305, 0.285], [0.262, 0.325], [0.25, 0.348], [0.272, 0.372], [0.332, 0.396], [0.346, 0.408], [0.33, 0.414], [0.292, 0.402]],
+        seg,
+        smp * 2
       )
     ),
+    burnerLeg: track(new TubeGeometry(legCurve, high ? 12 : 6, 0.03, high ? 10 : 6, false)),
+    burnerHandle: track(new TubeGeometry(new CatmullRomCurve3([new Vector3(0, -0.07, 0), new Vector3(0.07, -0.04, 0), new Vector3(0.085, 0.03, 0), new Vector3(0.04, 0.085, 0), new Vector3(-0.01, 0.07, 0)]), high ? 16 : 8, 0.017, high ? 8 : 5, false)),
+    // Đĩa có chân (mâm bồng).
+    dish: track(latheSmooth([[0, 0], [0.11, 0.002], [0.122, 0.016], [0.062, 0.042], [0.046, 0.09], [0.075, 0.118], [0.2, 0.142], [0.272, 0.176], [0.282, 0.188], [0.262, 0.184], [0.18, 0.158], [0, 0.152]], seg, smp * 2)),
+    vase: track(latheSmooth([[0, 0], [0.07, 0.002], [0.086, 0.02], [0.12, 0.1], [0.136, 0.19], [0.116, 0.28], [0.072, 0.34], [0.056, 0.39], [0.076, 0.43], [0.102, 0.456], [0.09, 0.458], [0.062, 0.412]], seg, smp * 2)),
+    candleHolder: track(latheSmooth([[0, 0], [0.085, 0.002], [0.092, 0.016], [0.046, 0.032], [0.028, 0.07], [0.046, 0.1], [0.028, 0.13], [0.031, 0.158], [0.076, 0.18], [0.082, 0.192], [0.046, 0.192], [0, 0.186]], seg, smp * 2)),
+    candleBody: track(new CylinderGeometry(0.033, 0.038, 0.28, high ? 20 : 10)),
+    // Ngọn lửa hình giọt nước.
+    flame: track(latheSmooth([[0, 0], [0.017, 0.01], [0.025, 0.03], [0.019, 0.056], [0.008, 0.082], [0, 0.102]], high ? 16 : 8, smp)),
+    cup: track(latheSmooth([[0, 0], [0.026, 0.002], [0.03, 0.01], [0.04, 0.03], [0.052, 0.056], [0.054, 0.064], [0.049, 0.064], [0.036, 0.034], [0, 0.026]], high ? 24 : 12, smp)),
+    // Đài rượu có chân.
+    wineCup: track(latheSmooth([[0, 0], [0.03, 0.002], [0.032, 0.009], [0.012, 0.02], [0.01, 0.05], [0.03, 0.066], [0.04, 0.09], [0.042, 0.1], [0.038, 0.1], [0.028, 0.072], [0, 0.066]], high ? 24 : 12, smp)),
+    banana: track(new TubeGeometry(bananaCurve, high ? 10 : 5, 0.018, high ? 8 : 5, false)),
+    // Nén nhang: chân nhang đỏ mảnh, thân vàng nâu thuôn, đoạn tro xám cong nhẹ.
+    stickFoot: track(new CylinderGeometry(0.0055, 0.0055, 0.17, 6)),
+    stickBody: track(new CylinderGeometry(0.0075, 0.011, 0.28, 8)),
+    stickAsh: track(new TubeGeometry(ashCurve, 5, 0.006, 5, false)),
   };
 
   // Hạt bụi dùng chung texture mềm.
@@ -765,7 +947,9 @@ const createResources = (quality: HallQuality) => {
   return {
     mat,
     geo,
+    rbox,
     soft: softTex,
+    defaultPortrait,
     dustMaterial,
     dispose: () => disposables.forEach((item) => item.dispose()),
   };
@@ -773,10 +957,22 @@ const createResources = (quality: HallQuality) => {
 
 type Resources = ReturnType<typeof createResources>;
 
+interface DragState {
+  wasDrag: boolean;
+  dragging: boolean;
+}
+
+// Tiến độ animation thắp hương: t tính bằng giây kể từ lúc bắt đầu (>= OFFER_TAIL nghĩa là không chạy).
+interface OfferState {
+  t: number;
+}
+
 interface HallContextValue {
   res: Resources;
   high: boolean;
   reduced: boolean;
+  drag: React.MutableRefObject<DragState>;
+  offer: React.MutableRefObject<OfferState>;
 }
 
 const HallContext = React.createContext<HallContextValue | null>(null);
@@ -819,6 +1015,8 @@ const Sph: React.FC<PrimProps> = ({ p, s, r, m, cast }) => {
 /* Phòng: sàn, tường, cột, xà, trần                                    */
 /* ------------------------------------------------------------------ */
 
+const COLUMN_H = ROOM.h - 0.45;
+
 const Column: React.FC<{ x: number; z: number }> = ({ x, z }) => {
   const { res } = useHall();
   const { mat } = res;
@@ -827,62 +1025,208 @@ const Column: React.FC<{ x: number; z: number }> = ({ x, z }) => {
       {/* Đá tảng kê cột */}
       <Cyl p={[0, 0.09, 0]} s={[0.3, 0.18, 0.3]} m={mat.stone} cast recv />
       <Cyl p={[0, 0.2, 0]} s={[0.23, 0.04, 0.23]} m={mat.stone} />
-      {/* Thân cột sơn son */}
-      <Cyl p={[0, 2.1, 0]} s={[0.17, 3.8, 0.17]} m={mat.lacquerDark} cast recv />
-      <Cyl p={[0, 0.5, 0]} s={[0.185, 0.04, 0.185]} m={mat.gold} />
-      <Cyl p={[0, 3.6, 0]} s={[0.185, 0.04, 0.185]} m={mat.gold} />
+      {/* Thân cột tròn sơn son sẫm */}
+      <Cyl p={[0, 0.2 + (COLUMN_H - 0.2) / 2, 0]} s={[0.17, COLUMN_H - 0.2, 0.17]} m={mat.lacquerDark} cast recv />
+      <Cyl p={[0, 0.55, 0]} s={[0.185, 0.04, 0.185]} m={mat.gold} />
+      <Cyl p={[0, COLUMN_H - 0.5, 0]} s={[0.185, 0.04, 0.185]} m={mat.gold} />
       {/* Đầu cột đỡ xà */}
-      <Box p={[0, 4.0, 0]} s={[0.34, 0.16, 0.34]} m={mat.woodDark} />
+      <Box p={[0, COLUMN_H + 0.08, 0]} s={[0.34, 0.16, 0.34]} m={mat.woodDark} />
     </group>
   );
 };
 
+// Cột chính hai hàng dọc hai bên; hàng gần tường sau mang câu đối.
+const COLUMN_X = 5.3;
+const COLUMN_ZS_HIGH = [ROOM.zBack + 0.45, -2.1, 1.3];
+const COLUMN_ZS_LOW = [ROOM.zBack + 0.45, -2.1];
+const BEAM_Y = ROOM.h - 0.3;
+// Đố gỗ trên tường bên và vị trí cửa sổ/cuốn thư nằm giữa các đố.
+const POST_ZS = Array.from({ length: 5 }, (_, i) => ROOM.zBack + 0.1 + (i * (ROOM.d - 0.2)) / 4);
+const WINDOW_ZS = [(POST_ZS[0] + POST_ZS[1]) / 2, (POST_ZS[1] + POST_ZS[2]) / 2, (POST_ZS[3] + POST_ZS[4]) / 2];
+const SCROLL_Z = (POST_ZS[2] + POST_ZS[3]) / 2;
+
 const Room = React.memo(function Room() {
   const { res, high } = useHall();
   const { mat } = res;
+  const ext = 1; // mặt phẳng phủ dư ra ngoài các góc để không hở khe
+  const columnZs = high ? COLUMN_ZS_HIGH : COLUMN_ZS_LOW;
+  const beamLen = ROOM.d - 0.2;
   return (
     <group>
-      {/* Sàn gạch Bát Tràng */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0.5]} receiveShadow={high} material={mat.floor}>
-        <planeGeometry args={[9, 10]} />
-      </mesh>
-      {/* Chiếu/thảm đỏ trước bàn thờ */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, -0.1]} receiveShadow={high} material={mat.rug}>
-        <planeGeometry args={[4.4, 2.2]} />
+      {/* Vỏ bao ngoài: nếu có khe hở thì chỉ thấy màu tường tối ấm, không bao giờ thấy nền ngoài */}
+      <mesh position={[0, ROOM.h / 2, ROOM_CENTER_Z]} material={mat.shell}>
+        <boxGeometry args={[ROOM.w + 3, ROOM.h + 3, ROOM.d + 3]} />
       </mesh>
 
-      {/* Tường hậu + hai tường bên */}
-      <mesh position={[0, 2.2, -3.45]} receiveShadow={high} material={mat.wall}>
-        <planeGeometry args={[9, 4.4]} />
+      {/* Sàn gạch Bát Tràng phủ hết phòng */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, ROOM_CENTER_Z]} receiveShadow={high} material={mat.floor}>
+        <planeGeometry args={[ROOM.w + ext * 2, ROOM.d + ext * 2]} />
       </mesh>
-      <mesh position={[-4.5, 2.2, 0.5]} rotation={[0, Math.PI / 2, 0]} receiveShadow={high} material={mat.wall}>
-        <planeGeometry args={[10, 4.4]} />
+      {/* Thảm đỏ dẫn thẳng từ cửa tới bàn thờ */}
+      <mesh rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[0, 0.008, (FRONT_EDGE_Z - 0.05 + ROOM.zFront - 0.5) / 2]} receiveShadow={high} material={mat.rug}>
+        <planeGeometry args={[ROOM.zFront - 0.5 - FRONT_EDGE_Z + 0.05, 3]} />
       </mesh>
-      <mesh position={[4.5, 2.2, 0.5]} rotation={[0, -Math.PI / 2, 0]} receiveShadow={high} material={mat.wall}>
-        <planeGeometry args={[10, 4.4]} />
+      {/* Trần gỗ phủ hết phòng */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM.h, ROOM_CENTER_Z]} material={mat.ceiling}>
+        <planeGeometry args={[ROOM.w + ext * 2, ROOM.d + ext * 2]} />
       </mesh>
 
-      {/* Gờ chân tường */}
-      <Box p={[0, 0.08, -3.42]} s={[9, 0.16, 0.07]} m={mat.woodDark} />
-      <Box p={[-4.47, 0.08, 0.5]} s={[0.07, 0.16, 10]} m={mat.woodDark} />
-      <Box p={[4.47, 0.08, 0.5]} s={[0.07, 0.16, 10]} m={mat.woodDark} />
-      {/* Ốp gỗ lửng tường hậu */}
-      <Box p={[0, 0.55, -3.43]} s={[9, 0.9, 0.04]} m={mat.wood} />
-      <Box p={[0, 1.02, -3.42]} s={[9, 0.05, 0.06]} m={mat.gold} />
-
-      {/* Trần gỗ + xà ngang/xà dọc */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 4.4, 0.5]} material={mat.ceiling}>
-        <planeGeometry args={[9, 10]} />
+      {/* Bốn bức tường kín (cao dư lên trần và xuống sàn, dài dư ra các góc) */}
+      <mesh position={[0, ROOM.h / 2, ROOM.zBack]} receiveShadow={high} material={mat.wall}>
+        <planeGeometry args={[ROOM.w + ext * 2, ROOM.h + 0.6]} />
       </mesh>
-      <Box p={[0, 3.98, -3.2]} s={[9, 0.26, 0.26]} m={mat.woodDark} />
-      <Box p={[-3.78, 3.98, 0.5]} s={[0.26, 0.26, 10]} m={mat.woodDark} />
-      <Box p={[3.78, 3.98, 0.5]} s={[0.26, 0.26, 10]} m={mat.woodDark} />
-      <Box p={[0, 4.2, -0.6]} s={[9, 0.2, 0.2]} m={mat.woodDark} />
-      <Box p={[0, 4.2, 2.0]} s={[9, 0.2, 0.2]} m={mat.woodDark} />
+      <mesh position={[0, ROOM.h / 2, ROOM.zFront]} rotation={[0, Math.PI, 0]} material={mat.wall}>
+        <planeGeometry args={[ROOM.w + ext * 2, ROOM.h + 0.6]} />
+      </mesh>
+      <mesh position={[-HX, ROOM.h / 2, ROOM_CENTER_Z]} rotation={[0, Math.PI / 2, 0]} receiveShadow={high} material={mat.wall}>
+        <planeGeometry args={[ROOM.d + ext * 2, ROOM.h + 0.6]} />
+      </mesh>
+      <mesh position={[HX, ROOM.h / 2, ROOM_CENTER_Z]} rotation={[0, -Math.PI / 2, 0]} receiveShadow={high} material={mat.wall}>
+        <planeGeometry args={[ROOM.d + ext * 2, ROOM.h + 0.6]} />
+      </mesh>
 
-      {/* Hai cột sơn son hai bên bàn thờ */}
-      <Column x={-3.78} z={-3.0} />
-      <Column x={3.78} z={-3.0} />
+      {/* Gờ chân tường, ốp gỗ lửng và đường chỉ vàng: tường sau, tường cửa, hai tường bên */}
+      {[ROOM.zBack + 0.035, ROOM.zFront - 0.035].map((z) => (
+        <group key={z}>
+          <Box p={[0, 0.08, z]} s={[ROOM.w, 0.16, 0.07]} m={mat.woodDark} />
+          <Box p={[0, 0.55, z]} s={[ROOM.w, 0.9, 0.04]} m={mat.wood} />
+          <Box p={[0, 1.02, z]} s={[ROOM.w, 0.05, 0.06]} m={mat.gold} />
+        </group>
+      ))}
+      {[-HX + 0.035, HX - 0.035].map((x) => (
+        <group key={x}>
+          <Box p={[x, 0.08, ROOM_CENTER_Z]} s={[0.07, 0.16, ROOM.d]} m={mat.woodDark} />
+          <Box p={[x, 0.55, ROOM_CENTER_Z]} s={[0.04, 0.9, ROOM.d]} m={mat.wood} />
+          <Box p={[x, 1.02, ROOM_CENTER_Z]} s={[0.06, 0.05, ROOM.d]} m={mat.gold} />
+          {/* Đố gỗ đứng giữa các ô tường */}
+          {POST_ZS.map((pz) => (
+            <Box key={pz} p={[x, ROOM.h / 2 + 0.2, pz]} s={[0.07, ROOM.h - 0.7, 0.2]} m={mat.woodDark} />
+          ))}
+          {/* Thanh ngang trên đầu tường */}
+          <Box p={[x, ROOM.h - 0.45, ROOM_CENTER_Z]} s={[0.07, 0.16, ROOM.d]} m={mat.woodDark} />
+        </group>
+      ))}
+
+      {/* Xà ngang, xà dọc */}
+      {columnZs.map((z) => (
+        <Box key={z} p={[0, BEAM_Y, z]} s={[ROOM.w - 0.1, 0.26, 0.26]} m={mat.woodDark} />
+      ))}
+      {[-COLUMN_X, -3.4, 3.4, COLUMN_X].map((x) => (
+        <Box key={x} p={[x, BEAM_Y, ROOM_CENTER_Z]} s={[0.24, 0.24, beamLen]} m={mat.woodDark} />
+      ))}
+
+      {/* Hai hàng cột */}
+      {[-COLUMN_X, COLUMN_X].flatMap((x) => columnZs.map((z) => <Column key={`${x}:${z}`} x={x} z={z} />))}
+    </group>
+  );
+});
+
+/** Dải chấn song cửa sổ: một InstancedMesh cho cả cửa. */
+const LatticeBars: React.FC<{ count: number; width: number; height: number }> = ({ count, width, height }) => {
+  const { res } = useHall();
+  const { mat, geo } = res;
+  const ref = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const dummy = new Object3D();
+    for (let i = 0; i < count; i += 1) {
+      dummy.position.set(-width / 2 + (width * (i + 0.5)) / count, 0, 0);
+      dummy.scale.set(0.035, height, 0.045);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [count, width, height]);
+  return <instancedMesh ref={ref} args={[geo.box, mat.lacquer, count]} />;
+};
+
+/** Cửa sổ chấn song sơn đỏ trên tường bên (local +z hướng vào phòng). */
+const LatticeWindow: React.FC<{ x: number; z: number }> = ({ x, z }) => {
+  const { res } = useHall();
+  const { mat } = res;
+  const side = x < 0 ? 1 : -1;
+  return (
+    <group position={[x, 0, z]} rotation={[0, (side * Math.PI) / 2, 0]}>
+      <mesh position={[0, 2.2, 0.012]} material={mat.window}>
+        <planeGeometry args={[1.3, 1.7]} />
+      </mesh>
+      <Box p={[0, 3.1, 0.05]} s={[1.6, 0.1, 0.1]} m={mat.lacquer} />
+      <Box p={[0, 1.3, 0.07]} s={[1.65, 0.12, 0.14]} m={mat.lacquer} />
+      <Box p={[-0.72, 2.2, 0.05]} s={[0.1, 1.9, 0.1]} m={mat.lacquer} />
+      <Box p={[0.72, 2.2, 0.05]} s={[0.1, 1.9, 0.1]} m={mat.lacquer} />
+      <Box p={[0, 2.2, 0.05]} s={[1.3, 0.05, 0.05]} m={mat.lacquer} />
+      <group position={[0, 2.2, 0.05]}>
+        <LatticeBars count={7} width={1.3} height={1.7} />
+      </group>
+      <Box p={[0, 3.2, 0.03]} s={[1.75, 0.06, 0.07]} m={mat.gold} />
+    </group>
+  );
+};
+
+/** Cuốn thư treo tường bên. */
+const WallScroll: React.FC<{ x: number; z: number; phrase: string }> = ({ x, z, phrase }) => {
+  const { res } = useHall();
+  const { mat } = res;
+  const side = x < 0 ? 1 : -1;
+  const tex = useMemo(() => createCoupletTexture(phrase, 256, 800), [phrase]);
+  useEffect(() => () => tex.dispose(), [tex]);
+  return (
+    <group position={[x, 0, z]} rotation={[0, (side * Math.PI) / 2, 0]}>
+      <Box p={[0, 2.35, 0.02]} s={[0.78, 2.3, 0.03]} m={mat.gold} />
+      <mesh position={[0, 2.35, 0.038]}>
+        <planeGeometry args={[0.66, 2.06]} />
+        <meshStandardMaterial map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={0.25} roughness={0.5} />
+      </mesh>
+      <Cyl p={[0, 3.52, 0.03]} s={[0.035, 0.9, 0.035]} r={[0, 0, Math.PI / 2]} m={mat.woodDark} />
+      <Cyl p={[0, 1.18, 0.03]} s={[0.035, 0.9, 0.035]} r={[0, 0, Math.PI / 2]} m={mat.woodDark} />
+    </group>
+  );
+};
+
+/** Chi tiết hai tường bên: cửa sổ chấn song + cuốn thư. */
+const SideWallDetails = React.memo(function SideWallDetails() {
+  return (
+    <group>
+      {[-HX, HX].map((x) => (
+        <group key={x}>
+          {WINDOW_ZS.map((z) => (
+            <LatticeWindow key={z} x={x} z={z} />
+          ))}
+          <WallScroll x={x} z={SCROLL_Z} phrase={x < 0 ? 'UỐNG NƯỚC NHỚ NGUỒN' : 'ĂN QUẢ NHỚ KẺ TRỒNG CÂY'} />
+        </group>
+      ))}
+    </group>
+  );
+});
+
+/** Tường cửa (sau lưng người xem): khung cửa lớn mở ra phía tối, có vật liệu chắn kín. */
+const DoorWall = React.memo(function DoorWall() {
+  const { res } = useHall();
+  const { mat } = res;
+  return (
+    <group position={[0, 0, ROOM.zFront]} rotation={[0, Math.PI, 0]}>
+      <mesh position={[0, 1.8, 0.02]} material={mat.doorDark}>
+        <planeGeometry args={[3.0, 3.6]} />
+      </mesh>
+      <Box p={[-1.6, 1.95, 0.1]} s={[0.26, 3.9, 0.22]} m={mat.lacquerDark} />
+      <Box p={[1.6, 1.95, 0.1]} s={[0.26, 3.9, 0.22]} m={mat.lacquerDark} />
+      <Box p={[0, 3.85, 0.1]} s={[3.7, 0.36, 0.24]} m={mat.lacquer} />
+      <Box p={[0, 3.62, 0.11]} s={[3.5, 0.06, 0.26]} m={mat.gold} />
+      <Box p={[0, 0.05, 0.1]} s={[3.4, 0.1, 0.3]} m={mat.stone} />
+    </group>
+  );
+});
+
+/** Hai hàng đèn lồng treo dọc hai bên đường vào. */
+const LanternRows = React.memo(function LanternRows() {
+  const { high } = useHall();
+  const zs = high ? [-3.4, -1.9, -0.4] : [-3.4, -1.4];
+  return (
+    <group>
+      {[-3.4, 3.4].flatMap((x, side) =>
+        zs.map((z, i) => <Lantern key={`${x}:${z}`} x={x} z={z} phase={i * 1.3 + side * 0.9} />)
+      )}
     </group>
   );
 });
@@ -900,25 +1244,25 @@ const Inscriptions: React.FC<{ hallTitle: string }> = ({ hallTitle }) => {
 
   return (
     <group>
-      {/* Hoành phi */}
-      <Box p={[0, 3.3, -3.4]} s={[3.3, 0.68, 0.08]} m={mat.gold} cast />
-      <mesh position={[0, 3.3, -3.358]}>
-        <planeGeometry args={[3.0, 0.56]} />
+      {/* Hoành phi treo cao chính giữa */}
+      <Box p={[0, 3.8, -3.4]} s={[4.4, 0.9, 0.08]} m={mat.gold} cast />
+      <mesh position={[0, 3.8, -3.358]}>
+        <planeGeometry args={[4.1, 0.76]} />
         <meshStandardMaterial map={plaqueTex} emissiveMap={plaqueTex} emissive="#ffffff" emissiveIntensity={0.3} roughness={0.4} metalness={0.15} />
       </mesh>
-      {/* Hai sợi dây treo hoành phi */}
-      <Cyl p={[-1.3, 3.84, -3.38]} s={[0.012, 0.4, 0.012]} m={mat.craneDark} />
-      <Cyl p={[1.3, 3.84, -3.38]} s={[0.012, 0.4, 0.012]} m={mat.craneDark} />
+      {/* Hai sợi dây treo hoành phi lên xà */}
+      <Cyl p={[-1.8, 4.5, -3.38]} s={[0.012, 0.55, 0.012]} m={mat.craneDark} />
+      <Cyl p={[1.8, 4.5, -3.38]} s={[0.012, 0.55, 0.012]} m={mat.craneDark} />
 
-      {/* Câu đối trên hai cột */}
-      <Box p={[-3.78, 2.0, -2.78]} s={[0.34, 2.62, 0.04]} m={mat.gold} />
-      <mesh position={[-3.78, 2.0, -2.755]}>
-        <planeGeometry args={[0.3, 2.5]} />
+      {/* Câu đối trên hai cột sau */}
+      <Box p={[-COLUMN_X, 2.3, -2.78]} s={[0.42, 3.12, 0.04]} m={mat.gold} />
+      <mesh position={[-COLUMN_X, 2.3, -2.755]}>
+        <planeGeometry args={[0.36, 3.0]} />
         <meshStandardMaterial map={leftTex} emissiveMap={leftTex} emissive="#ffffff" emissiveIntensity={0.25} roughness={0.45} />
       </mesh>
-      <Box p={[3.78, 2.0, -2.78]} s={[0.34, 2.62, 0.04]} m={mat.gold} />
-      <mesh position={[3.78, 2.0, -2.755]}>
-        <planeGeometry args={[0.3, 2.5]} />
+      <Box p={[COLUMN_X, 2.3, -2.78]} s={[0.42, 3.12, 0.04]} m={mat.gold} />
+      <mesh position={[COLUMN_X, 2.3, -2.755]}>
+        <planeGeometry args={[0.36, 3.0]} />
         <meshStandardMaterial map={rightTex} emissiveMap={rightTex} emissive="#ffffff" emissiveIntensity={0.25} roughness={0.45} />
       </mesh>
     </group>
@@ -926,8 +1270,45 @@ const Inscriptions: React.FC<{ hallTitle: string }> = ({ hallTitle }) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Bàn thờ                                                             */
+/* Bàn thờ (bo cạnh, chân quỳ cong, diềm chạm)                         */
 /* ------------------------------------------------------------------ */
+
+interface RBoxProps {
+  p?: V3;
+  size: V3;
+  radius?: number;
+  m: Material;
+  cast?: boolean;
+  recv?: boolean;
+}
+
+/** Hộp bo cạnh dùng chung geometry theo kích thước (cache trong resources). */
+const RBox: React.FC<RBoxProps> = ({ p, size, radius = 0.03, m, cast, recv }) => {
+  const { res, high } = useHall();
+  return <mesh geometry={res.rbox(size[0], size[1], size[2], radius)} material={m} position={p} castShadow={cast && high} receiveShadow={recv && high} />;
+};
+
+/** Diềm lượn sóng dưới mép bàn: một InstancedMesh các nửa đĩa tròn. */
+const ScallopRow: React.FC<{ width: number; y: number; z: number; m: Material }> = ({ width, y, z, m }) => {
+  const { res } = useHall();
+  const ref = useRef<InstancedMesh>(null);
+  const count = Math.max(3, Math.round(width / 0.3));
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const dummy = new Object3D();
+    const step = width / count;
+    for (let i = 0; i < count; i += 1) {
+      dummy.position.set(-width / 2 + step * (i + 0.5), y, z);
+      dummy.rotation.set(Math.PI / 2, 0, 0);
+      dummy.scale.set(step * 0.46, 0.018, 0.055);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [count, width, y, z]);
+  return <instancedMesh ref={ref} args={[res.geo.cyl, m, count]} />;
+};
 
 interface AltarTableProps {
   z: number;
@@ -940,53 +1321,51 @@ interface AltarTableProps {
 }
 
 const AltarTable: React.FC<AltarTableProps> = ({ z, width, height, depth, apronMat, solid, drape }) => {
-  const { res } = useHall();
-  const { mat } = res;
+  const { res, high } = useHall();
+  const { mat, geo } = res;
   const legX = width / 2 - 0.16;
   const legZ = depth / 2 - 0.12;
+  const bodyY = (height - 0.21 + 0.12) / 2;
   return (
     <group position={[0, 0, z]}>
-      {/* Mặt bàn: viền vàng + lòng sơn son */}
-      <Box p={[0, height - 0.035, 0]} s={[width, 0.07, depth]} m={mat.gold} cast recv />
-      <Box p={[0, height + 0.005, 0]} s={[width - 0.12, 0.02, depth - 0.12]} m={mat.lacquerDark} recv />
+      {/* Mặt bàn bo góc: viền vàng + lòng sơn son */}
+      <RBox p={[0, height - 0.035, 0]} size={[width, 0.07, depth]} radius={0.06} m={mat.gold} cast recv />
+      <RBox p={[0, height + 0.005, 0]} size={[width - 0.12, 0.02, depth - 0.12]} radius={0.045} m={mat.lacquerDark} recv />
       {/* Diềm chạm dưới mặt bàn */}
-      <Box p={[0, height - 0.14, 0]} s={[width - 0.08, 0.14, depth - 0.08]} m={mat.woodDark} />
-      <mesh position={[0, height - 0.14, depth / 2 - 0.039]} material={apronMat} geometry={res.geo.plane} scale={[width - 0.1, 0.12, 1]} />
+      <RBox p={[0, height - 0.14, 0]} size={[width - 0.08, 0.14, depth - 0.08]} radius={0.04} m={mat.woodDark} />
+      <mesh position={[0, height - 0.14, depth / 2 - 0.039]} material={apronMat} geometry={geo.plane} scale={[width - 0.2, 0.11, 1]} />
+      {!drape && <ScallopRow width={width - 0.5} y={height - 0.215} z={depth / 2 - 0.05} m={mat.gold} />}
       {solid ? (
         <>
-          {/* Thân ngai đặc có phần panel sơn son */}
-          <Box p={[0, (height - 0.21 + 0.12) / 2, 0]} s={[width - 0.2, height - 0.33, depth - 0.2]} m={mat.wood} cast recv />
+          {/* Thân ngai bo cạnh, mặt trước chia ô sơn son */}
+          <RBox p={[0, bodyY, 0]} size={[width - 0.2, height - 0.33, depth - 0.2]} radius={0.05} m={mat.wood} cast recv />
           {[-0.4, -0.2, 0, 0.2, 0.4].map((k) => (
-            <Box key={k} p={[k * (width - 0.6), (height - 0.21 + 0.12) / 2, depth / 2 - 0.095]} s={[(width - 0.8) / 5, height - 0.5, 0.012]} m={mat.lacquer} />
+            <RBox key={k} p={[k * (width - 0.6), bodyY - 0.02, depth / 2 - 0.1]} size={[(width - 0.8) / 5, height - 0.56, 0.02]} radius={0.05} m={mat.lacquer} />
           ))}
-          <Box p={[0, height - 0.215, 0]} s={[width - 0.16, 0.025, depth - 0.16]} m={mat.gold} />
-          <Box p={[0, 0.125, 0]} s={[width - 0.16, 0.025, depth - 0.16]} m={mat.gold} />
+          <RBox p={[0, 0.125, 0]} size={[width - 0.14, 0.03, depth - 0.14]} radius={0.05} m={mat.gold} />
+          {[-1, 1].flatMap((sx) =>
+            [-1, 1].map((sz) => (
+              <Sph key={`${sx}${sz}`} p={[sx * (width / 2 - 0.15), 0.065, sz * (depth / 2 - 0.12)]} s={[0.11, 0.07, 0.11]} m={mat.gold} />
+            ))
+          )}
         </>
       ) : (
         <>
-          {/* Bốn chân quỳ + thanh giằng */}
+          {/* Bốn chân quỳ cong + thanh giằng bo tròn */}
           {[-legX, legX].flatMap((lx) =>
             [-legZ, legZ].map((lz) => (
-              <group key={`${lx}${lz}`} position={[lx, 0, lz]}>
-                <mesh position={[0, (height - 0.21) / 2 + 0.06, 0]} material={mat.woodDark} geometry={res.geo.cyl} scale={[0.055, height - 0.21 - 0.06, 0.055]} />
-                <Sph p={[0, 0.07, 0]} s={[0.095, 0.07, 0.095]} m={mat.gold} />
-              </group>
+              <mesh key={`${lx}${lz}`} geometry={geo.leg} material={mat.woodDark} position={[lx, 0, lz]} scale={[1, height - 0.2, 1]} castShadow={high} />
             ))
           )}
-          <Box p={[0, height * 0.45, legZ]} s={[width - 0.3, 0.05, 0.05]} m={mat.woodDark} />
-          <Box p={[0, height * 0.45, -legZ]} s={[width - 0.3, 0.05, 0.05]} m={mat.woodDark} />
+          <RBox p={[0, height * 0.42, legZ]} size={[width - 0.36, 0.05, 0.05]} radius={0.02} m={mat.woodDark} />
+          <RBox p={[0, height * 0.42, -legZ]} size={[width - 0.36, 0.05, 0.05]} radius={0.02} m={mat.woodDark} />
         </>
-      )}
-      {solid && [-1, 1].flatMap((sx) =>
-        [-1, 1].map((sz) => (
-          <Sph key={`${sx}${sz}`} p={[sx * (width / 2 - 0.15), 0.065, sz * (depth / 2 - 0.12)]} s={[0.11, 0.07, 0.11]} m={mat.gold} />
-        ))
       )}
       {drape && (
         <>
           {/* Khăn phủ đỏ viền vàng buông phía trước + khăn trải mặt bàn */}
-          <mesh position={[0, height / 2 + 0.03, depth / 2 + 0.012]} material={mat.cloth} geometry={res.geo.plane} scale={[width - 0.1, height - 0.1, 1]} />
-          <Box p={[0, height + 0.018, 0]} s={[width - 0.3, 0.008, depth - 0.2]} m={mat.clothPlain} />
+          <mesh position={[0, height / 2 + 0.03, depth / 2 + 0.012]} material={mat.cloth} geometry={geo.plane} scale={[width - 0.14, height - 0.1, 1]} />
+          <RBox p={[0, height + 0.018, 0]} size={[width - 0.3, 0.01, depth - 0.2]} radius={0.04} m={mat.clothPlain} />
         </>
       )}
     </group>
@@ -1006,10 +1385,10 @@ const Altar = React.memo(function Altar() {
 });
 
 /* ------------------------------------------------------------------ */
-/* Bài vị                                                              */
+/* Ảnh thờ: khung gỗ sơn son viền vàng, ảnh 3:4 phía trên, bảng tên    */
 /* ------------------------------------------------------------------ */
 
-interface TabletProps {
+interface PortraitFrameProps {
   ancestor: Hall3DAncestor;
   x: number;
   raise: number;
@@ -1020,43 +1399,91 @@ interface TabletProps {
   onHover: (index: number | null) => void;
 }
 
-const Tablet: React.FC<TabletProps> = ({ ancestor, x, raise, globalIndex, selected, hovered, onSelect, onHover }) => {
-  const { res, high } = useHall();
-  const { mat, geo, soft } = res;
+const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, raise, globalIndex, selected, hovered, onSelect, onHover }) => {
+  const { res, high, drag } = useHall();
+  const { mat, geo, soft, defaultPortrait } = res;
   const liftRef = useRef<Group>(null);
   const haloRef = useRef<Sprite>(null);
+  const brightness = useRef(0.86);
 
-  const faceTex = useMemo(() => createTabletFaceTexture(ancestor.name, ancestor.lifespan), [ancestor.name, ancestor.lifespan]);
-  const faceMat = useMemo(
-    () => new MeshStandardMaterial({ map: faceTex, emissiveMap: faceTex, emissive: '#ffffff', emissiveIntensity: 0.18, roughness: 0.5, metalness: 0.1 }),
-    [faceTex]
+  const deathText = formatDeathDate(ancestor.deathDate);
+  const plateTex = useMemo(() => createNamePlateTexture(ancestor.name, deathText), [ancestor.name, deathText]);
+  const plateMat = useMemo(
+    () => new MeshStandardMaterial({ map: plateTex, emissiveMap: plateTex, emissive: '#ffffff', emissiveIntensity: 0.25, roughness: 0.5, metalness: 0.1 }),
+    [plateTex]
   );
+  // Ảnh không chịu ánh sáng cảnh để luôn nhìn rõ mặt người.
+  const photoMat = useMemo(() => new MeshBasicMaterial({ map: defaultPortrait, color: '#dbd5c8' }), [defaultPortrait]);
   const frameMat = useMemo(() => new MeshStandardMaterial({ color: COLOR.gold, metalness: 0.9, roughness: 0.35, emissive: '#ffb830', emissiveIntensity: 0 }), []);
   const haloMat = useMemo(
     () => new SpriteMaterial({ map: soft, color: '#ffd27a', transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }),
     [soft]
   );
-  useEffect(() => () => { faceTex.dispose(); faceMat.dispose(); }, [faceTex, faceMat]);
-  useEffect(() => () => { frameMat.dispose(); haloMat.dispose(); }, [frameMat, haloMat]);
+  useEffect(() => () => { plateTex.dispose(); plateMat.dispose(); }, [plateTex, plateMat]);
+  useEffect(() => () => { frameMat.dispose(); haloMat.dispose(); photoMat.dispose(); }, [frameMat, haloMat, photoMat]);
+
+  // Nạp ảnh chân dung nếu có; lỗi tải thì giữ ảnh mặc định, không làm vỡ cảnh.
+  const portraitUrl = ancestor.portraitUrl ? ancestor.portraitUrl.trim() : '';
+  useEffect(() => {
+    if (!portraitUrl) return undefined;
+    let cancelled = false;
+    let loaded: Texture | null = null;
+    try {
+      const loader = new TextureLoader();
+      loader.setCrossOrigin('anonymous');
+      loader.load(
+        portraitUrl,
+        (texture) => {
+          if (cancelled) {
+            texture.dispose();
+            return;
+          }
+          loaded = texture;
+          texture.colorSpace = SRGBColorSpace;
+          texture.anisotropy = 4;
+          applyCoverCrop(texture, PHOTO_W / PHOTO_H);
+          photoMat.map = texture;
+          photoMat.needsUpdate = true;
+        },
+        undefined,
+        () => {
+          /* tải lỗi: giữ ảnh mặc định */
+        }
+      );
+    } catch {
+      /* URL không hợp lệ: giữ ảnh mặc định */
+    }
+    return () => {
+      cancelled = true;
+      photoMat.map = defaultPortrait;
+      photoMat.needsUpdate = true;
+      if (loaded) loaded.dispose();
+    };
+  }, [portraitUrl, photoMat, defaultPortrait]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const lift = liftRef.current;
-    if (lift) lift.position.y = MathUtils.damp(lift.position.y, selected ? 0.1 : 0, 7, dt);
+    if (lift) lift.position.y = MathUtils.damp(lift.position.y, selected ? 0.06 : 0, 7, dt);
     const glow = selected ? 1 : hovered ? 0.55 : 0;
     frameMat.emissiveIntensity = MathUtils.damp(frameMat.emissiveIntensity, glow * 0.9, 8, dt);
-    faceMat.emissiveIntensity = MathUtils.damp(faceMat.emissiveIntensity, 0.18 + glow * 0.5, 8, dt);
+    plateMat.emissiveIntensity = MathUtils.damp(plateMat.emissiveIntensity, 0.25 + glow * 0.4, 8, dt);
+    brightness.current = MathUtils.damp(brightness.current, 0.86 + glow * 0.14, 8, dt);
+    photoMat.color.setRGB(brightness.current, brightness.current * 0.975, brightness.current * 0.93);
     haloMat.opacity = MathUtils.damp(haloMat.opacity, glow * 0.5, 6, dt);
     const halo = haloRef.current;
     if (halo) halo.visible = haloMat.opacity > 0.01;
   });
 
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+  // Bấm (nhả chuột/ngón tay mà KHÔNG kéo) chỉ để xem thông tin người đó.
+  const handleUp = (event: ThreeEvent<PointerEvent>) => {
+    if (drag.current.wasDrag) return;
     event.stopPropagation();
     onSelect(globalIndex);
   };
   const handleOver = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation();
+    if (drag.current.dragging) return;
     onHover(globalIndex);
   };
   const handleOut = (event: ThreeEvent<PointerEvent>) => {
@@ -1065,51 +1492,59 @@ const Tablet: React.FC<TabletProps> = ({ ancestor, x, raise, globalIndex, select
   };
 
   return (
-    <group position={[x, TOP_Y.back, BACK.z]} onClick={handleClick} onPointerOver={handleOver} onPointerOut={handleOut}>
+    <group position={[x, TOP_Y.back, BACK.z]} onPointerUp={handleUp} onPointerOver={handleOver} onPointerOut={handleOut}>
       <group scale={TABLET_SCALE}>
-      {raise > 0.01 && (
-        <>
-          <Box p={[0, raise / 2, 0]} s={[0.5, raise, 0.34]} m={mat.lacquerDark} cast recv />
-          <Box p={[0, raise + 0.005, 0]} s={[0.52, 0.015, 0.36]} m={mat.gold} />
-        </>
-      )}
-      <group position={[0, raise, 0]}>
-        <group ref={liftRef}>
-          {/* Đế bậc */}
-          <Box p={[0, 0.025, 0]} s={[0.46, 0.05, 0.3]} m={mat.woodDark} cast recv />
-          <Box p={[0, 0.075, 0]} s={[0.4, 0.05, 0.25]} m={mat.gold} cast />
-          {/* Bảng đầu vòm: khung vàng, thân đỏ sẫm, mặt chữ */}
-          <mesh geometry={geo.tabletFrame} material={frameMat} position={[0, 0.1, 0]} castShadow={high} />
-          <mesh geometry={geo.tabletBody} material={mat.lacquerDark} position={[0, 0.1, 0]} castShadow={high} />
-          <mesh geometry={geo.tabletFace} material={faceMat} position={[0, 0.15, 0.0358]} />
-          <sprite ref={haloRef} material={haloMat} position={[0, 0.58, -0.07]} scale={[1.05, 1.5, 1]} visible={false} />
+        {raise > 0.01 && (
+          <>
+            <RBox p={[0, raise / 2, 0]} size={[0.56, raise, 0.26]} radius={0.03} m={mat.lacquerDark} cast recv />
+            <RBox p={[0, raise + 0.004, 0]} size={[0.58, 0.014, 0.28]} radius={0.03} m={mat.gold} />
+          </>
+        )}
+        <group position={[0, raise, 0]}>
+          <group ref={liftRef}>
+            {/* Đế gỗ bo cạnh */}
+            <RBox p={[0, 0.025, 0]} size={[0.52, 0.05, 0.2]} radius={0.03} m={mat.woodDark} cast recv />
+            <RBox p={[0, 0.056, 0]} size={[0.46, 0.014, 0.15]} radius={0.02} m={mat.gold} />
+            {/* Khung ảnh hơi ngả ra sau */}
+            <group position={[0, 0.06, 0]} rotation={[-0.06, 0, 0]}>
+              <mesh geometry={geo.frameOuter} material={frameMat} castShadow={high} />
+              <mesh geometry={geo.frameInner} material={mat.lacquer} />
+              <mesh geometry={geo.photoBorder} material={mat.gold} position={[0, PHOTO_Y, 0.0262]} />
+              <mesh geometry={geo.photo} material={photoMat} position={[0, PHOTO_Y, 0.0275]} />
+              <mesh geometry={geo.plate} material={plateMat} position={[0, PLATE_Y, 0.0275]} />
+              <sprite ref={haloRef} material={haloMat} position={[0, 0.42, -0.08]} scale={[1.15, 1.45, 1]} visible={false} />
+            </group>
+          </group>
         </group>
-      </group>
       </group>
     </group>
   );
 };
 
+/** Khung ảnh mờ khi bàn thờ chưa có tiền nhân: không bấm được, không nhãn. */
 const EmptyTabletSlot: React.FC<{ x: number }> = ({ x }) => {
   const { res } = useHall();
   const { mat, geo } = res;
   return (
     <group position={[x, TOP_Y.back, BACK.z]} scale={TABLET_SCALE}>
-      <Box p={[0, 0.025, 0]} s={[0.46, 0.05, 0.3]} m={mat.ghost} />
-      <Box p={[0, 0.075, 0]} s={[0.4, 0.05, 0.25]} m={mat.ghost} />
-      <mesh geometry={geo.tabletBody} material={mat.ghost} position={[0, 0.1, 0]} />
-      <lineSegments geometry={geo.tabletEdges} material={mat.ghostLine} position={[0, 0.1, 0]} />
+      <RBox p={[0, 0.025, 0]} size={[0.52, 0.05, 0.2]} radius={0.03} m={mat.ghost} />
+      <group position={[0, 0.06, 0]} rotation={[-0.06, 0, 0]}>
+        <mesh geometry={geo.frameOuter} material={mat.ghost} />
+        <lineSegments geometry={geo.frameEdges} material={mat.ghostLine} />
+        <mesh geometry={geo.photo} material={mat.ghost} position={[0, PHOTO_Y, 0.03]} />
+        <mesh geometry={geo.plate} material={mat.ghost} position={[0, PLATE_Y, 0.03]} />
+      </group>
     </group>
   );
 };
 
 /* ------------------------------------------------------------------ */
-/* Đồ thờ: nến, đèn lồng, hạc, ngũ quả, bình hoa, chén nước            */
+/* Đồ thờ: nến, đèn lồng, hạc, ngũ quả, bình hoa, chén nước, đài rượu  */
 /* ------------------------------------------------------------------ */
 
 const Candle: React.FC<{ x: number; phase: number; withLight: boolean }> = ({ x, phase, withLight }) => {
-  const { res, reduced } = useHall();
-  const { mat } = res;
+  const { res, high, reduced, offer } = useHall();
+  const { mat, geo } = res;
   const lightRef = useRef<PointLight>(null);
   const glowRef = useRef<Sprite>(null);
   const flameRef = useRef<Mesh>(null);
@@ -1119,24 +1554,33 @@ const Candle: React.FC<{ x: number; phase: number; withLight: boolean }> = ({ x,
     const amp = reduced ? 0.3 : 1;
     // Dao động mềm: tổng hợp vài sóng sin tần số thấp, tránh giật.
     const flicker = 1 + (Math.sin(t * 5.1 + phase) * 0.08 + Math.sin(t * 11.7 + phase * 2) * 0.04) * amp;
-    if (lightRef.current) lightRef.current.intensity = 2.6 * flicker;
-    if (flameRef.current) flameRef.current.scale.set(0.028, 0.06 * flicker, 0.028);
-    if (glowRef.current) glowRef.current.scale.setScalar(0.34 * flicker);
+    // Lúc thắp hương, nến sáng lên nhẹ trong khoảng 1 giây.
+    const boost = 1 + bell((offer.current.t - 1.1) / 1.0) * 0.5;
+    if (lightRef.current) lightRef.current.intensity = 2.6 * flicker * boost;
+    if (flameRef.current) flameRef.current.scale.set(1, flicker * (0.9 + boost * 0.1), 1);
+    if (glowRef.current) glowRef.current.scale.setScalar(0.34 * flicker * boost);
   });
 
   return (
     <group position={[x, TOP_Y.mid, MID.z]}>
-      <Cyl p={[0, 0.03, 0]} s={[0.075, 0.06, 0.075]} m={mat.gold} cast />
-      <Cyl p={[0, 0.2, 0]} s={[0.04, 0.28, 0.04]} m={mat.candle} cast />
-      <Cyl p={[0, 0.34, 0]} s={[0.044, 0.025, 0.044]} m={mat.gold} />
-      <mesh ref={flameRef} geometry={res.geo.sph} material={mat.flame} position={[0, 0.4, 0]} scale={[0.028, 0.06, 0.028]} />
-      <sprite ref={glowRef} material={mat.flameGlow} position={[0, 0.42, 0.02]} scale={[0.34, 0.34, 1]} />
-      {withLight && <pointLight ref={lightRef} position={[0, 0.5, 0.12]} color="#ffb45c" intensity={2.6} distance={5} decay={2} />}
+      {/* Chân nến tiện tròn */}
+      <mesh geometry={geo.candleHolder} material={mat.bronze} castShadow={high} />
+      <mesh geometry={geo.candleBody} material={mat.candle} position={[0, 0.33, 0]} castShadow={high} />
+      {/* Sáp chảy */}
+      <Sph p={[0.033, 0.425, 0.008]} s={[0.009, 0.032, 0.009]} m={mat.candle} />
+      <Sph p={[-0.02, 0.405, 0.028]} s={[0.008, 0.045, 0.008]} m={mat.candle} />
+      <Sph p={[-0.004, 0.44, -0.034]} s={[0.009, 0.022, 0.009]} m={mat.candle} />
+      <Cyl p={[0, 0.471, 0]} s={[0.036, 0.008, 0.036]} m={mat.candle} />
+      <Cyl p={[0, 0.488, 0]} s={[0.003, 0.03, 0.003]} m={mat.craneDark} />
+      {/* Ngọn lửa hình giọt nước */}
+      <mesh ref={flameRef} geometry={geo.flame} material={mat.flame} position={[0, 0.492, 0]} />
+      <sprite ref={glowRef} material={mat.flameGlow} position={[0, 0.54, 0.02]} scale={[0.34, 0.34, 1]} />
+      {withLight && <pointLight ref={lightRef} position={[0, 0.62, 0.12]} color="#ffb45c" intensity={2.6} distance={5} decay={2} />}
     </group>
   );
 };
 
-const Lantern: React.FC<{ x: number; phase: number }> = ({ x, phase }) => {
+const Lantern: React.FC<{ x: number; z: number; phase: number }> = ({ x, z, phase }) => {
   const { res, reduced } = useHall();
   const { mat } = res;
   const swayRef = useRef<Group>(null);
@@ -1147,14 +1591,14 @@ const Lantern: React.FC<{ x: number; phase: number }> = ({ x, phase }) => {
     swayRef.current.rotation.x = Math.sin(t * 0.5 + phase * 1.7) * 0.02;
   });
   return (
-    <group position={[x, 4.0, -2.3]}>
+    <group position={[x, BEAM_Y - 0.1, z]}>
       <group ref={swayRef}>
-        <Cyl p={[0, -0.45, 0]} s={[0.006, 0.9, 0.006]} m={mat.craneDark} />
-        <Cyl p={[0, -0.95, 0]} s={[0.11, 0.07, 0.11]} m={mat.gold} />
-        <Sph p={[0, -1.25, 0]} s={[0.27, 0.31, 0.27]} m={mat.lantern} />
-        <Cyl p={[0, -1.56, 0]} s={[0.1, 0.06, 0.1]} m={mat.gold} />
-        <Cyl p={[0, -1.72, 0]} s={[0.012, 0.28, 0.012]} m={mat.lacquer} />
-        <Sph p={[0, -1.88, 0]} s={[0.035, 0.05, 0.035]} m={mat.lacquer} />
+        <Cyl p={[0, -0.35, 0]} s={[0.006, 0.7, 0.006]} m={mat.craneDark} />
+        <Cyl p={[0, -0.75, 0]} s={[0.11, 0.07, 0.11]} m={mat.gold} />
+        <Sph p={[0, -1.05, 0]} s={[0.27, 0.31, 0.27]} m={mat.lantern} />
+        <Cyl p={[0, -1.36, 0]} s={[0.1, 0.06, 0.1]} m={mat.gold} />
+        <Cyl p={[0, -1.52, 0]} s={[0.012, 0.28, 0.012]} m={mat.lacquer} />
+        <Sph p={[0, -1.68, 0]} s={[0.035, 0.05, 0.035]} m={mat.lacquer} />
       </group>
     </group>
   );
@@ -1178,23 +1622,47 @@ const Crane: React.FC<{ x: number; flip: number }> = ({ x, flip }) => {
   );
 };
 
+// Mâm ngũ quả đặt lệch sang phải để không bị lư hương che khi nhìn từ cửa.
+const FRUIT_X = 0.62;
+const BANANA_ANGLES = [-0.62, -0.37, -0.12, 0.12, 0.37, 0.62];
+
+/** Mâm ngũ quả trên đĩa có chân: nải chuối xanh, bưởi vàng, cam, táo đỏ, xoài. */
 const FruitTray: React.FC = () => {
-  const { res } = useHall();
-  const { mat } = res;
+  const { res, high } = useHall();
+  const { mat, geo } = res;
   return (
-    <group position={[0, TOP_Y.mid, MID.z]}>
-      <Cyl p={[0, 0.03, 0]} s={[0.17, 0.06, 0.17]} m={mat.bronze} cast />
-      <Cyl p={[0, 0.1, 0]} s={[0.05, 0.1, 0.05]} m={mat.bronze} />
-      <Cyl p={[0, 0.16, 0]} s={[0.27, 0.03, 0.27]} m={mat.bronze} cast />
-      {FRUIT_LAYOUT.map((fruit, i) => (
-        <Sph key={i} p={[fruit.p[0], fruit.p[1] + 0.22, fruit.p[2]]} s={[0.068, 0.068, 0.068]} m={mat.fruit[fruit.mat]} cast />
-      ))}
+    <group position={[FRUIT_X, TOP_Y.mid, MID.z]}>
+      <mesh geometry={geo.dish} material={mat.bronze} castShadow={high} receiveShadow={high} />
+      {/* Nải chuối xanh: các quả cong xòe hình quạt ôm phía trước */}
+      <group position={[0, 0.165, 0.01]} scale={1.3}>
+        <Cyl p={[0, 0.06, -0.005]} s={[0.014, 0.04, 0.014]} m={mat.stem} />
+        {BANANA_ANGLES.map((angle) => (
+          <group key={angle} rotation={[0, angle, 0]}>
+            <mesh geometry={geo.banana} material={mat.banana} castShadow={high} />
+            <Sph p={[0, 0.032, 0.172]} s={[0.012, 0.012, 0.016]} m={mat.stem} />
+          </group>
+        ))}
+      </group>
+      {/* Bưởi vàng hơi dẹt ở giữa, có cuống và lá */}
+      <Sph p={[0, 0.262, -0.07]} s={[0.092, 0.084, 0.092]} m={mat.pomelo} cast />
+      <Cyl p={[0, 0.352, -0.07]} s={[0.006, 0.02, 0.006]} m={mat.stem} />
+      <Sph p={[0.03, 0.352, -0.06]} s={[0.034, 0.006, 0.018]} r={[0, 0.5, 0.25]} m={mat.foliage} />
+      {/* Cam */}
+      <Sph p={[-0.155, 0.212, -0.03]} s={[0.054, 0.051, 0.054]} m={mat.orange} cast />
+      <Cyl p={[-0.155, 0.264, -0.03]} s={[0.006, 0.008, 0.006]} m={mat.foliage} />
+      <Sph p={[-0.085, 0.208, -0.175]} s={[0.052, 0.049, 0.052]} m={mat.orange} />
+      {/* Táo đỏ */}
+      <Sph p={[0.155, 0.21, -0.03]} s={[0.052, 0.048, 0.052]} m={mat.apple} cast />
+      <Cyl p={[0.155, 0.262, -0.03]} s={[0.004, 0.022, 0.004]} r={[0, 0, 0.3]} m={mat.stem} />
+      <Sph p={[0.09, 0.206, -0.175]} s={[0.05, 0.046, 0.05]} m={mat.apple} />
+      {/* Xoài chín nằm nghiêng phía trên */}
+      <Sph p={[0.012, 0.372, -0.065]} s={[0.04, 0.036, 0.074]} r={[0.25, 0.9, 0]} m={mat.mango} cast />
     </group>
   );
 };
 
 const FlowerVase: React.FC<{ x: number }> = ({ x }) => {
-  const { res } = useHall();
+  const { res, high } = useHall();
   const { mat, geo } = res;
   const flowersRef = useRef<InstancedMesh>(null);
 
@@ -1217,22 +1685,28 @@ const FlowerVase: React.FC<{ x: number }> = ({ x }) => {
 
   return (
     <group position={[x, TOP_Y.mid, MID.z]}>
-      <mesh geometry={geo.vase} material={mat.porcelain} castShadow />
-      <Sph p={[0, 0.44, 0]} s={[0.17, 0.1, 0.17]} m={mat.foliage} />
-      <group position={[0, 0.44, 0]}>
+      <mesh geometry={geo.vase} material={mat.porcelain} castShadow={high} />
+      <Sph p={[0, 0.5, 0]} s={[0.17, 0.1, 0.17]} m={mat.foliage} />
+      <group position={[0, 0.5, 0]}>
         <instancedMesh ref={flowersRef} args={[geo.sph, mat.flowerWhite, FLOWER_LAYOUT.length]} />
       </group>
     </group>
   );
 };
 
-const WaterCups: React.FC = () => {
+const CUP_OFFSETS = [-0.14, 0, 0.14];
+
+/** Ba chén nước (bên phải) và ba đài rượu (bên trái) trên hương án. */
+const CupsAndWine: React.FC = () => {
   const { res } = useHall();
   const { mat, geo } = res;
   return (
-    <group position={[0.95, TOP_Y.front, FRONT.z]}>
-      {[-0.14, 0, 0.14].map((cx) => (
-        <mesh key={cx} geometry={geo.cup} material={mat.porcelain} position={[cx, 0, 0]} />
+    <group position={[0, TOP_Y.front + 0.008, FRONT.z]}>
+      {CUP_OFFSETS.map((cx) => (
+        <mesh key={`w${cx}`} geometry={geo.cup} material={mat.porcelain} position={[1.15 + cx, 0, 0]} />
+      ))}
+      {CUP_OFFSETS.map((cx) => (
+        <mesh key={`r${cx}`} geometry={geo.wineCup} material={mat.porcelain} position={[-1.15 + cx, 0, 0]} />
       ))}
     </group>
   );
@@ -1244,27 +1718,27 @@ const Offerings = React.memo(function Offerings() {
   return (
     <group>
       <FruitTray />
-      <FlowerVase x={-1.5} />
-      <FlowerVase x={1.5} />
-      <Candle x={-0.85} phase={0} withLight />
-      <Candle x={0.85} phase={1.9} withLight={high} />
-      <WaterCups />
-      {high && <Crane x={-3.25} flip={1} />}
-      {high && <Crane x={3.25} flip={-1} />}
-      <Lantern x={-2.5} phase={0} />
-      <Lantern x={2.5} phase={2.1} />
+      <FlowerVase x={-2.0} />
+      <FlowerVase x={2.0} />
+      <Candle x={-1.1} phase={0} withLight />
+      <Candle x={1.1} phase={1.9} withLight={high} />
+      <CupsAndWine />
+      {high && <Crane x={-4.45} flip={1} />}
+      {high && <Crane x={4.45} flip={-1} />}
     </group>
   );
 });
 
 /* ------------------------------------------------------------------ */
-/* Lư hương, nén hương, khói                                           */
+/* Lư hương (đỉnh đồng), nén nhang, khói, animation thắp hương         */
 /* ------------------------------------------------------------------ */
 
-const BURNER_LIFT = 0.12;
+const BURNER_LIFT = 0.1;
+const ASH_Y = BURNER_LIFT + 0.385;
+const STICK_TOP = 0.445;
 
 const Smoke: React.FC<{ strength: number }> = ({ strength }) => {
-  const { res, high, reduced } = useHall();
+  const { res, high, reduced, offer } = useHall();
   const count = high ? 14 : 7;
   const spritesRef = useRef<Array<Sprite | null>>([]);
   const level = useRef(0);
@@ -1276,7 +1750,11 @@ const Smoke: React.FC<{ strength: number }> = ({ strength }) => {
 
   useFrame(({ clock }, delta) => {
     const dt = Math.min(delta, 0.05);
-    level.current = MathUtils.damp(level.current, strength, 2.2, dt);
+    // Sau khi cắm nhang mới, khói đậm hơn vài giây rồi về mức thường.
+    const ot = offer.current.t;
+    const boost = ot < 1.3 ? 0 : ot < OFFER_DURATION ? (ot - 1.3) / (OFFER_DURATION - 1.3) : Math.max(0, 1 - (ot - OFFER_DURATION) / (OFFER_TAIL - OFFER_DURATION));
+    const target = strength > 0 ? Math.min(1, strength + boost * 0.6) : 0;
+    level.current = MathUtils.damp(level.current, target, 2.2, dt);
     const t = clock.elapsedTime * (reduced ? 0.5 : 1);
     for (let i = 0; i < count; i += 1) {
       const sprite = spritesRef.current[i];
@@ -1307,41 +1785,86 @@ const Smoke: React.FC<{ strength: number }> = ({ strength }) => {
   );
 };
 
-const IncenseBurner: React.FC<{ count: number; smokeStrength: number }> = ({ count, smokeStrength }) => {
-  const { res } = useHall();
+interface IncenseBurnerProps {
+  /** Số nén đang cắm (0..9). */
+  count: number;
+  /** Nhóm 3 nén vừa cắm trong lần thắp gần nhất (-1 nếu chưa thắp lần nào). */
+  newGroup: number;
+  smokeStrength: number;
+}
+
+const IncenseBurner: React.FC<IncenseBurnerProps> = ({ count, newGroup, smokeStrength }) => {
+  const { res, high, reduced, offer } = useHall();
   const { mat, geo } = res;
+  const newRefs = useRef<Array<Group | null>>([null, null, null]);
+  const flashRef = useRef<Sprite>(null);
+
+  // Chuỗi thắp hương theo tiến độ offer.t (giây):
+  // 0.5–1.1 nhang hạ xuống cắm vào lư; 1.1–1.9 đầu nhang sáng dần; ~1.15–1.55 chớp lửa nhỏ (chỉ ở high).
+  useFrame(() => {
+    if (newGroup < 0) return;
+    const t = offer.current.t;
+    const drop = reduced ? 1 : MathUtils.clamp((t - 0.5) / 0.6, 0, 1);
+    const offsetY = Math.pow(1 - drop, 3) * 0.8;
+    for (let k = 0; k < STICKS_PER_OFFERING; k += 1) {
+      const stick = newRefs.current[k];
+      if (!stick) continue;
+      stick.position.y = ASH_Y + offsetY;
+      stick.visible = reduced || t >= 0.5;
+    }
+    const heat = MathUtils.clamp((t - (reduced ? 0 : 1.1)) / 0.8, 0, 1);
+    mat.emberNew.color.setRGB(MathUtils.lerp(0.12, 1, heat), MathUtils.lerp(0.04, 0.33, heat), MathUtils.lerp(0.02, 0.1, heat));
+    mat.emberGlowNew.opacity = heat * 0.9;
+    const flash = high && !reduced ? bell((t - 1.15) / 0.4) : 0;
+    mat.offerFlash.opacity = flash * 0.95;
+    if (flashRef.current) {
+      flashRef.current.visible = flash > 0.01;
+      flashRef.current.scale.setScalar(0.12 + flash * 0.34);
+    }
+  });
+
   return (
-    <group position={[0, TOP_Y.front, FRONT.z]}>
-      {/* Chân lư (ba chân) */}
-      {[0, 1, 2].map((i) => {
-        const a = (i / 3) * Math.PI * 2 + 0.5;
+    <group position={[0, TOP_Y.front + 0.008, FRONT.z]}>
+      {/* Ba chân cong */}
+      {[0, 1, 2].map((i) => (
+        <group key={i} rotation={[0, (i / 3) * Math.PI * 2 + 0.5, 0]}>
+          <mesh geometry={geo.burnerLeg} material={mat.bronze} position={[0.13, 0, 0]} castShadow={high} />
+          <Sph p={[0.178, 0.014, 0]} s={[0.042, 0.02, 0.042]} m={mat.bronze} />
+        </group>
+      ))}
+      {/* Thân đỉnh: đáy thu, bụng phình, cổ thắt, miệng loe; có dải hoa văn */}
+      <mesh geometry={geo.burner} material={mat.bronzeOrn} position={[0, BURNER_LIFT, 0]} castShadow={high} receiveShadow={high} />
+      {/* Hai quai uốn */}
+      <mesh geometry={geo.burnerHandle} material={mat.bronze} position={[0.31, BURNER_LIFT + 0.33, 0]} castShadow={high} />
+      <mesh geometry={geo.burnerHandle} material={mat.bronze} position={[-0.31, BURNER_LIFT + 0.33, 0]} rotation={[0, Math.PI, 0]} castShadow={high} />
+      {/* Mặt tro bên trong */}
+      <Cyl p={[0, ASH_Y - 0.01, 0]} s={[0.268, 0.02, 0.268]} m={mat.ash} />
+      {/* Nhang: chân đỏ, thân vàng nâu, đầu cháy đỏ phát sáng, đoạn tro cong; cắm tỏa ra các hướng */}
+      {INCENSE_SLOTS.slice(0, count).map((slot, i) => {
+        const isNew = newGroup >= 0 && Math.floor(i / STICKS_PER_OFFERING) === newGroup;
         return (
-          <group key={i} position={[Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2]}>
-            <Cyl p={[0, 0.06, 0]} s={[0.035, 0.12, 0.035]} m={mat.bronze} cast />
-            <Sph p={[0, 0.02, 0]} s={[0.05, 0.03, 0.05]} m={mat.bronze} />
+          <group
+            key={i}
+            position={[slot.x, ASH_Y, slot.z]}
+            rotation={[slot.rx, 0, slot.rz]}
+            ref={
+              isNew
+                ? (el) => {
+                    newRefs.current[i % STICKS_PER_OFFERING] = el;
+                  }
+                : undefined
+            }
+          >
+            <mesh geometry={geo.stickFoot} material={mat.stickFoot} position={[0, 0.085, 0]} />
+            <mesh geometry={geo.stickBody} material={mat.stickBody} position={[0, 0.305, 0]} />
+            <Sph p={[0, STICK_TOP, 0]} s={[0.011, 0.011, 0.011]} m={isNew ? mat.emberNew : mat.ember} />
+            <mesh geometry={geo.stickAsh} material={mat.ashGray} position={[0, STICK_TOP + 0.006, 0]} rotation={[0, slot.spin, 0]} />
+            <sprite material={isNew ? mat.emberGlowNew : mat.emberGlow} position={[0, STICK_TOP, 0]} scale={[0.085, 0.085, 1]} />
           </group>
         );
       })}
-      {/* Thân lư */}
-      <mesh geometry={geo.burner} material={mat.bronze} position={[0, BURNER_LIFT, 0]} castShadow receiveShadow />
-      {/* Quai lư */}
-      <mesh position={[0.375, BURNER_LIFT + 0.26, 0]} rotation={[0, 0, -Math.PI / 2]} material={mat.bronze} castShadow>
-        <torusGeometry args={[0.09, 0.02, 8, 18, Math.PI]} />
-      </mesh>
-      <mesh position={[-0.375, BURNER_LIFT + 0.26, 0]} rotation={[0, 0, Math.PI / 2]} material={mat.bronze} castShadow>
-        <torusGeometry args={[0.09, 0.02, 8, 18, Math.PI]} />
-      </mesh>
-      {/* Cát/tro hương */}
-      <Cyl p={[0, BURNER_LIFT + 0.3, 0]} s={[0.32, 0.03, 0.32]} m={mat.ash} />
-      {/* Nén hương: que nâu + đầu cháy đỏ phát sáng */}
-      {INCENSE_LAYOUT.slice(0, count).map((stick, i) => (
-        <group key={i} position={[stick.x, BURNER_LIFT + 0.31, stick.z]} rotation={[stick.tiltX, 0, stick.tiltZ]}>
-          <Cyl p={[0, 0.225, 0]} s={[0.011, 0.45, 0.011]} m={mat.stick} />
-          <Sph p={[0, 0.455, 0]} s={[0.022, 0.022, 0.022]} m={mat.ember} />
-          <sprite material={mat.emberGlow} position={[0, 0.455, 0]} scale={[0.1, 0.1, 1]} />
-        </group>
-      ))}
-      <group position={[0, BURNER_LIFT + 0.31 + 0.45, 0]}>
+      <sprite ref={flashRef} material={mat.offerFlash} position={[0, ASH_Y + STICK_TOP + 0.02, 0.02]} visible={false} />
+      <group position={[0, ASH_Y + STICK_TOP + 0.04, 0]}>
         <Smoke strength={count > 0 ? smokeStrength : 0} />
       </group>
     </group>
@@ -1359,9 +1882,9 @@ const DustMotes: React.FC<{ count: number }> = ({ count }) => {
     const positions = new Float32Array(count * 3);
     const seedValues = new Float32Array(count * 2);
     for (let i = 0; i < count; i += 1) {
-      positions[i * 3] = (rnd() - 0.5) * 5.5;
+      positions[i * 3] = (rnd() - 0.5) * 9;
       positions[i * 3 + 1] = 0.8 + rnd() * 2.8;
-      positions[i * 3 + 2] = -3 + rnd() * 3.6;
+      positions[i * 3 + 2] = ROOM.zBack + 0.8 + rnd() * 6;
       seedValues[i * 2] = rnd() * Math.PI * 2;
       seedValues[i * 2 + 1] = 0.02 + rnd() * 0.04;
     }
@@ -1391,62 +1914,286 @@ const DustMotes: React.FC<{ count: number }> = ({ count }) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* Camera: dolly vào + lia nhẹ tới bài vị đang chọn                    */
+/* Góc nhìn người đứng trong phòng: nhìn quanh, tiến/lùi, tự lia       */
 /* ------------------------------------------------------------------ */
 
-const CameraRig: React.FC<{ panX: number }> = ({ panX }) => {
-  const { reduced } = useHall();
-  const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null);
-  const camera = useThree((state) => state.camera);
-  const introTime = useRef(reduced ? INTRO_DURATION : 0);
+interface RigApi {
+  move: (dz: number) => void;
+  reset: () => void;
+}
 
-  useLayoutEffect(() => {
-    if (reduced) return;
-    camera.position.set(INTRO_START[0], INTRO_START[1], INTRO_START[2]);
-    camera.lookAt(ORBIT_TARGET[0], ORBIT_TARGET[1], ORBIT_TARGET[2]);
-    if (controlsRef.current) controlsRef.current.enabled = false;
-    // Chỉ chạy một lần khi cảnh được dựng.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+interface RigFocus {
+  x: number;
+  y: number;
+  z: number;
+  token: number;
+}
 
-  useFrame((_, delta) => {
-    const controls = controlsRef.current;
-    if (!controls) return;
-    const dt = Math.min(delta, 0.05);
-    if (introTime.current < INTRO_DURATION) {
-      introTime.current = Math.min(INTRO_DURATION, introTime.current + dt);
-      const k = easeInOutCubic(introTime.current / INTRO_DURATION);
-      camera.position.set(
-        MathUtils.lerp(INTRO_START[0], CAMERA_POSITION[0], k),
-        MathUtils.lerp(INTRO_START[1], CAMERA_POSITION[1], k),
-        MathUtils.lerp(INTRO_START[2], CAMERA_POSITION[2], k)
-      );
-      camera.lookAt(ORBIT_TARGET[0], ORBIT_TARGET[1], ORBIT_TARGET[2]);
-      if (introTime.current >= INTRO_DURATION) {
-        controls.enabled = true;
-        controls.update();
-      }
-      return;
-    }
-    if (!reduced) controls.target.x = MathUtils.damp(controls.target.x, panX, 2.5, dt);
+interface FirstPersonRigProps {
+  apiRef: React.MutableRefObject<RigApi | null>;
+  focus: RigFocus | null;
+  hovered: number | null;
+  offeringToken: number;
+}
+
+const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered, offeringToken }) => {
+  const { reduced, drag } = useHall();
+  const offerCam = useRef(false);
+  const prevOffering = useRef(offeringToken);
+  const camera = useThree((state) => state.camera) as unknown as PerspectiveCamera;
+  const gl = useThree((state) => state.gl);
+  const height = useThree((state) => state.size.height);
+  const heightRef = useRef(height);
+  heightRef.current = height;
+  const hoveredRef = useRef(hovered);
+  const prevToken = useRef<number | null>(focus ? focus.token : null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef({ startX: 0, startY: 0, pinch: 0 });
+  // Pose hiện tại (yaw/pitch/x/z) và mục tiêu (…T). Yaw dương = quay sang phải, pitch dương = ngẩng lên.
+  const pose = useRef({
+    yaw: 0,
+    pitch: 0,
+    yawT: 0,
+    pitchT: 0,
+    x: 0,
+    xT: 0,
+    z: reduced ? START_Z : DOOR_Z,
+    zT: START_Z,
+    intro: reduced ? INTRO_DURATION : 0,
   });
 
-  return (
-    <OrbitControls
-      ref={controlsRef}
-      enablePan={false}
-      minDistance={2.5}
-      maxDistance={9}
-      minPolarAngle={Math.PI / 4}
-      maxPolarAngle={Math.PI / 2.05}
-      minAzimuthAngle={-Math.PI / 3}
-      maxAzimuthAngle={Math.PI / 3}
-      target={ORBIT_TARGET}
-    />
-  );
+  useLayoutEffect(() => {
+    camera.rotation.order = 'YXZ';
+    camera.position.set(pose.current.x, EYE_Y, pose.current.z);
+    camera.rotation.set(0, 0, 0);
+  }, [camera]);
+
+  // Con trỏ: grab khi rê, grabbing khi kéo, pointer khi trên bài vị.
+  useEffect(() => {
+    hoveredRef.current = hovered;
+    gl.domElement.style.cursor = drag.current.dragging ? 'grabbing' : hovered !== null ? 'pointer' : 'grab';
+  }, [hovered, gl, drag]);
+
+  useEffect(() => {
+    const el = gl.domElement;
+    const s = pose.current;
+    const clampPose = () => {
+      s.yawT = MathUtils.clamp(s.yawT, -YAW_LIMIT, YAW_LIMIT);
+      s.pitchT = MathUtils.clamp(s.pitchT, PITCH_MIN, PITCH_MAX);
+      s.xT = MathUtils.clamp(s.xT, -MAX_X, MAX_X);
+      s.zT = MathUtils.clamp(s.zT, STOP_Z, START_Z);
+    };
+    const cursor = () => {
+      el.style.cursor = drag.current.dragging ? 'grabbing' : hoveredRef.current !== null ? 'pointer' : 'grab';
+    };
+    const reset = () => {
+      s.xT = 0;
+      s.zT = START_Z;
+      s.yawT = 0;
+      s.pitchT = 0;
+    };
+    // Kéo cảnh theo ngón tay (kiểu street view): kéo sang trái -> nhìn sang phải; kéo xuống -> nhìn lên.
+    const radPerPx = () => (camera.fov * DEG) / Math.max(1, heightRef.current);
+
+    const onDown = (e: PointerEvent) => {
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* không bắt buộc */
+      }
+      if (pointers.current.size === 1) {
+        gesture.current.startX = e.clientX;
+        gesture.current.startY = e.clientY;
+        drag.current.wasDrag = false;
+        drag.current.dragging = false;
+      } else if (pointers.current.size === 2) {
+        const [a, b] = Array.from(pointers.current.values());
+        gesture.current.pinch = Math.hypot(a.x - b.x, a.y - b.y);
+        drag.current.wasDrag = true;
+        drag.current.dragging = true;
+      }
+      try {
+        el.focus({ preventScroll: true });
+      } catch {
+        /* bỏ qua */
+      }
+      cursor();
+    };
+    const onMove = (e: PointerEvent) => {
+      const p = pointers.current.get(e.pointerId);
+      if (!p) return;
+      if (pointers.current.size >= 2) {
+        p.x = e.clientX;
+        p.y = e.clientY;
+        const [a, b] = Array.from(pointers.current.values());
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        s.zT -= (dist - gesture.current.pinch) * 0.012; // mở hai ngón = tiến lại gần
+        gesture.current.pinch = dist;
+        clampPose();
+        return;
+      }
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (!drag.current.dragging) {
+        const moved = Math.hypot(e.clientX - gesture.current.startX, e.clientY - gesture.current.startY);
+        if (moved <= DRAG_THRESHOLD) return;
+        drag.current.dragging = true;
+        drag.current.wasDrag = true;
+        if (offerCam.current) {
+          // Người dùng kéo tay: hủy phần lia camera của animation thắp hương (nhang vẫn cắm xong).
+          offerCam.current = false;
+          s.zT = s.z;
+          s.xT = s.x;
+        }
+        cursor();
+      }
+      const k = radPerPx();
+      s.yawT -= dx * k;
+      s.pitchT += dy * k;
+      clampPose();
+    };
+    const onUp = (e: PointerEvent) => {
+      pointers.current.delete(e.pointerId);
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* bỏ qua */
+      }
+      if (pointers.current.size === 0) drag.current.dragging = false;
+      cursor();
+    };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const unit = e.deltaMode === 1 ? 0.06 : e.deltaMode === 2 ? 0.5 : 0.0025;
+      s.zT += e.deltaY * unit;
+      clampPose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      let handled = true;
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'a':
+        case 'A':
+          s.yawT -= 0.1;
+          break;
+        case 'ArrowRight':
+        case 'd':
+        case 'D':
+          s.yawT += 0.1;
+          break;
+        case 'ArrowUp':
+        case 'w':
+        case 'W':
+          s.zT -= 0.4;
+          break;
+        case 'ArrowDown':
+        case 's':
+        case 'S':
+          s.zT += 0.4;
+          break;
+        case 'Home':
+          reset();
+          break;
+        default:
+          handled = false;
+      }
+      if (handled) {
+        e.preventDefault();
+        clampPose();
+      }
+    };
+
+    el.tabIndex = 0;
+    el.setAttribute('aria-label', 'Phòng thờ 3D. Kéo để nhìn quanh, mũi tên trái phải để quay, W S hoặc mũi tên lên xuống để tiến lùi, Home để về cửa.');
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('keydown', onKey);
+    apiRef.current = {
+      move: (dz) => {
+        s.zT += dz;
+        clampPose();
+      },
+      reset,
+    };
+    cursor();
+    const pointerMap = pointers.current;
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('keydown', onKey);
+      apiRef.current = null;
+      pointerMap.clear();
+      el.style.cursor = '';
+    };
+  }, [gl, camera, drag, apiRef]);
+
+  // Chọn bài vị khác: quay đầu nhẹ về phía đó (không đổi vị trí quá ~1 đơn vị). Kéo tay sẽ ghi đè.
+  useEffect(() => {
+    if (!focus) {
+      prevToken.current = null;
+      return;
+    }
+    if (prevToken.current === null) {
+      prevToken.current = focus.token;
+      return;
+    }
+    if (prevToken.current === focus.token) return;
+    prevToken.current = focus.token;
+    const s = pose.current;
+    s.xT = MathUtils.clamp(focus.x * 0.12, -MAX_X, MAX_X);
+    const dx = focus.x - s.xT;
+    const dz = focus.z - s.zT;
+    s.yawT = MathUtils.clamp(Math.atan2(dx, -dz) * 0.85, -YAW_LIMIT, YAW_LIMIT);
+    s.pitchT = MathUtils.clamp(Math.atan2(focus.y - EYE_Y, Math.hypot(dx, dz)) * 0.6, PITCH_MIN, PITCH_MAX);
+  }, [focus]);
+
+  // Thắp hương: quay nhẹ về lư hương và tiến gần thêm một chút (vẫn trong giới hạn camera).
+  useEffect(() => {
+    if (prevOffering.current === offeringToken) return;
+    prevOffering.current = offeringToken;
+    if (reduced) return;
+    const s = pose.current;
+    s.xT = 0;
+    s.zT = MathUtils.clamp(s.zT - 0.9, STOP_Z, START_Z);
+    const dz = FRONT.z + ALTAR_Z - s.zT;
+    s.yawT = 0;
+    s.pitchT = MathUtils.clamp(Math.atan2(TOP_Y.front + 0.55 - EYE_Y, Math.abs(dz)), PITCH_MIN, PITCH_MAX);
+    offerCam.current = true;
+  }, [offeringToken, reduced]);
+
+  useFrame((_, delta) => {
+    const s = pose.current;
+    const dt = Math.min(delta, 0.05);
+    if (s.intro < INTRO_DURATION) {
+      // Bước từ cửa vào, easing; bỏ qua tiến/lùi trong lúc này.
+      s.intro = Math.min(INTRO_DURATION, s.intro + dt);
+      s.zT = START_Z;
+      s.z = MathUtils.lerp(DOOR_Z, START_Z, easeInOutCubic(s.intro / INTRO_DURATION));
+      s.x = MathUtils.damp(s.x, s.xT, 6, dt);
+    } else {
+      s.x = MathUtils.damp(s.x, s.xT, 6, dt);
+      s.z = MathUtils.damp(s.z, s.zT, 6, dt);
+    }
+    const turn = reduced ? 40 : 9;
+    s.yaw = MathUtils.damp(s.yaw, s.yawT, turn, dt);
+    s.pitch = MathUtils.damp(s.pitch, s.pitchT, turn, dt);
+    camera.position.set(s.x, EYE_Y, s.z);
+    camera.rotation.set(s.pitch, -s.yaw, 0);
+  });
+
+  return null;
 };
 
-// Màn hình dọc (điện thoại): tăng fov dọc để vẫn thấy đủ bề ngang bàn thờ. Màn hình rộng giữ fov 50.
+// Màn hình dọc (điện thoại): tăng fov dọc để vẫn thấy đủ bề ngang bàn thờ. Màn hình rộng giữ fov gốc.
 const ResponsiveCamera: React.FC = () => {
   const camera = useThree((state) => state.camera) as unknown as { fov: number; updateProjectionMatrix: () => void };
   const width = useThree((state) => state.size.width);
@@ -1478,6 +2225,8 @@ interface HallSceneProps {
   reduced: boolean;
   hovered: number | null;
   onHover: (index: number | null) => void;
+  rigApi: React.MutableRefObject<RigApi | null>;
+  offeringToken: number;
 }
 
 const HallScene: React.FC<HallSceneProps> = ({
@@ -1491,11 +2240,46 @@ const HallScene: React.FC<HallSceneProps> = ({
   reduced,
   hovered,
   onHover,
+  rigApi,
+  offeringToken,
 }) => {
   const high = quality === 'high';
   const res = useMemo(() => createResources(quality), [quality]);
   useEffect(() => () => res.dispose(), [res]);
-  const context = useMemo<HallContextValue>(() => ({ res, high, reduced }), [res, high, reduced]);
+  const drag = useRef<DragState>({ wasDrag: false, dragging: false });
+  const offer = useRef<OfferState>({ t: OFFER_TAIL });
+  const context = useMemo<HallContextValue>(() => ({ res, high, reduced, drag, offer }), [res, high, reduced]);
+
+  // Đồng hồ của animation thắp hương (một nguồn thời gian chung cho nhang, nến, khói).
+  useFrame((_, delta) => {
+    // Bám thời gian thật để khớp với thông báo "Đã thắp hương" của trang.
+    if (offer.current.t < OFFER_TAIL) offer.current.t += Math.min(delta, 0.5);
+  });
+
+  // Nhang trên lư: tối đa 9 nén. Mỗi lần thắp cắm 3 nén mới; đã đủ 9 thì thay nhóm cũ nhất.
+  const [sticks, setSticks] = useState(() => ({ count: Math.min(Math.max(0, Math.floor(incenseCount)), MAX_INCENSE), newGroup: -1 }));
+  const replaceGroup = useRef(0);
+  const prevOffering = useRef(offeringToken);
+  useEffect(() => {
+    if (prevOffering.current === offeringToken) return;
+    prevOffering.current = offeringToken;
+    offer.current.t = 0;
+    setSticks((current) => {
+      if (current.count + STICKS_PER_OFFERING <= MAX_INCENSE) {
+        const group = Math.ceil(current.count / STICKS_PER_OFFERING);
+        return { count: (group + 1) * STICKS_PER_OFFERING, newGroup: group };
+      }
+      const group = replaceGroup.current;
+      replaceGroup.current = (group + 1) % (MAX_INCENSE / STICKS_PER_OFFERING);
+      return { count: MAX_INCENSE, newGroup: group };
+    });
+  }, [offeringToken]);
+  // Số nén từ bên ngoài đổi (đổi dòng họ, nạp lại...) khi không có animation đang chạy: đồng bộ lại.
+  useEffect(() => {
+    if (offer.current.t < OFFER_DURATION) return;
+    const target = Math.min(Math.max(0, Math.floor(incenseCount)), MAX_INCENSE);
+    setSticks((current) => (current.count === target ? current : { count: target, newGroup: -1 }));
+  }, [incenseCount]);
 
   const scene = useThree((state) => state.scene);
   useEffect(() => {
@@ -1504,45 +2288,10 @@ const HallScene: React.FC<HallSceneProps> = ({
 
   const spotTarget = useMemo(() => new Object3D(), []);
 
-  const safeSelected = clampIndex(selectedIndex, ancestors.length);
-  const pageStart = Math.floor(safeSelected / PAGE_SIZE) * PAGE_SIZE;
-  const pageItems = useMemo(() => ancestors.slice(pageStart, pageStart + PAGE_SIZE), [ancestors, pageStart]);
-  const isEmpty = ancestors.length === 0;
-  const incenseSticks = isEmpty ? 0 : Math.min(Math.max(0, incenseCount) + (isBurning ? 1 : 0), MAX_INCENSE);
-  // Có nén hương thì khói mảnh; đang dâng hương thì khói đậm.
-  const smokeStrength = isEmpty ? 0 : isBurning ? 1 : incenseSticks > 0 ? 0.4 : 0;
-
-  // Thế hệ cao (đời nhỏ) được nâng lên bệ cao hơn, tối đa 2 bậc.
-  const raises = useMemo(() => {
-    const gens = pageItems.map((a) => (Number.isFinite(a.generation) ? a.generation : 1));
-    const minGen = gens.length ? Math.min(...gens) : 1;
-    const levels = gens.map((g) => Math.min(2, Math.max(0, g - minGen)));
-    const lowest = levels.length ? Math.max(...levels) : 0;
-    return levels.map((level) => (lowest - level) * 0.14);
-  }, [pageItems]);
-
-  // Con trỏ pointer khi rê chuột lên bài vị; trả về mặc định khi rời đi/unmount.
-  useEffect(() => {
-    document.body.style.cursor = hovered !== null ? 'pointer' : '';
-    return () => {
-      document.body.style.cursor = '';
-    };
-  }, [hovered]);
-
-  // Chuyển trang thì bỏ trạng thái rê chuột cũ.
-  useEffect(() => {
-    onHover(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageStart]);
-
-  const panX = isEmpty ? 0 : tabletX(safeSelected - pageStart, pageItems.length) * 0.25;
-
-  return (
-    <HallContext.Provider value={context}>
-      <color attach="background" args={[COLOR.bg]} />
-      <fog attach="fog" args={['#24120a', 9, 22]} />
-
-      {/* Môi trường tự dựng bằng Lightformer: cho vàng/đồng ánh phản chiếu, không tải HDR ngoài. */}
+  // Phần tử Environment được giữ cố định: nếu children đổi identity mỗi lần render thì drei dựng lại cubemap
+  // mỗi khi chọn/rê chuột lên bài vị. Ánh sáng tự dựng bằng Lightformer, không tải HDR ngoài.
+  const environment = useMemo(
+    () => (
       <Environment resolution={high ? 64 : 32} frames={1}>
         <Lightformer form="rect" intensity={2.4} color="#ffe2b0" scale={[10, 4, 1]} position={[0, 5, 0]} target={[0, 0, 0]} />
         <Lightformer form="rect" intensity={1.3} color="#ff9a5a" scale={[6, 3, 1]} position={[-5, 1.5, 1]} target={[0, 0, 0]} />
@@ -1550,56 +2299,107 @@ const HallScene: React.FC<HallSceneProps> = ({
         <Lightformer form="rect" intensity={1.1} color="#fff0d8" scale={[8, 3, 1]} position={[0, 2, 6]} target={[0, 0, 0]} />
         <Lightformer form="circle" intensity={2} color="#ffcf80" scale={3} position={[0, 1, -5]} target={[0, 0, 0]} />
       </Environment>
+    ),
+    [high]
+  );
 
-      {/* Ánh sáng ba lớp: nền nhẹ + đèn rọi ấm từ trên + ánh nến */}
-      <ambientLight intensity={0.3} color="#ffe9cc" />
-      <hemisphereLight args={['#ffe2b8', '#3b2415', 0.35]} />
-      <primitive object={spotTarget} position={[0, 1.3, -2.8]} />
+  const safeSelected = clampIndex(selectedIndex, ancestors.length);
+  const pageStart = Math.floor(safeSelected / PAGE_SIZE) * PAGE_SIZE;
+  const pageItems = useMemo(() => ancestors.slice(pageStart, pageStart + PAGE_SIZE), [ancestors, pageStart]);
+  const isEmpty = ancestors.length === 0;
+  // Có nén hương thì khói mảnh; lúc thắp hương khói đậm hơn vài giây (Smoke tự cộng theo đồng hồ offer).
+  const smokeStrength = sticks.count > 0 ? (isBurning ? 0.7 : 0.4) : 0;
+
+  // Thế hệ cao (đời nhỏ) được nâng lên bệ cao hơn, tối đa 2 bậc.
+  const raises = useMemo(() => {
+    const gens = pageItems.map((a) => (Number.isFinite(a.generation) ? a.generation : 1));
+    const minGen = gens.length ? Math.min(...gens) : 1;
+    const levels = gens.map((g) => Math.min(2, Math.max(0, g - minGen)));
+    const lowest = levels.length ? Math.max(...levels) : 0;
+    return levels.map((level) => (lowest - level) * 0.08);
+  }, [pageItems]);
+
+  // Chuyển trang thì bỏ trạng thái rê chuột cũ.
+  useEffect(() => {
+    onHover(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageStart]);
+
+  // Ảnh thờ đang chọn (tọa độ thế giới) để camera quay đầu về phía đó.
+  const focus = useMemo<RigFocus | null>(
+    () =>
+      isEmpty
+        ? null
+        : { x: tabletX(safeSelected - pageStart, pageItems.length), y: TOP_Y.back + 1.0, z: BACK.z + ALTAR_Z, token: safeSelected },
+    [isEmpty, safeSelected, pageStart, pageItems.length]
+  );
+
+  return (
+    <HallContext.Provider value={context}>
+      <color attach="background" args={[COLOR.bg]} />
+      <fog attach="fog" args={[COLOR.bg, 10, 28]} />
+
+      {environment}
+
+      {/* Ánh sáng: nền nhẹ + một đèn rọi ấm có bóng từ trên + ánh nến (+ hai đèn rửa tường ở chế độ high) */}
+      <ambientLight intensity={0.35} color="#ffe9cc" />
+      <hemisphereLight args={['#ffe2b8', '#3b2415', 0.4]} />
+      <primitive object={spotTarget} position={[0, 1.3, ALTAR_Z - 2.8]} />
       <spotLight
-        position={[0, 4.2, 2.4]}
+        position={[0, 4.3, ALTAR_Z + 2.4]}
         target={spotTarget}
-        angle={0.62}
+        angle={0.85}
         penumbra={0.7}
-        intensity={high ? 95 : 80}
-        distance={14}
+        intensity={high ? 110 : 90}
+        distance={16}
         decay={2}
         color="#ffd9a0"
         castShadow={high}
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
         shadow-camera-near={1}
-        shadow-camera-far={12}
+        shadow-camera-far={14}
         shadow-bias={-0.0004}
       />
+      {high && <pointLight position={[-HX + 1.6, 3.4, -2.2]} color="#ffcf90" intensity={7} distance={11} decay={2} />}
+      {high && <pointLight position={[HX - 1.6, 3.4, -2.2]} color="#ffcf90" intensity={7} distance={11} decay={2} />}
 
       <ResponsiveCamera />
       <Room />
-      <Inscriptions hallTitle={hallTitle} />
-      <Altar />
-      <Offerings />
+      <SideWallDetails />
+      <DoorWall />
+      <LanternRows />
 
-      {isEmpty && EMPTY_SLOT_IDS.map((slot) => <EmptyTabletSlot key={slot} x={tabletX(slot, EMPTY_SLOT_COUNT)} />)}
+      {/* Bộ bàn thờ dựng ở hệ tọa độ riêng, dời sát tường sau */}
+      <group position={[0, 0, ALTAR_Z]}>
+        <Inscriptions hallTitle={hallTitle} />
+        <Altar />
+        <Offerings />
 
-      {pageItems.map((ancestor, localIndex) => {
-        const globalIndex = pageStart + localIndex;
-        return (
-          <Tablet
-            key={ancestor.id}
-            ancestor={ancestor}
-            x={tabletX(localIndex, pageItems.length)}
-            raise={raises[localIndex] ?? 0}
-            globalIndex={globalIndex}
-            selected={globalIndex === safeSelected}
-            hovered={globalIndex === hovered}
-            onSelect={onSelect}
-            onHover={onHover}
-          />
-        );
-      })}
+        {isEmpty && EMPTY_SLOT_IDS.map((slot) => <EmptyTabletSlot key={slot} x={tabletX(slot, EMPTY_SLOT_COUNT)} />)}
 
-      <IncenseBurner count={incenseSticks} smokeStrength={smokeStrength} />
+        {pageItems.map((ancestor, localIndex) => {
+          const globalIndex = pageStart + localIndex;
+          return (
+            <PortraitFrame
+              key={ancestor.id}
+              ancestor={ancestor}
+              x={tabletX(localIndex, pageItems.length)}
+              raise={raises[localIndex] ?? 0}
+              globalIndex={globalIndex}
+              selected={globalIndex === safeSelected}
+              hovered={globalIndex === hovered}
+              onSelect={onSelect}
+              onHover={onHover}
+            />
+          );
+        })}
+
+        <IncenseBurner count={sticks.count} newGroup={sticks.newGroup} smokeStrength={smokeStrength} />
+      </group>
+
       <DustMotes count={high ? 60 : 20} />
-      <CameraRig panX={panX} />
+      <FirstPersonRig apiRef={rigApi} focus={focus} hovered={hovered} offeringToken={offeringToken} />
     </HallContext.Provider>
   );
 };
@@ -1647,12 +2447,14 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
   emptyHint = DEFAULT_EMPTY_HINT,
   hallTitle = DEFAULT_HALL_TITLE,
   quality: qualityProp,
+  offeringToken = 0,
 }) => {
   const webglOk = useMemo(() => isWebGLAvailable(), []);
   const quality = useMemo<HallQuality>(() => qualityProp ?? detectQuality(), [qualityProp]);
   const reduced = usePrefersReducedMotion();
   const pageVisible = usePageVisible();
   const [hovered, setHovered] = useState<number | null>(null);
+  const rigApi = useRef<RigApi | null>(null);
 
   const onErrorRef = useRef(onError);
   useEffect(() => {
@@ -1691,7 +2493,7 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
             shadows={high}
             dpr={high ? [1, 1.75] : [1, 1.25]}
             frameloop={pageVisible ? 'always' : 'never'}
-            camera={{ position: CAMERA_POSITION, fov: BASE_FOV }}
+            camera={{ position: [0, EYE_Y, DOOR_Z], fov: BASE_FOV }}
             gl={{ antialias: high, powerPreference: 'high-performance' }}
             onCreated={({ gl }) => {
               gl.domElement.addEventListener('webglcontextlost', (event) => {
@@ -1711,6 +2513,8 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
               reduced={reduced}
               hovered={hovered}
               onHover={setHovered}
+              rigApi={rigApi}
+              offeringToken={offeringToken}
             />
           </Canvas>
           {hoveredAncestor && (
@@ -1723,15 +2527,26 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
         </div>
         <div className="hall3d-footer">
           <p className="hall3d-hint">
-            {isEmpty ? emptyHint : 'Kéo chuột để xoay · Cuộn để phóng to · Bấm bài vị để chọn'}
+            {isEmpty ? emptyHint : 'Kéo để nhìn quanh · Cuộn hoặc W/S để tiến lùi · Bấm ảnh thờ để xem thông tin'}
           </p>
+          <div className="hall3d-controls" role="group" aria-label="Điều khiển góc nhìn">
+            <button type="button" onClick={() => rigApi.current?.move(-0.9)}>
+              Tiến vào
+            </button>
+            <button type="button" onClick={() => rigApi.current?.move(0.9)}>
+              Lùi ra
+            </button>
+            <button type="button" onClick={() => rigApi.current?.reset()}>
+              Về cửa
+            </button>
+          </div>
           {totalPages > 1 && (
-            <div className="hall3d-pager" role="group" aria-label="Chuyển trang bài vị">
-              <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Trang bài vị trước">
+            <div className="hall3d-pager" role="group" aria-label="Chuyển trang ảnh thờ">
+              <button type="button" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Trang ảnh thờ trước">
                 ‹
               </button>
               <span>Trang {currentPage}/{totalPages}</span>
-              <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Trang bài vị sau">
+              <button type="button" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= totalPages} aria-label="Trang ảnh thờ sau">
                 ›
               </button>
             </div>

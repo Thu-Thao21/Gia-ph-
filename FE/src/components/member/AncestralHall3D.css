@@ -19,7 +19,16 @@
 .hall3d-wrap canvas {
   display: block;
   outline: none;
+  cursor: grab;
   touch-action: none;
+}
+
+.hall3d-wrap:focus-within {
+  border-color: rgba(247, 215, 125, 0.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 226, 160, 0.12),
+    0 0 0 2px rgba(247, 215, 125, 0.28),
+    0 14px 38px rgba(18, 10, 7, 0.4);
 }
 
 /* Thẻ thông tin khi rê chuột lên bài vị khác với bài vị đang chọn */
@@ -90,6 +99,14 @@
   font-weight: 700;
 }
 
+.hall3d-controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.hall3d-controls button,
 .hall3d-pager button {
   display: inline-flex;
   min-width: 44px;
@@ -107,12 +124,20 @@
   transition: background-color 160ms ease, transform 160ms ease, border-color 160ms ease;
 }
 
+.hall3d-controls button {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.hall3d-controls button:not(:disabled):hover,
 .hall3d-pager button:not(:disabled):hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 239, 192, 0.6);
   transform: translateY(-1px);
 }
 
+.hall3d-controls button:focus-visible,
 .hall3d-pager button:focus-visible {
   outline: 2px solid #f7d77d;
   outline-offset: 2px;
@@ -138,5 +163,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hall3d-controls button,
   .hall3d-pager button { transition: none; }
 }

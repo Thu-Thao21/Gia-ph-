@@ -1595,3 +1595,10 @@
   font-weight: 700;
   text-align: center;
 }
+
+.ancestral-hall-page .hall3d-altar-stat {
+  margin: 14px 0 0;
+  color: rgba(255, 239, 192, 0.82);
+  font-size: 13px;
+  text-align: center;
+}
