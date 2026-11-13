@@ -1,4 +1,4 @@
-"""Module Test C09: Phòng thờ 3D (bàn thờ, tầng bài vị, thắp hương, Lời viếng, chuỗi ngày).
+﻿"""Module Test C09: Phòng thờ 3D (bàn thờ, tầng bài vị, thắp hương, Lời viếng, chuỗi ngày).
 
 PHẦN A - Unit KHÔNG cần DB (chạy mặc định bằng `pytest tests/test_c09_worship_hall.py`):
   vn_today / next_offer_at (đổi ngày 00:00 giờ Việt Nam), compute_next_streak, effective_streak,
@@ -571,6 +571,74 @@ def test_orm_matches_migration_key_types():
     assert [c.name for c in WorshipStreak.__table__.primary_key.columns] == ["space_id", "user_id", "offering_type"]
     assert WorshipTier.__table__.c.tier_no.type.__class__.__name__ == "SmallInteger"
     assert WorshipDailyOffering.__table__.c.offer_date.type.__class__.__name__ == "Date"
+
+
+# =============================================================================
+# A7b. MIGRATION 0015 - rang buoc worship_spaces.visibility cho phep 'CLAN_ONLY' (doc ma nguon, khong ket noi DB)
+# =============================================================================
+
+MIGRATION_0015 = (
+    Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0015_worship_vis_clan_only.py"
+)
+# Gia tri cu cua worship_spaces_visibility_check (lay tu DB that bang SELECT pg_get_constraintdef)
+OLD_VISIBILITY_VALUES = ("PUBLIC", "FAMILY", "ADMIN_ONLY", "PRIVATE", "INTER_FAMILY")
+
+
+def _migration_0015_parts() -> tuple[str, str, str]:
+    text = MIGRATION_0015.read_text(encoding="utf-8")
+    head, _, rest = text.partition("def upgrade()")
+    upgrade, _, downgrade = rest.partition("def downgrade()")
+    return head, upgrade, downgrade
+
+
+def test_migration_0015_chain_and_revision():
+    head, _, _ = _migration_0015_parts()
+    assert re.search(r'revision: str = "0015_worship_vis_clan_only"', head)
+    assert re.search(r'down_revision: .* = "0014_worship_hall"', head)
+
+
+def test_migration_0015_upgrade_keeps_all_old_values_and_adds_clan_only():
+    _, upgrade, _ = _migration_0015_parts()
+    assert "worship_spaces_visibility_check" in upgrade
+    assert re.search(r"DROP CONSTRAINT IF EXISTS worship_spaces_visibility_check", upgrade)
+    allowed = re.search(r"CHECK \(visibility IN \(([^)]*)\)\)", upgrade)
+    assert allowed, "thieu CHECK (visibility IN (...))"
+    values = re.findall(r"'([A-Z_]+)'", allowed.group(1))
+    assert "CLAN_ONLY" in values
+    for old in OLD_VISIBILITY_VALUES:
+        assert old in values, f"mat gia tri cu {old}"
+    assert set(values) == set(OLD_VISIBILITY_VALUES) | {"CLAN_ONLY"}
+
+
+def test_migration_0015_only_touches_the_visibility_constraint():
+    _, upgrade, downgrade = _migration_0015_parts()
+    for body in (upgrade, downgrade):
+        assert not re.search(r"TRUNCATE|DELETE\s+FROM|DROP\s+(TABLE|COLUMN|INDEX)", body, re.I)
+        assert not re.search(r"CREATE\s+(TABLE|INDEX)|ADD\s+COLUMN", body, re.I)
+    # Moi ALTER TABLE deu nham vao worship_spaces
+    assert set(re.findall(r"ALTER TABLE (\w+)", upgrade + downgrade)) == {"worship_spaces"}
+
+
+def test_migration_0015_downgrade_remaps_clan_only_then_restores_old_constraint():
+    _, _, downgrade = _migration_0015_parts()
+    remap = downgrade.index("UPDATE worship_spaces SET visibility = 'FAMILY' WHERE visibility = 'CLAN_ONLY'")
+    drop = downgrade.index("DROP CONSTRAINT IF EXISTS worship_spaces_visibility_check")
+    add = downgrade.index("ADD CONSTRAINT worship_spaces_visibility_check")
+    assert remap < drop < add  # doi gia tri TRUOC khi dat lai rang buoc cu
+    restored = re.search(r"CHECK \(visibility IN \(([^)]*)\)\)", downgrade[add:])
+    assert restored
+    assert re.findall(r"'([A-Z_]+)'", restored.group(1)) == list(OLD_VISIBILITY_VALUES)
+
+
+def test_hall_code_only_writes_visibility_values_allowed_by_migration_0015():
+    _, upgrade, _ = _migration_0015_parts()
+    allowed = set(re.findall(r"'([A-Z_]+)'", re.search(r"CHECK \(visibility IN \(([^)]*)\)\)", upgrade).group(1)))
+    assert {hs.VISIBILITY_PUBLIC, hs.VISIBILITY_CLAN_ONLY} <= allowed
+    # Schema chi nhan PUBLIC | CLAN_ONLY
+    assert HallUpdate(visibility="PUBLIC").visibility in allowed
+    assert HallUpdate(visibility="CLAN_ONLY").visibility in allowed
+    with pytest.raises(ValidationError):
+        HallUpdate(visibility="FAMILY")
 
 
 # =============================================================================
@@ -1288,3 +1356,36 @@ class TestWorshipHallIntegration:
             assert all(t["total"] == 0 for t in hall["tiers"])
             page = await _call(w, "GET", w.clan_a, f"/tiers/{hidden['tierId']}/tablets", viewer)
             assert page.status_code == 200 and page.json()["total"] == 0 and page.json()["tablets"] == []
+
+    # ------------------------------------------------------------------ rang buoc visibility cua bang cu (migration 0015)
+    async def test_first_incense_creates_hall_with_clan_only_on_legacy_table(self, world):
+        """Phong chua ton tai: thap huong lan dau phai tao phong visibility='CLAN_ONLY' (truoc 0015 bi IntegrityError 500)."""
+        from sqlalchemy import text
+
+        w = world
+        async with w.maker() as s:
+            existing = (
+                await s.execute(text("SELECT count(*) FROM worship_spaces WHERE clan_id = :c"), {"c": w.clan_a.clan_id})
+            ).scalar_one()
+        assert existing == 0
+        resp = await _call(w, "POST", w.clan_a, "/incense", w.member_a)
+        assert resp.status_code == 200, resp.text
+        async with w.maker() as s:
+            stored = (
+                await s.execute(text("SELECT visibility FROM worship_spaces WHERE clan_id = :c"), {"c": w.clan_a.clan_id})
+            ).scalar_one()
+        assert stored == "CLAN_ONLY"
+
+    async def test_first_blessing_creates_hall_with_clan_only_on_legacy_table(self, world):
+        w = world
+        resp = await _call(w, "POST", w.clan_a, "/blessing", w.member_a, json={"content": "Con cháu kính nhớ tổ tiên."})
+        assert resp.status_code == 200, resp.text
+        hall = (await _call(w, "GET", w.clan_a, "/hall", w.member_a)).json()
+        assert hall["hall"]["visibility"] == "CLAN_ONLY"
+
+    async def test_hall_visibility_accepts_clan_only_and_public(self, world):
+        w = world
+        for value in ("PUBLIC", "CLAN_ONLY", "PUBLIC"):
+            resp = await _call(w, "PATCH", w.clan_a, "/hall", w.leader_a, json={"visibility": value})
+            assert resp.status_code == 200, (value, resp.text)
+            assert resp.json()["visibility"] == value
