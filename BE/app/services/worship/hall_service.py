@@ -14,6 +14,8 @@ File gom hai phan: ham THUAN (khong DB, de kiem thu) o dau file, va WorshipHallS
 from __future__ import annotations
 
 import asyncio
+import io
+import logging
 import os
 import re
 import unicodedata
@@ -23,13 +25,14 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from fastapi import UploadFile
-from sqlalchemy import func, or_, select, text, update
+from PIL import Image, ImageOps
+from sqlalchemy import delete as sql_delete, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.core.utils.image_validation import MAX_BYTES, ImageRejected, check_image
+from app.core.utils.image_validation import ImageRejected, check_image
 from app.models.ai.entities import ClanAISetting
 from app.models.family.entities import Clan, ClanMembership
 from app.models.genealogy.entities import Person, PersonPrivacySetting
@@ -37,6 +40,7 @@ from app.models.user_access.entities import AuditLog, Role, User, UserRole
 from app.models.worship.entities import (
     WorshipDailyOffering,
     WorshipPerson,
+    WorshipRemovedPerson,
     WorshipSpace,
     WorshipStreak,
     WorshipTier,
@@ -78,12 +82,30 @@ VISIBILITY_CLAN_ONLY = "CLAN_ONLY"
 
 MAX_TIERS = 6
 MAX_TABLETS_PER_HALL = 300
+
+logger = logging.getLogger(__name__)
+
+# Ket qua cua tu dong lap bai vi (auto_add_tablet / backfill)
+AUTO_ADDED = "ADDED"
+AUTO_NOT_DECEASED = "NOT_DECEASED"
+AUTO_ALREADY_EXISTS = "ALREADY_EXISTS"
+AUTO_REMOVED_BY_LEADER = "REMOVED_BY_LEADER"
+AUTO_LIMIT_REACHED = "LIMIT_REACHED"
+AUTO_ERROR = "ERROR"
 MAX_BLESSING_LENGTH = 300
 HALL_PREVIEW_TABLETS = 12
 HIDDEN_VISIBILITY_VALUES = ("PRIVATE", "HIDDEN")
 
 WORSHIP_IMAGE_DIR = os.path.join(UPLOAD_DIR, "worship_images")  # chi tao khi luu anh dau tien
 IMAGE_EXTENSIONS = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+# Gioi han khi tai anh phong tho (anh nen va anh bai vi)
+WORSHIP_IMAGE_MAX_BYTES = 5 * 1024 * 1024
+WORSHIP_IMAGE_MAX_SIDE = 4000
+# Ban nho cua anh bai vi: <ten goc>_thumb.webp, canh dai toi da 512px (khong them cot DB)
+THUMB_MAX_SIDE = 512
+THUMB_SUFFIX = "_thumb"
+STORED_EXTENSIONS = (".jpg", ".png", ".webp")  # duoi tep ma check_image co the sinh ra
 
 _WWW_AUTH = {"WWW-Authenticate": "Bearer"}
 
@@ -168,6 +190,36 @@ def default_hall_title(clan_name: Optional[str]) -> str:
 
 def image_url(clan_id: uuid.UUID, filename: Optional[str]) -> Optional[str]:
     return f"/families/{clan_id}/worship/images/{filename}" if filename else None
+
+
+def thumbnail_name(filename: str) -> str:
+    """Ten ban nho theo quy uoc tu ten tep goc: 'abc.jpg' -> 'abc_thumb.webp'."""
+    return f"{os.path.splitext(filename)[0]}{THUMB_SUFFIX}.webp"
+
+
+def original_candidates(filename: str) -> List[str]:
+    """Ten tep anh goc co the ung voi `filename`: chinh no; neu la ban nho thi them <goc>.jpg/.png/.webp."""
+    stem, ext = os.path.splitext(filename)
+    if ext.lower() == ".webp" and stem.endswith(THUMB_SUFFIX) and len(stem) > len(THUMB_SUFFIX):
+        base = stem[: -len(THUMB_SUFFIX)]
+        return [filename] + [base + e for e in STORED_EXTENSIONS]
+    return [filename]
+
+
+def make_thumbnail(data: bytes) -> bytes:
+    """Ban nho webp (canh dai <= 512px, khong phong to anh nho). Giai ma that bang Pillow nen anh hong -> ImageRejected."""
+    try:
+        with Image.open(io.BytesIO(data)) as src:
+            img = ImageOps.exif_transpose(src)  # xoay dung chieu theo EXIF truoc khi thu nho
+            img.load()
+        keep_alpha = "A" in img.getbands() or "transparency" in img.info
+        img = img.convert("RGBA" if keep_alpha else "RGB")
+        img.thumbnail((THUMB_MAX_SIDE, THUMB_MAX_SIDE), Image.Resampling.LANCZOS)
+        out = io.BytesIO()
+        img.save(out, format="WEBP", quality=80)
+        return out.getvalue()
+    except (OSError, ValueError, SyntaxError, Image.DecompressionBombError) as exc:
+        raise ImageRejected("corrupt") from exc
 
 
 def validate_image_filename(filename: str) -> str:
@@ -374,18 +426,29 @@ def require_manager(viewer: Viewer) -> None:
 
 
 _IMAGE_MESSAGES = {
-    "too_large": "Ảnh vượt quá dung lượng tối đa 2MB",
+    "too_large": "Ảnh vượt quá dung lượng tối đa 5MB",
     "empty": "Tệp tin rỗng",
     "svg_not_allowed": "Định dạng SVG không được chấp nhận vì lý do an toàn",
-    "unknown_type": "Chỉ chấp nhận định dạng ảnh PNG, JPEG hoặc WebP",
+    "unknown_type": "Chỉ chấp nhận ảnh JPG, PNG hoặc WebP (nhận dạng theo nội dung tệp, không theo đuôi tệp)",
     "corrupt": "Tệp tin hình ảnh bị hỏng hoặc không đúng định dạng",
     "markup": "Phát hiện nội dung không an toàn trong tệp ảnh",
-    "bad_dimensions": "Kích thước ảnh không hợp lệ (tối thiểu 16px, tối đa 4096px)",
+    "bad_dimensions": "Kích thước ảnh không hợp lệ (tối thiểu 16px, cạnh dài tối đa 4000px)",
 }
 
 
 def _is_deceased(person: Person) -> bool:
     return person.is_alive is False or person.death_date is not None
+
+
+def is_deceased_person(person: Person) -> bool:
+    """Nguoi duoc coi la da mat: is_living = false HOAC co death_date (cung quy tac voi bai vi them tay)."""
+    return _is_deceased(person)
+
+
+async def auto_add_tablet_for_person(db: AsyncSession, person: Person, actor_id: Optional[uuid.UUID]) -> str:
+    """Diem goi cho code luu nguoi (genealogy_service, members_router): lap bai vi cho nguoi vua thanh "da mat"
+    trong CUNG giao dich, khong commit, loi khong lan sang viec luu nguoi. Xem WorshipHallService.auto_add_tablet."""
+    return await WorshipHallService(db).auto_add_tablet(person, actor_id)
 
 
 def _json_safe(data: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -522,6 +585,7 @@ class WorshipHallService:
                 visibility=VISIBILITY_CLAN_ONLY,
                 blessings_enabled=True,
                 cover_image_url=None,
+                portrait_grayscale=False,
             )
         return HallInfo(
             id=hall.space_id,
@@ -530,23 +594,32 @@ class WorshipHallService:
             visibility=hall.visibility,
             blessings_enabled=hall.blessings_enabled,
             cover_image_url=image_url(clan.clan_id, hall.cover_image_path),
+            portrait_grayscale=bool(hall.portrait_grayscale),
         )
 
     async def update_hall(self, clan_id: uuid.UUID, actor: User, data: HallUpdate) -> HallInfo:
         clan, viewer = await self.context(clan_id, actor)
         require_manager(viewer)
         hall = await self._space_for_write(clan, actor.user_id)
-        old = {"title": hall.title, "visibility": hall.visibility, "blessings_enabled": hall.blessings_enabled}
+        old = {
+            "title": hall.title, "visibility": hall.visibility, "blessings_enabled": hall.blessings_enabled,
+            "portrait_grayscale": hall.portrait_grayscale,
+        }
         if data.title is not None:
             hall.title = data.title.strip()
         if data.visibility is not None:
             hall.visibility = data.visibility
         if data.blessings_enabled is not None:
             hall.blessings_enabled = data.blessings_enabled
+        if data.portrait_grayscale is not None:
+            hall.portrait_grayscale = data.portrait_grayscale
         hall.updated_at = datetime.now(timezone.utc)
         self._audit(
             clan.clan_id, actor.user_id, "WORSHIP_HALL_UPDATE", hall.space_id, old,
-            {"title": hall.title, "visibility": hall.visibility, "blessings_enabled": hall.blessings_enabled},
+            {
+                "title": hall.title, "visibility": hall.visibility, "blessings_enabled": hall.blessings_enabled,
+                "portrait_grayscale": hall.portrait_grayscale,
+            },
         )
         await self.db.commit()
         return self._hall_info(clan, hall)
@@ -584,6 +657,16 @@ class WorshipHallService:
             stmt = stmt.where(cond)
         return stmt
 
+    @staticmethod
+    def _thumbnail_url(clan_id: uuid.UUID, portrait_file: Optional[str]) -> Optional[str]:
+        """URL ban nho neu tep ban nho co tren dia; anh cu chua co ban nho -> None (caller dung portraitUrl)."""
+        if not portrait_file:
+            return None
+        thumb = thumbnail_name(portrait_file)
+        if os.path.isfile(os.path.join(WORSHIP_IMAGE_DIR, thumb)):
+            return image_url(clan_id, thumb)
+        return None
+
     def _tablet_item(
         self, wp: WorshipPerson, person: Person, privacy: Optional[PersonPrivacySetting], clan_id: uuid.UUID,
         viewer: Viewer,
@@ -608,6 +691,7 @@ class WorshipHallService:
             birth_date=birth.isoformat() if birth else None,
             death_date=death.isoformat() if death else None,
             portrait_url=portrait,
+            thumbnail_url=self._thumbnail_url(clan_id, wp.portrait_image_path) or portrait,
             note=wp.note,
             display_order=wp.display_order,
             tier_id=wp.tier_id,
@@ -1116,6 +1200,121 @@ class WorshipHallService:
             "LIMIT_REACHED": f"Phòng thờ đã đủ {MAX_TABLETS_PER_HALL} bài vị.",
         }[code]
 
+    # ------------------------------------------------------------------ tu dong lap bai vi
+    async def _has_tablet(self, space_id: uuid.UUID, person_id: uuid.UUID) -> bool:
+        row = (
+            await self.db.execute(
+                select(WorshipPerson.worship_person_id).where(
+                    WorshipPerson.space_id == space_id, WorshipPerson.person_id == person_id
+                )
+            )
+        ).first()
+        return row is not None
+
+    async def _is_removed(self, space_id: uuid.UUID, person_id: uuid.UUID) -> bool:
+        row = (
+            await self.db.execute(
+                select(WorshipRemovedPerson.person_id).where(
+                    WorshipRemovedPerson.space_id == space_id, WorshipRemovedPerson.person_id == person_id
+                )
+            )
+        ).first()
+        return row is not None
+
+    async def _clan_of(self, family_id: uuid.UUID) -> Optional[Clan]:
+        return (await self.db.execute(select(Clan).where(Clan.clan_id == family_id))).scalar_one_or_none()
+
+    async def _create_tablet_if_missing(self, clan: Clan, person: Person, actor_id: Optional[uuid.UUID]) -> str:
+        """Tao bai vi cho nguoi da mat neu chua co, chua bi go, con cho. KHONG commit (caller giu giao dich)."""
+        space = await self._space_for_write(clan, actor_id)  # lap phong neu chua co (ensure_hall) + khoa dong
+        if await self._has_tablet(space.space_id, person.id):
+            return AUTO_ALREADY_EXISTS
+        if await self._is_removed(space.space_id, person.id):
+            return AUTO_REMOVED_BY_LEADER
+        if await self._tablet_count(space.space_id) >= MAX_TABLETS_PER_HALL:
+            logger.warning(
+                "Phong tho dong ho %s da du %s bai vi, bo qua tu dong lap bai vi cho nguoi %s",
+                clan.clan_id, MAX_TABLETS_PER_HALL, person.id,
+            )
+            return AUTO_LIMIT_REACHED
+        cache = {t.tier_no: t for t in await self._tiers_of(space.space_id)}
+        tier = await self._get_or_create_tier(space, tier_for_generation(person.generation), cache)
+        wp = WorshipPerson(
+            worship_person_id=uuid.uuid4(),
+            space_id=space.space_id,
+            person_id=person.id,
+            tier_id=tier.tier_id,
+            display_order=await self._next_order(space.space_id, tier.tier_id),
+            is_visible=True,
+            added_by=actor_id,
+        )
+        self.db.add(wp)
+        await self.db.flush()
+        self._audit(clan.clan_id, actor_id, "WORSHIP_TABLET_AUTO_ADD", wp.worship_person_id, None,
+                    {"person_id": person.id, "tier_id": tier.tier_id})
+        return AUTO_ADDED
+
+    async def auto_add_tablet(self, person: Person, actor_id: Optional[uuid.UUID]) -> str:
+        """Goi sau khi mot nguoi duoc tao / chuyen thanh "da mat": lap bai vi trong CUNG giao dich voi viec luu nguoi.
+
+        * Khong commit / rollback giao dich cua caller. Viec lap bai vi chay trong SAVEPOINT: loi (hoac phong da du
+          300 bai vi) chi huy phan bai vi, ghi log canh bao, viec luu nguoi van thanh cong.
+        * Khong tao trung; khong them lai bai vi Truong toc da go (worship_removed_persons).
+        * Tra ve mot trong cac hang AUTO_*.
+        """
+        if not _is_deceased(person):
+            return AUTO_NOT_DECEASED
+        # Day cac thay doi cua NGUOI xuong DB truoc: loi cua chinh viec luu nguoi phai den tay caller, khong bi nuot.
+        await self.db.flush()
+        try:
+            async with self.db.begin_nested():
+                clan = await self._clan_of(person.family_id)
+                if clan is None:
+                    raise AppError(ErrorCode.NOT_FOUND, "Không tìm thấy dòng họ.")
+                return await self._create_tablet_if_missing(clan, person, actor_id)
+        except Exception:
+            logger.warning("Khong tu dong lap duoc bai vi cho nguoi %s (bo qua, khong anh huong viec luu nguoi)",
+                           person.id, exc_info=True)
+            return AUTO_ERROR
+
+    async def backfill_missing_tablets(self, clan_id: uuid.UUID, *, apply: bool) -> Dict[str, Any]:
+        """Nguoi da mat cua dong ho chua co bai vi va chua bi Truong toc go. apply=False: chi liet ke, KHONG ghi DB.
+        apply=True: lap bai vi (khong commit: caller commit). Thu tu: doi (generation) tang dan roi ten."""
+        clan = await self._clan_of(clan_id)
+        if clan is None:
+            raise AppError(ErrorCode.NOT_FOUND, "Không tìm thấy dòng họ.")
+        hall = await self.get_hall(clan_id)
+        have: set = set()
+        removed: set = set()
+        count = 0
+        if hall is not None:
+            have = set((await self.db.execute(
+                select(WorshipPerson.person_id).where(WorshipPerson.space_id == hall.space_id))).scalars().all())
+            removed = set((await self.db.execute(
+                select(WorshipRemovedPerson.person_id).where(WorshipRemovedPerson.space_id == hall.space_id))).scalars().all())
+            count = len(have)
+        deceased = (
+            await self.db.execute(
+                select(Person)
+                .where(Person.family_id == clan_id, or_(Person.is_alive.is_(False), Person.death_date.is_not(None)))
+                .order_by(Person.generation, Person.full_name, Person.id)
+            )
+        ).scalars().all()
+        candidates = [p for p in deceased if p.id not in have and p.id not in removed]
+        room = max(MAX_TABLETS_PER_HALL - count, 0)
+        result: Dict[str, Any] = {
+            "clan": clan, "hall_exists": hall is not None, "existing": count, "removed_by_leader": len(removed & {p.id for p in deceased}),
+            "to_add": candidates[:room], "over_limit": candidates[room:], "added": 0, "failed": 0,
+        }
+        if apply:
+            for person in result["to_add"]:
+                outcome = await self.auto_add_tablet(person, clan.created_by)
+                if outcome == AUTO_ADDED:
+                    result["added"] += 1
+                elif outcome != AUTO_ALREADY_EXISTS:
+                    result["failed"] += 1
+        return result
+
     async def add_tablet(
         self, clan_id: uuid.UUID, actor: User, person_id: uuid.UUID, note: Optional[str],
         tier_id: Optional[uuid.UUID], display_order: Optional[int],
@@ -1162,6 +1361,7 @@ class WorshipHallService:
         except IntegrityError:
             await self.db.rollback()
             raise AppError(ErrorCode.DUPLICATE_RESOURCE, self._skip_message("ALREADY_EXISTS"))
+        await self._clear_removed_marks(space.space_id, [person.id])  # them tay: cho phep lap lai bai vi da go
         self._audit(clan.clan_id, actor.user_id, "WORSHIP_TABLET_ADD", wp.worship_person_id, None,
                     {"person_id": person.id, "tier_id": tier.tier_id})
         await self.db.commit()
@@ -1196,6 +1396,7 @@ class WorshipHallService:
         cache = {t.tier_no: t for t in await self._tiers_of(space.space_id)}
         next_order: Dict[uuid.UUID, int] = {}
         added_ids: List[uuid.UUID] = []
+        added_person_ids: List[uuid.UUID] = []
         skipped: List[BulkSkipped] = []
 
         def skip(pid: uuid.UUID, code: str) -> None:
@@ -1230,7 +1431,9 @@ class WorshipHallService:
                 existing.add(pid)
                 count += 1
                 added_ids.append(wp.worship_person_id)
+                added_person_ids.append(pid)
         if added_ids:
+            await self._clear_removed_marks(space.space_id, added_person_ids)
             self._audit(clan.clan_id, actor.user_id, "WORSHIP_TABLET_BULK_ADD", space.space_id, None,
                         {"added": len(added_ids), "skipped": len(skipped)})
         await self.db.commit()
@@ -1270,6 +1473,14 @@ class WorshipHallService:
         await self.db.commit()
         return await self._tablet_item_by_id(space, wp.worship_person_id, viewer)
 
+    async def _clear_removed_marks(self, space_id: uuid.UUID, person_ids: Sequence[uuid.UUID]) -> None:
+        if person_ids:
+            await self.db.execute(
+                sql_delete(WorshipRemovedPerson).where(
+                    WorshipRemovedPerson.space_id == space_id, WorshipRemovedPerson.person_id.in_(list(person_ids))
+                )
+            )
+
     async def delete_tablet(self, clan_id: uuid.UUID, tablet_id: uuid.UUID, actor: User) -> str:
         clan, viewer = await self.context(clan_id, actor)
         require_manager(viewer)
@@ -1278,9 +1489,14 @@ class WorshipHallService:
         old_portrait = wp.portrait_image_path
         self._audit(clan.clan_id, actor.user_id, "WORSHIP_TABLET_DELETE", wp.worship_person_id,
                     {"person_id": wp.person_id, "tier_id": wp.tier_id}, None)
+        await self.db.execute(  # danh dau "Truong toc da go": tu dong lap bai vi se khong them lai nguoi nay
+            pg_insert(WorshipRemovedPerson)
+            .values(space_id=space.space_id, person_id=wp.person_id, removed_by=actor.user_id)
+            .on_conflict_do_nothing()
+        )
         await self.db.delete(wp)
         await self.db.commit()
-        _remove_image_file(old_portrait)
+        _remove_portrait_files(old_portrait)
         return "Đã xóa bài vị."
 
     async def reorder_tablets(self, clan_id: uuid.UUID, actor: User, ordered_ids: Sequence[uuid.UUID]) -> str:
@@ -1351,15 +1567,27 @@ class WorshipHallService:
         return CandidateListResponse(items=items, total=int(total), offset=offset, limit=limit)
 
     # ------------------------------------------------------------------ anh
-    async def _store_image(self, file: UploadFile) -> str:
-        data = await file.read(MAX_BYTES + 1)
+    async def _store_image(self, file: UploadFile, *, with_thumbnail: bool = False) -> str:
+        """Kiem tra noi dung that (jpg/png/webp, <= 5MB, canh dai <= 4000px) roi luu. Sai -> 422 tieng Viet.
+        with_thumbnail: luu them <ten goc>_thumb.webp (canh dai 512px) canh tep goc."""
+        data = await file.read(WORSHIP_IMAGE_MAX_BYTES + 1)
+        thumb: Optional[bytes] = None
         try:
-            checked = check_image(data)
+            checked = check_image(data, max_bytes=WORSHIP_IMAGE_MAX_BYTES, max_side=WORSHIP_IMAGE_MAX_SIDE)
+            if with_thumbnail:
+                thumb = await asyncio.to_thread(make_thumbnail, data)
         except ImageRejected as exc:
-            raise AppError(ErrorCode.BAD_REQUEST, _IMAGE_MESSAGES.get(exc.reason, "Tệp ảnh không hợp lệ"))
+            raise AppError(ErrorCode.VALIDATION_ERROR, _IMAGE_MESSAGES.get(exc.reason, "Tệp ảnh không hợp lệ"))
         os.makedirs(WORSHIP_IMAGE_DIR, exist_ok=True)
         path = os.path.join(WORSHIP_IMAGE_DIR, checked.stored_name)
         await asyncio.to_thread(_write_file, path, data)
+        if thumb is not None:
+            try:
+                thumb_path = os.path.join(WORSHIP_IMAGE_DIR, thumbnail_name(checked.stored_name))
+                await asyncio.to_thread(_write_file, thumb_path, thumb)
+            except OSError:
+                _remove_portrait_files(checked.stored_name)
+                raise
         return checked.stored_name
 
     async def set_portrait(self, clan_id: uuid.UUID, tablet_id: uuid.UUID, actor: User, file: UploadFile) -> str:
@@ -1367,16 +1595,16 @@ class WorshipHallService:
         require_manager(viewer)
         space = await self._space_for_write(clan, actor.user_id, create=False)
         wp = await self._tablet_for_write(space, tablet_id)
-        new_name = await self._store_image(file)
+        new_name = await self._store_image(file, with_thumbnail=True)
         old_name = wp.portrait_image_path
         wp.portrait_image_path = new_name
         self._audit(clan.clan_id, actor.user_id, "WORSHIP_PORTRAIT_SET", wp.worship_person_id, None, {"file": new_name})
         try:
             await self.db.commit()
         except Exception:
-            _remove_image_file(new_name)
+            _remove_portrait_files(new_name)
             raise
-        _remove_image_file(old_name)
+        _remove_portrait_files(old_name)
         return image_url(clan.clan_id, new_name)
 
     async def delete_portrait(self, clan_id: uuid.UUID, tablet_id: uuid.UUID, actor: User) -> str:
@@ -1388,7 +1616,7 @@ class WorshipHallService:
         wp.portrait_image_path = None
         self._audit(clan.clan_id, actor.user_id, "WORSHIP_PORTRAIT_DELETE", wp.worship_person_id, {"file": old_name}, None)
         await self.db.commit()
-        _remove_image_file(old_name)
+        _remove_portrait_files(old_name)
         return "Đã xóa ảnh bài vị."
 
     async def set_cover(self, clan_id: uuid.UUID, actor: User, file: UploadFile) -> str:
@@ -1432,7 +1660,9 @@ class WorshipHallService:
         if not referenced:
             row = (
                 await self.db.execute(
-                    self._tablet_stmt(hall, viewer).where(WorshipPerson.portrait_image_path == filename).limit(1)
+                    self._tablet_stmt(hall, viewer)
+                    .where(WorshipPerson.portrait_image_path.in_(original_candidates(filename)))
+                    .limit(1)
                 )
             ).first()
             referenced = row is not None
@@ -1446,6 +1676,14 @@ class WorshipHallService:
 def _write_file(path: str, data: bytes) -> None:
     with open(path, "wb") as fh:
         fh.write(data)
+
+
+def _remove_portrait_files(filename: Optional[str]) -> None:
+    """Xoa anh chan dung va ban nho cua no (best effort)."""
+    if not filename or filename != os.path.basename(filename):
+        return
+    _remove_image_file(filename)
+    _remove_image_file(thumbnail_name(filename))
 
 
 def _remove_image_file(filename: Optional[str]) -> None:

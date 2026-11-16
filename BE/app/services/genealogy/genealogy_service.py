@@ -89,6 +89,12 @@ class GenealogyService:
             status=status_val,
         )
 
+    async def _auto_worship_tablet(self, person: Person, account: Account) -> None:
+        """Nguoi moi tao / vua chuyen thanh da mat -> tu lap bai vi (cung giao dich, loi chi ghi log)."""
+        from app.services.worship.hall_service import auto_add_tablet_for_person
+
+        await auto_add_tablet_for_person(self.db, person, account.id)
+
     async def _get_person_for_family(self, family_id: str, person_id: str) -> Person:
         person = await self.repo.get_person_by_id(person_id)
         # A person of ANOTHER family answers exactly like a missing one (Mốc M2, IDOR): the
@@ -185,6 +191,7 @@ class GenealogyService:
         try:
             await self.repo.create_person(person)
             await self.repo.insert_closure_self(person.id, family_id)
+            await self._auto_worship_tablet(person, account)
             await self.db.commit()
             return self._to_person_response(person)
         except Exception:
@@ -224,8 +231,13 @@ class GenealogyService:
         if not update_data:
             return self._to_person_response(person)
 
+        from app.services.worship.hall_service import is_deceased_person
+
+        was_deceased = is_deceased_person(person)  # truoc khi UPDATE: chi lap bai vi khi CHUYEN sang "da mat"
         try:
             updated = await self.repo.update_person(person_id, update_data)
+            if updated is not None and not was_deceased and is_deceased_person(updated):
+                await self._auto_worship_tablet(updated, account)
             await self.db.commit()
             return self._to_person_response(updated)
         except Exception:

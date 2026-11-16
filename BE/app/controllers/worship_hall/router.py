@@ -214,7 +214,8 @@ async def upload_tablet_portrait(
     db: AsyncSession = Depends(get_db),
     account: User = Depends(get_current_account),
 ):
-    """Anh bai vi (PNG/JPEG/WebP <= 2MB, nhan dang theo noi dung that). Thay anh cu thi xoa tep cu."""
+    """Anh bai vi (JPG/PNG/WebP <= 5MB, canh dai <= 4000px, nhan dang theo noi dung that; sai -> 422).
+    Tu tao ban nho 512px webp canh tep goc (<goc>_thumb.webp). Thay anh cu thi xoa ca tep cu va ban nho cu."""
     return {"portraitUrl": await _svc(db).set_portrait(clan_id, tablet_id, account, file)}
 
 

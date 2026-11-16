@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
 import {
@@ -17,6 +17,7 @@ import {
   LineBasicMaterial,
   MathUtils,
   MeshBasicMaterial,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
   Object3D,
   PlaneGeometry,
@@ -41,6 +42,23 @@ import {
   type Sprite,
   type Texture,
 } from 'three';
+import { AncestorInfoCard } from './hall3d/AncestorInfoCard';
+import {
+  CLICK_DRAG_THRESHOLD,
+  exceedsDragThreshold,
+  garlandLayout,
+  pickLitMemorials,
+  pickPortraitUrls,
+  zoomDistance,
+  zoomReducer,
+} from './hall3d/hallInteraction';
+import { formatSolarDate, memorialIdsOf, memorialLabel, vietnamToday, type SolarDate } from './hall3d/lunarCalendar';
+import {
+  PORTRAIT_PROGRAM_KEY,
+  createPortraitUniforms,
+  patchPortraitShader,
+  setPortraitGrayscale,
+} from './hall3d/portraitShader';
 import './AncestralHall3D.css';
 
 export interface Hall3DAncestor {
@@ -48,10 +66,16 @@ export interface Hall3DAncestor {
   name: string;
   generation: number;
   lifespan?: string;
-  /** Ảnh chân dung (PersonItem.avatarUrl). Không có hoặc tải lỗi thì dùng ảnh mặc định vẽ bằng canvas. */
+  /** Ảnh bản nhỏ (512px) dùng trong cảnh 3D. Thiếu thì dùng portraitUrl. */
+  thumbnailUrl?: string | null;
+  /** Ảnh gốc: chỉ được tải khi người dùng phóng to ảnh. Không có ảnh nào hoặc tải lỗi thì dùng ảnh mặc định vẽ bằng canvas. */
   portraitUrl?: string | null;
-  /** Ngày mất thô (PersonItem.deathDate, dạng yyyy-mm-dd hoặc chỉ có năm). */
+  /** Ngày mất thô (PersonItem.deathDate, dạng yyyy-mm-dd hoặc chỉ có năm). Đủ ngày thì tính được ngày giỗ âm lịch. */
   deathDate?: string | null;
+  /** Ngày sinh thô, hiện trên thẻ thông tin khi phóng to. */
+  birthDate?: string | null;
+  /** Ghi chú, hiện trên thẻ thông tin khi phóng to. */
+  note?: string | null;
 }
 
 /** Một tầng bàn thờ (tầng đầu = đời cao nhất, đặt trên cùng). `tablets` là các bài vị của trang đang xem (tối đa 9). */
@@ -93,6 +117,12 @@ export interface AncestralHall3DProps {
   quality?: HallQuality;
   /** Tăng 1 mỗi lần thắp hương THÀNH CÔNG: cảnh 3D chạy chuỗi animation thắp hương (~2,5s). */
   offeringToken?: number;
+  /** true: ảnh thờ hiện đen trắng, viền tối mờ ở góc (làm trong shader, không xử lý lại tệp ảnh). */
+  portraitGrayscale?: boolean;
+  /** Gọi khi người dùng phóng to một ảnh (id) hoặc trở lại cảnh chung (null): trang dùng để tải ảnh gốc đúng lúc. */
+  onZoomChange?: (id: string | null) => void;
+  /** Thời điểm "hôm nay" để tính ngày giỗ (mặc định: bây giờ). Chỉ để thử / minh họa. */
+  today?: Date;
 }
 
 export const DEFAULT_EMPTY_HINT = 'Bàn thờ đang chờ dữ liệu tiền nhân';
@@ -215,7 +245,11 @@ const DEG = Math.PI / 180;
 const YAW_LIMIT = 55 * DEG;
 const PITCH_MIN = -18 * DEG;
 const PITCH_MAX = 28 * DEG;
-const DRAG_THRESHOLD = 6; // px: vượt ngưỡng này là kéo, không phải bấm
+const DRAG_THRESHOLD = CLICK_DRAG_THRESHOLD; // px: vượt ngưỡng này là kéo, không phải bấm
+const ZOOM_MAX_X = BACK.w / 2; // khi phóng to, camera được dịch ngang tới tận hai đầu hàng ảnh
+const ZOOM_MIN_GAP = 0.45; // không tiến sát hơn mức này tới mặt ảnh
+const ZOOM_MIN_Y = 1.35; // không hạ camera thấp hơn đồ thờ trên bàn
+const ZOOM_MAX_Y = 3.0;
 const INTRO_DURATION = 1.8;
 const BASE_FOV = 66;
 const MAX_FOV = 85;
@@ -618,17 +652,7 @@ const createCoupletTexture = (phrase: string, w = 128, h = 1067): CanvasTexture 
 };
 
 /** "1941-03-12" -> "12/03/1941"; chỉ có năm thì trả năm; không rõ thì trả chuỗi rỗng. */
-export const formatDeathDate = (raw?: string | null): string => {
-  if (!raw) return '';
-  const text = String(raw).trim();
-  const iso = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) return `${iso[3].padStart(2, '0')}/${iso[2].padStart(2, '0')}/${iso[1]}`;
-  const vn = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (vn) return `${vn[1].padStart(2, '0')}/${vn[2].padStart(2, '0')}/${vn[3]}`;
-  const year = text.match(/^(\d{4})$/);
-  if (year) return year[1];
-  return '';
-};
+export const formatDeathDate = (raw?: string | null): string => formatSolarDate(raw);
 
 // Bảng tên dưới ảnh thờ: HỌ TÊN (đậm) + "Mất: dd/mm/yyyy". Chữ ngang, tự co, quá dài thì rút gọn bằng …
 const createNamePlateTexture = (name: string, deathText: string): CanvasTexture => {
@@ -768,6 +792,37 @@ const createBronzeTexture = (): CanvasTexture => {
   return texture;
 };
 
+// Vệt phản chiếu ánh nến trên lớp kính: hai dải sáng chéo ấm, mờ dần. Cộng sáng (additive) nên chỗ đen là trong suốt.
+const createGlassStreakTexture = (): CanvasTexture => {
+  const w = 128;
+  const h = 192;
+  const { canvas, ctx } = makeCanvas(w, h);
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, w, h);
+  const band = (offset: number, width: number, alpha: number) => {
+    const g = ctx.createLinearGradient(offset, 0, offset + width, h * 0.55);
+    g.addColorStop(0, 'rgba(255,214,150,0)');
+    g.addColorStop(0.5, `rgba(255,222,165,${alpha})`);
+    g.addColorStop(1, 'rgba(255,214,150,0)');
+    ctx.fillStyle = g;
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(-0.42);
+    ctx.translate(-w / 2, -h / 2);
+    ctx.fillRect(offset - 20, -40, width, h + 80);
+    ctx.restore();
+  };
+  band(-6, 34, 0.55);
+  band(46, 14, 0.35);
+  // mờ dần về phía dưới để ảnh phía dưới không bị che
+  const fade = ctx.createLinearGradient(0, 0, 0, h);
+  fade.addColorStop(0, 'rgba(0,0,0,0)');
+  fade.addColorStop(1, 'rgba(0,0,0,0.75)');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 0, w, h);
+  return toTexture(canvas);
+};
+
 // Cắt ảnh kiểu "cover" cho khung có tỉ lệ rộng/cao cho trước (ưu tiên giữ phần trên của ảnh chân dung).
 const applyCoverCrop = (texture: Texture, targetAspect: number) => {
   const image = texture.image as { width?: number; height?: number } | undefined;
@@ -859,6 +914,7 @@ const createResources = (quality: HallQuality) => {
   const softTex = track(createSoftDotTexture());
   const defaultPortrait = track(createDefaultPortraitTexture());
   const bronzeTex = track(createBronzeTexture());
+  const glassStreakTex = track(createGlassStreakTexture());
 
   const apron = (width: number) => {
     const t = track(apronTex.clone());
@@ -925,6 +981,24 @@ const createResources = (quality: HallQuality) => {
     ),
     ghost: track(new MeshStandardMaterial({ color: '#ead9a6', transparent: true, opacity: 0.25, depthWrite: false })),
     ghostLine: track(new LineBasicMaterial({ color: COLOR.gold, transparent: true, opacity: 0.7 })),
+    // Lớp kính mỏng phủ ảnh thờ: phản chiếu môi trường ấm (Lightformer) và ánh nến; chỉ ở chế độ high.
+    glass: track(
+      new MeshPhysicalMaterial({
+        color: '#ffffff',
+        transparent: true,
+        opacity: 0.16,
+        roughness: 0.04,
+        metalness: 0,
+        clearcoat: 1,
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 1.6,
+        depthWrite: false,
+      })
+    ),
+    // Vệt sáng ánh nến trên kính (cộng sáng): độ sáng dao động nhẹ theo ngọn nến, tắt dao động ở chế độ nhẹ / giảm chuyển động.
+    glassStreak: track(
+      new MeshBasicMaterial({ map: glassStreakTex, color: '#ffd9a0', transparent: true, opacity: 0.2, blending: AdditiveBlending, depthWrite: false })
+    ),
     // Vỏ bao ngoài phòng (nhìn từ trong): nếu có khe hở thì chỉ thấy màu tường tối ấm.
     shell: std({ color: COLOR.bg, side: BackSide, roughness: 1 }),
     window: std({ color: '#7a5230', emissive: '#ffb060', emissiveIntensity: 0.55, roughness: 1 }),
@@ -937,7 +1011,7 @@ const createResources = (quality: HallQuality) => {
   // Khung ảnh thờ: viền vàng bo góc phía ngoài, lòng sơn son phía trong.
   const frameOuter = track(
     new ExtrudeGeometry(roundedRectShape(FRAME_W, FRAME_H, 0.035, 0), {
-      depth: 0.03,
+      depth: 0.052, // khung dày hơn (thân sâu ra phía sau, mặt trước giữ nguyên)
       bevelEnabled: true,
       bevelThickness: 0.008,
       bevelSize: 0.008,
@@ -945,7 +1019,7 @@ const createResources = (quality: HallQuality) => {
       curveSegments: high ? 8 : 4,
     })
   );
-  frameOuter.translate(0, 0, -0.02);
+  frameOuter.translate(0, 0, -0.042);
   const frameInner = track(
     new ExtrudeGeometry(roundedRectShape(FRAME_W - 0.045, FRAME_H - 0.045, 0.022, 0.0225), {
       depth: 0.03,
@@ -957,6 +1031,20 @@ const createResources = (quality: HallQuality) => {
     })
   );
   frameInner.translate(0, 0, -0.012);
+  // Gờ viền vàng nổi quanh lòng khung: ảnh nằm lõm sau gờ, nhìn khung dày và có chiều sâu.
+  const rimShape = roundedRectShape(FRAME_W - 0.03, FRAME_H - 0.03, 0.026, 0.015);
+  rimShape.holes.push(roundedRectShape(FRAME_W - 0.072, FRAME_H - 0.072, 0.018, 0.036));
+  const frameRim = track(
+    new ExtrudeGeometry(rimShape, {
+      depth: 0.008,
+      bevelEnabled: true,
+      bevelThickness: 0.004,
+      bevelSize: 0.003,
+      bevelSegments: high ? 2 : 1,
+      curveSegments: high ? 8 : 4,
+    })
+  );
+  frameRim.translate(0, 0, 0.02);
 
   const legCurve = new CatmullRomCurve3([new Vector3(0, 0.13, 0), new Vector3(0.05, 0.1, 0), new Vector3(0.072, 0.045, 0), new Vector3(0.045, 0, 0)]);
   const bananaCurve = new QuadraticBezierCurve3(new Vector3(0, 0.05, 0), new Vector3(0, -0.012, 0.09), new Vector3(0, 0.03, 0.17));
@@ -980,6 +1068,8 @@ const createResources = (quality: HallQuality) => {
     plane: track(new BoxGeometry(1, 1, 0.001)),
     frameOuter,
     frameInner,
+    frameRim,
+    glass: track(new PlaneGeometry(PHOTO_W + 0.02, PHOTO_H + 0.02)),
     frameEdges: track(new EdgesGeometry(frameOuter, 40)),
     photo: track(new PlaneGeometry(PHOTO_W, PHOTO_H)),
     photoBorder: track(new PlaneGeometry(PHOTO_W + 0.024, PHOTO_H + 0.024)),
@@ -1045,6 +1135,8 @@ interface HallContextValue {
   res: Resources;
   high: boolean;
   reduced: boolean;
+  /** Ảnh thờ hiện đen trắng (cài đặt của phòng thờ). */
+  grayscale: boolean;
   drag: React.MutableRefObject<DragState>;
   offer: React.MutableRefObject<OfferState>;
 }
@@ -1462,6 +1554,58 @@ const Altar = React.memo(function Altar() {
 /* Ảnh thờ: khung gỗ sơn son viền vàng, ảnh 3:4 phía trên, bảng tên    */
 /* ------------------------------------------------------------------ */
 
+/** Ngày giỗ hôm nay của một bài vị: nến bên bài vị sáng hơn và có dải hoa nhỏ. */
+const MemorialDecor: React.FC<{ withLight: boolean }> = ({ withLight }) => {
+  const { res, high, reduced } = useHall();
+  const { mat, geo } = res;
+  const flames = useRef<Array<Mesh | null>>([]);
+  const glows = useRef<Array<Sprite | null>>([]);
+  const lights = useRef<Array<PointLight | null>>([]);
+  // Dải hoa võng dọc mặt trước đế; chế độ nhẹ dùng ít hoa hơn.
+  const flowers = useMemo(() => garlandLayout(high ? 11 : 6, 0.42, 0.03), [high]);
+  const tones = [mat.flowerWhite, mat.flowerYellow, mat.apple];
+
+  useFrame(({ clock }) => {
+    // Chỉ nhấp nháy ở chế độ high và khi không bật giảm chuyển động; còn lại sáng đều.
+    const animate = high && !reduced;
+    const t = clock.elapsedTime;
+    [0, 1].forEach((i) => {
+      const flicker = animate ? 1 + Math.sin(t * 6.3 + i * 1.7) * 0.07 + Math.sin(t * 13.1 + i) * 0.04 : 1;
+      flames.current[i]?.scale.set(1, flicker, 1);
+      glows.current[i]?.scale.setScalar(0.3 * flicker);
+      const light = lights.current[i];
+      if (light) light.intensity = 0.9 * flicker;
+    });
+  });
+
+  return (
+    <group>
+      {[-0.215, 0.215].map((cx, i) => (
+        <group key={cx} position={[cx, 0.05, 0.065]}>
+          <Cyl p={[0, 0.045, 0]} s={[0.014, 0.09, 0.014]} m={mat.candle} />
+          <Cyl p={[0, 0.093, 0]} s={[0.003, 0.012, 0.003]} m={mat.craneDark} />
+          <mesh
+            ref={(node) => { flames.current[i] = node; }}
+            geometry={geo.flame}
+            material={mat.flame}
+            position={[0, 0.098, 0]}
+            scale={[0.5, 0.5, 0.5]}
+          />
+          <sprite ref={(node) => { glows.current[i] = node; }} material={mat.flameGlow} position={[0, 0.125, 0.012]} scale={[0.3, 0.3, 1]} />
+          {withLight && (
+            <pointLight ref={(node) => { lights.current[i] = node; }} position={[0, 0.14, 0.05]} color="#ffb45c" intensity={0.9} distance={1.6} decay={2} />
+          )}
+        </group>
+      ))}
+      <group position={[0, 0.046, 0.103]}>
+        {flowers.map((flower, i) => (
+          <Sph key={i} p={[flower.x, flower.y, flower.z]} s={[0.011, 0.011, 0.011]} m={tones[flower.tone]} />
+        ))}
+      </group>
+    </group>
+  );
+};
+
 interface PortraitFrameProps {
   ancestor: Hall3DAncestor;
   x: number;
@@ -1471,12 +1615,51 @@ interface PortraitFrameProps {
   scale: number;
   selected: boolean;
   hovered: boolean;
+  /** Đang được phóng to: lúc này mới tải ảnh gốc. */
+  zoomed: boolean;
+  /** Hôm nay là ngày giỗ (âm lịch) của bài vị này. */
+  memorial: boolean;
+  /** Ngày giỗ và còn "ngân sách" đèn: bật đèn điểm ở nến (chỉ chế độ high). */
+  memorialLight: boolean;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
 }
 
-const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, y, z, scale, selected, hovered, onSelect, onHover }) => {
-  const { res, high, drag } = useHall();
+/** Nạp một ảnh làm texture ảnh thờ (cắt kiểu cover 3:4). Trả về hàm hủy. */
+const loadPortraitTexture = (url: string, onLoad: (texture: Texture) => void): (() => void) => {
+  let cancelled = false;
+  try {
+    const loader = new TextureLoader();
+    loader.setCrossOrigin('anonymous');
+    loader.load(
+      url,
+      (texture) => {
+        if (cancelled) {
+          texture.dispose();
+          return;
+        }
+        texture.colorSpace = SRGBColorSpace;
+        texture.anisotropy = 4;
+        applyCoverCrop(texture, PHOTO_W / PHOTO_H);
+        onLoad(texture);
+      },
+      undefined,
+      () => {
+        /* tải lỗi: giữ ảnh đang có / ảnh mặc định */
+      }
+    );
+  } catch {
+    /* URL không hợp lệ: giữ ảnh mặc định */
+  }
+  return () => {
+    cancelled = true;
+  };
+};
+
+const PortraitFrame: React.FC<PortraitFrameProps> = ({
+  ancestor, x, y, z, scale, selected, hovered, zoomed, memorial, memorialLight, onSelect, onHover,
+}) => {
+  const { res, high, reduced, drag, grayscale } = useHall();
   const { mat, geo, soft, defaultPortrait } = res;
   const liftRef = useRef<Group>(null);
   const haloRef = useRef<Sprite>(null);
@@ -1488,8 +1671,17 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, y, z, scale,
     () => new MeshStandardMaterial({ map: plateTex, emissiveMap: plateTex, emissive: '#ffffff', emissiveIntensity: 0.25, roughness: 0.5, metalness: 0.1 }),
     [plateTex]
   );
-  // Ảnh không chịu ánh sáng cảnh để luôn nhìn rõ mặt người.
-  const photoMat = useMemo(() => new MeshBasicMaterial({ map: defaultPortrait, color: '#dbd5c8' }), [defaultPortrait]);
+  // Ảnh không chịu ánh sáng cảnh để luôn nhìn rõ mặt người. Đen trắng + viền tối góc làm trong shader (uniform).
+  const portraitUniforms = useMemo(createPortraitUniforms, []);
+  const photoMat = useMemo(() => {
+    const material = new MeshBasicMaterial({ map: defaultPortrait, color: '#dbd5c8' });
+    material.onBeforeCompile = (shader) => patchPortraitShader(shader, portraitUniforms);
+    material.customProgramCacheKey = () => PORTRAIT_PROGRAM_KEY;
+    return material;
+  }, [defaultPortrait, portraitUniforms]);
+  useEffect(() => {
+    setPortraitGrayscale(portraitUniforms, grayscale);
+  }, [portraitUniforms, grayscale]);
   const frameMat = useMemo(() => new MeshStandardMaterial({ color: COLOR.gold, metalness: 0.9, roughness: 0.35, emissive: '#ffb830', emissiveIntensity: 0 }), []);
   const haloMat = useMemo(
     () => new SpriteMaterial({ map: soft, color: '#ffd27a', transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }),
@@ -1498,44 +1690,55 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, y, z, scale,
   useEffect(() => () => { plateTex.dispose(); plateMat.dispose(); }, [plateTex, plateMat]);
   useEffect(() => () => { frameMat.dispose(); haloMat.dispose(); photoMat.dispose(); }, [frameMat, haloMat, photoMat]);
 
-  // Nạp ảnh chân dung nếu có; lỗi tải thì giữ ảnh mặc định, không làm vỡ cảnh.
-  const portraitUrl = ancestor.portraitUrl ? ancestor.portraitUrl.trim() : '';
+  // Ảnh: cảnh 3D dùng bản nhỏ (thumbnailUrl, thiếu thì portraitUrl); ảnh gốc chỉ được tải khi phóng to.
+  // Lỗi tải thì giữ ảnh đang có / ảnh mặc định, không làm vỡ cảnh.
+  const urls = pickPortraitUrls(ancestor, zoomed);
+  const thumbTexture = useRef<Texture | null>(null);
+  const fullTexture = useRef<Texture | null>(null);
   useEffect(() => {
-    if (!portraitUrl) return undefined;
-    let cancelled = false;
+    if (!urls.thumb) return undefined;
     let loaded: Texture | null = null;
-    try {
-      const loader = new TextureLoader();
-      loader.setCrossOrigin('anonymous');
-      loader.load(
-        portraitUrl,
-        (texture) => {
-          if (cancelled) {
-            texture.dispose();
-            return;
-          }
-          loaded = texture;
-          texture.colorSpace = SRGBColorSpace;
-          texture.anisotropy = 4;
-          applyCoverCrop(texture, PHOTO_W / PHOTO_H);
-          photoMat.map = texture;
-          photoMat.needsUpdate = true;
-        },
-        undefined,
-        () => {
-          /* tải lỗi: giữ ảnh mặc định */
-        }
-      );
-    } catch {
-      /* URL không hợp lệ: giữ ảnh mặc định */
-    }
+    const cancel = loadPortraitTexture(urls.thumb, (texture) => {
+      loaded = texture;
+      thumbTexture.current = texture;
+      if (!fullTexture.current) {
+        photoMat.map = texture;
+        photoMat.needsUpdate = true;
+      }
+    });
     return () => {
-      cancelled = true;
-      photoMat.map = defaultPortrait;
-      photoMat.needsUpdate = true;
-      if (loaded) loaded.dispose();
+      cancel();
+      if (loaded) {
+        if (photoMat.map === loaded) {
+          photoMat.map = defaultPortrait;
+          photoMat.needsUpdate = true;
+        }
+        if (thumbTexture.current === loaded) thumbTexture.current = null;
+        loaded.dispose();
+      }
     };
-  }, [portraitUrl, photoMat, defaultPortrait]);
+  }, [urls.thumb, photoMat, defaultPortrait]);
+  useEffect(() => {
+    if (!urls.wantFull) return undefined;
+    let loaded: Texture | null = null;
+    const cancel = loadPortraitTexture(urls.full, (texture) => {
+      loaded = texture;
+      fullTexture.current = texture;
+      photoMat.map = texture;
+      photoMat.needsUpdate = true;
+    });
+    return () => {
+      cancel();
+      if (loaded) {
+        if (fullTexture.current === loaded) fullTexture.current = null;
+        if (photoMat.map === loaded) {
+          photoMat.map = thumbTexture.current ?? defaultPortrait;
+          photoMat.needsUpdate = true;
+        }
+        loaded.dispose();
+      }
+    };
+  }, [urls.wantFull, urls.full, photoMat, defaultPortrait]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
@@ -1546,7 +1749,9 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, y, z, scale,
     plateMat.emissiveIntensity = MathUtils.damp(plateMat.emissiveIntensity, 0.25 + glow * 0.4, 8, dt);
     brightness.current = MathUtils.damp(brightness.current, 0.86 + glow * 0.14, 8, dt);
     photoMat.color.setRGB(brightness.current, brightness.current * 0.975, brightness.current * 0.93);
-    haloMat.opacity = MathUtils.damp(haloMat.opacity, glow * 0.5, 6, dt);
+    // Ngày giỗ: quầng sáng ấm luôn có (nhẹ hơn ở chế độ nhẹ), sáng hơn khi rê chuột / chọn.
+    const memorialBase = memorial ? (high ? 0.3 : 0.18) : 0;
+    haloMat.opacity = MathUtils.damp(haloMat.opacity, Math.max(glow * 0.5, memorialBase), 6, dt);
     const halo = haloRef.current;
     if (halo) halo.visible = haloMat.opacity > 0.01;
   });
@@ -1579,11 +1784,16 @@ const PortraitFrame: React.FC<PortraitFrameProps> = ({ ancestor, x, y, z, scale,
             <group position={[0, 0.06, 0]} rotation={[-0.06, 0, 0]}>
               <mesh geometry={geo.frameOuter} material={frameMat} castShadow={high} />
               <mesh geometry={geo.frameInner} material={mat.lacquer} />
+              <mesh geometry={geo.frameRim} material={frameMat} />
               <mesh geometry={geo.photoBorder} material={mat.gold} position={[0, PHOTO_Y, 0.0262]} />
               <mesh geometry={geo.photo} material={photoMat} position={[0, PHOTO_Y, 0.0275]} />
               <mesh geometry={geo.plate} material={plateMat} position={[0, PLATE_Y, 0.0275]} />
+              {/* Lớp kính mỏng: phản chiếu môi trường ấm (chỉ high) + vệt sáng ánh nến (cả hai chế độ, tĩnh ở chế độ nhẹ) */}
+              {high && <mesh geometry={geo.glass} material={mat.glass} position={[0, PHOTO_Y, 0.0295]} renderOrder={2} />}
+              <mesh geometry={geo.glass} material={mat.glassStreak} position={[0, PHOTO_Y, 0.0297]} renderOrder={3} />
               <sprite ref={haloRef} material={haloMat} position={[0, 0.42, -0.08]} scale={[1.15, 1.45, 1]} visible={false} />
             </group>
+            {memorial && <MemorialDecor withLight={memorialLight && high && !reduced} />}
           </group>
         </group>
       </group>
@@ -2045,15 +2255,35 @@ interface RigFocus {
   token: number;
 }
 
+/** Phóng to một ảnh: camera tiến sát, ngang tầm khung ảnh. x, y, z là tâm khung (thế giới), height là chiều cao khung. */
+interface RigZoom {
+  x: number;
+  y: number;
+  z: number;
+  height: number;
+}
+
 interface FirstPersonRigProps {
   apiRef: React.MutableRefObject<RigApi | null>;
   focus: RigFocus | null;
+  zoom: RigZoom | null;
+  /** Người dùng tự thoát khỏi chế độ phóng to (Esc, "Về cửa"). */
+  onExitZoom: () => void;
   hovered: string | null;
   offeringToken: number;
 }
 
-const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered, offeringToken }) => {
+const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, zoom, onExitZoom, hovered, offeringToken }) => {
   const { reduced, drag } = useHall();
+  const onExitRef = useRef(onExitZoom);
+  onExitRef.current = onExitZoom;
+  // Phóng to: lưu tư thế cũ để trả lại khi thoát; chuyển động nhanh (gần như tức thì) khi bật giảm chuyển động.
+  const zoomRef = useRef<{ active: boolean; saved: { xT: number; zT: number; yawT: number; pitchT: number } | null; minZ: number }>({
+    active: false,
+    saved: null,
+    minZ: STOP_Z,
+  });
+  const fastRef = useRef(false);
   const offerCam = useRef(false);
   const prevOffering = useRef(offeringToken);
   const camera = useThree((state) => state.camera) as unknown as PerspectiveCamera;
@@ -2073,6 +2303,8 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
     pitchT: 0,
     x: 0,
     xT: 0,
+    y: EYE_Y,
+    yT: EYE_Y,
     z: reduced ? START_Z : DOOR_Z,
     zT: START_Z,
     intro: reduced ? INTRO_DURATION : 0,
@@ -2080,7 +2312,7 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
 
   useLayoutEffect(() => {
     camera.rotation.order = 'YXZ';
-    camera.position.set(pose.current.x, EYE_Y, pose.current.z);
+    camera.position.set(pose.current.x, pose.current.y, pose.current.z);
     camera.rotation.set(0, 0, 0);
   }, [camera]);
 
@@ -2096,17 +2328,24 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
     const clampPose = () => {
       s.yawT = MathUtils.clamp(s.yawT, -YAW_LIMIT, YAW_LIMIT);
       s.pitchT = MathUtils.clamp(s.pitchT, PITCH_MIN, PITCH_MAX);
-      s.xT = MathUtils.clamp(s.xT, -MAX_X, MAX_X);
-      s.zT = MathUtils.clamp(s.zT, STOP_Z, START_Z);
+      const zoomed = zoomRef.current.active;
+      const maxX = zoomed ? ZOOM_MAX_X : MAX_X;
+      s.xT = MathUtils.clamp(s.xT, -maxX, maxX);
+      s.zT = MathUtils.clamp(s.zT, zoomed ? zoomRef.current.minZ : STOP_Z, START_Z);
     };
     const cursor = () => {
       el.style.cursor = drag.current.dragging ? 'grabbing' : hoveredRef.current !== null ? 'pointer' : 'grab';
     };
     const reset = () => {
       s.xT = 0;
+      s.yT = EYE_Y;
       s.zT = START_Z;
       s.yawT = 0;
       s.pitchT = 0;
+      if (zoomRef.current.active) {
+        zoomRef.current.saved = null; // về cửa: không trả lại tư thế cũ
+        onExitRef.current();
+      }
     };
     // Kéo cảnh theo ngón tay (kiểu street view): kéo sang trái -> nhìn sang phải; kéo xuống -> nhìn lên.
     const radPerPx = () => (camera.fov * DEG) / Math.max(1, heightRef.current);
@@ -2154,8 +2393,7 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
       p.x = e.clientX;
       p.y = e.clientY;
       if (!drag.current.dragging) {
-        const moved = Math.hypot(e.clientX - gesture.current.startX, e.clientY - gesture.current.startY);
-        if (moved <= DRAG_THRESHOLD) return;
+        if (!exceedsDragThreshold(gesture.current.startX, gesture.current.startY, e.clientX, e.clientY, DRAG_THRESHOLD)) return;
         drag.current.dragging = true;
         drag.current.wasDrag = true;
         if (offerCam.current) {
@@ -2213,6 +2451,9 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
         case 'Home':
           reset();
           break;
+        case 'Escape':
+          onExitRef.current();
+          break;
         default:
           handled = false;
       }
@@ -2223,7 +2464,7 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
     };
 
     el.tabIndex = 0;
-    el.setAttribute('aria-label', 'Phòng thờ 3D. Kéo để nhìn quanh, mũi tên trái phải để quay, W S hoặc mũi tên lên xuống để tiến lùi, Home để về cửa.');
+    el.setAttribute('aria-label', 'Phòng thờ 3D. Kéo để nhìn quanh, mũi tên trái phải để quay, W S hoặc mũi tên lên xuống để tiến lùi, Home để về cửa, Esc để thu nhỏ ảnh thờ đang xem sát.');
     el.addEventListener('pointerdown', onDown);
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
@@ -2264,6 +2505,7 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
     }
     if (prevToken.current === focus.token) return;
     prevToken.current = focus.token;
+    if (zoomRef.current.active) return; // đang xem sát: camera do chế độ phóng to điều khiển
     const s = pose.current;
     s.xT = MathUtils.clamp(focus.x * 0.12, -MAX_X, MAX_X);
     const dx = focus.x - s.xT;
@@ -2272,11 +2514,41 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
     s.pitchT = MathUtils.clamp(Math.atan2(focus.y - EYE_Y, Math.hypot(dx, dz)) * 0.6, PITCH_MIN, PITCH_MAX);
   }, [focus]);
 
+  // Phóng to / thu nhỏ một ảnh thờ. Tiến sát, ngang tầm khung, nhìn thẳng vào ảnh; thoát thì trả lại tư thế cũ.
+  useEffect(() => {
+    const s = pose.current;
+    const state = zoomRef.current;
+    if (zoom) {
+      if (!state.active) state.saved = { xT: s.xT, zT: s.zT, yawT: s.yawT, pitchT: s.pitchT };
+      state.active = true;
+      state.minZ = zoom.z + ZOOM_MIN_GAP;
+      s.xT = MathUtils.clamp(zoom.x, -ZOOM_MAX_X, ZOOM_MAX_X);
+      s.yT = MathUtils.clamp(zoom.y, ZOOM_MIN_Y, ZOOM_MAX_Y);
+      s.zT = Math.max(state.minZ, Math.min(START_Z, zoom.z + zoomDistance(zoom.height, camera.fov)));
+      s.yawT = 0;
+      s.pitchT = 0;
+      offerCam.current = false;
+      fastRef.current = reduced;
+    } else if (state.active) {
+      state.active = false;
+      s.yT = EYE_Y;
+      const saved = state.saved;
+      state.saved = null;
+      if (saved) {
+        s.xT = saved.xT;
+        s.zT = saved.zT;
+        s.yawT = saved.yawT;
+        s.pitchT = saved.pitchT;
+      }
+      fastRef.current = reduced;
+    }
+  }, [zoom, camera, reduced]);
+
   // Thắp hương: quay nhẹ về lư hương và tiến gần thêm một chút (vẫn trong giới hạn camera).
   useEffect(() => {
     if (prevOffering.current === offeringToken) return;
     prevOffering.current = offeringToken;
-    if (reduced) return;
+    if (reduced || zoomRef.current.active) return;
     const s = pose.current;
     s.xT = 0;
     s.zT = MathUtils.clamp(s.zT - 0.9, STOP_Z, START_Z);
@@ -2296,13 +2568,16 @@ const FirstPersonRig: React.FC<FirstPersonRigProps> = ({ apiRef, focus, hovered,
       s.z = MathUtils.lerp(DOOR_Z, START_Z, easeInOutCubic(s.intro / INTRO_DURATION));
       s.x = MathUtils.damp(s.x, s.xT, 6, dt);
     } else {
-      s.x = MathUtils.damp(s.x, s.xT, 6, dt);
-      s.z = MathUtils.damp(s.z, s.zT, 6, dt);
+      const rate = fastRef.current ? 24 : 6;
+      s.x = MathUtils.damp(s.x, s.xT, rate, dt);
+      s.z = MathUtils.damp(s.z, s.zT, rate, dt);
+      s.y = MathUtils.damp(s.y, s.yT, rate, dt);
+      if (fastRef.current && Math.abs(s.x - s.xT) + Math.abs(s.y - s.yT) + Math.abs(s.z - s.zT) < 0.01) fastRef.current = false;
     }
     const turn = reduced ? 40 : 9;
     s.yaw = MathUtils.damp(s.yaw, s.yawT, turn, dt);
     s.pitch = MathUtils.damp(s.pitch, s.pitchT, turn, dt);
-    camera.position.set(s.x, EYE_Y, s.z);
+    camera.position.set(s.x, s.y, s.z);
     camera.rotation.set(s.pitch, -s.yaw, 0);
   });
 
@@ -2343,6 +2618,14 @@ interface HallSceneProps {
   onHover: (id: string | null) => void;
   rigApi: React.MutableRefObject<RigApi | null>;
   offeringToken: number;
+  /** Trạng thái kéo/bấm dùng chung với Canvas (để phân biệt bấm ra ngoài với kéo). */
+  drag: React.MutableRefObject<DragState>;
+  grayscale: boolean;
+  /** id bài vị đang được phóng to (null: cảnh chung). */
+  zoomId: string | null;
+  onExitZoom: () => void;
+  /** id các bài vị có ngày giỗ hôm nay. */
+  memorialIds: ReadonlySet<string>;
 }
 
 const HallScene: React.FC<HallSceneProps> = ({
@@ -2358,13 +2641,24 @@ const HallScene: React.FC<HallSceneProps> = ({
   onHover,
   rigApi,
   offeringToken,
+  drag,
+  grayscale,
+  zoomId,
+  onExitZoom,
+  memorialIds,
 }) => {
   const high = quality === 'high';
   const res = useMemo(() => createResources(quality), [quality]);
   useEffect(() => () => res.dispose(), [res]);
-  const drag = useRef<DragState>({ wasDrag: false, dragging: false });
   const offer = useRef<OfferState>({ t: OFFER_TAIL });
-  const context = useMemo<HallContextValue>(() => ({ res, high, reduced, drag, offer }), [res, high, reduced]);
+  const context = useMemo<HallContextValue>(() => ({ res, high, reduced, grayscale, drag, offer }), [res, high, reduced, grayscale, drag]);
+
+  // Vệt sáng ánh nến trên kính dao động nhẹ cùng ngọn nến; sáng đều ở chế độ nhẹ hoặc khi giảm chuyển động.
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const flicker = high && !reduced ? 1 + Math.sin(t * 5.1) * 0.08 + Math.sin(t * 11.7) * 0.04 : 1;
+    res.mat.glassStreak.opacity = 0.2 * flicker;
+  });
 
   // Đồng hồ của animation thắp hương (một nguồn thời gian chung cho nhang, nến, khói).
   useFrame((_, delta) => {
@@ -2451,6 +2745,30 @@ const HallScene: React.FC<HallSceneProps> = ({
     return null;
   }, [layout, shownTiers, selectedId]);
 
+  // Phóng to ảnh đang chọn: camera tiến sát, ngang tầm tâm khung.
+  const zoom = useMemo<RigZoom | null>(() => {
+    if (!layout || !zoomId) return null;
+    for (let row = 0; row < shownTiers.length; row += 1) {
+      const items = shownTiers[row].tablets;
+      const col = items.findIndex((item) => item.id === zoomId);
+      if (col >= 0) {
+        return {
+          x: tabletX(col, items.length, layout.scale),
+          y: layout.baseY[row] + 0.5 * layout.scale,
+          z: layout.rowZ[row] + ALTAR_Z,
+          height: FRAME_H * layout.scale,
+        };
+      }
+    }
+    return null;
+  }, [layout, shownTiers, zoomId]);
+
+  // Tối đa 2 bài vị giỗ có đèn điểm ở nến (đèn thật rất tốn); còn lại chỉ có ánh sáng giả (sprite).
+  const litMemorials = useMemo(
+    () => pickLitMemorials(shownTiers.flatMap((tier) => tier.tablets.map((item) => item.id)), memorialIds, high),
+    [shownTiers, memorialIds, high]
+  );
+
   return (
     <HallContext.Provider value={context}>
       <color attach="background" args={[COLOR.bg]} />
@@ -2520,6 +2838,9 @@ const HallScene: React.FC<HallSceneProps> = ({
                     scale={layout.scale}
                     selected={ancestor.id === selectedId}
                     hovered={ancestor.id === hovered}
+                    zoomed={ancestor.id === zoomId}
+                    memorial={memorialIds.has(ancestor.id)}
+                    memorialLight={litMemorials.has(ancestor.id)}
                     onSelect={onSelect}
                     onHover={onHover}
                   />
@@ -2532,7 +2853,7 @@ const HallScene: React.FC<HallSceneProps> = ({
       </group>
 
       <DustMotes count={high ? 60 : 20} />
-      <FirstPersonRig apiRef={rigApi} focus={focus} hovered={hovered} offeringToken={offeringToken} />
+      <FirstPersonRig apiRef={rigApi} focus={focus} zoom={zoom} onExitZoom={onExitZoom} hovered={hovered} offeringToken={offeringToken} />
     </HallContext.Provider>
   );
 };
@@ -2582,6 +2903,9 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
   hallTitle = DEFAULT_HALL_TITLE,
   quality: qualityProp,
   offeringToken = 0,
+  portraitGrayscale = false,
+  onZoomChange,
+  today,
 }) => {
   const webglOk = useMemo(() => isWebGLAvailable(), []);
   const quality = useMemo<HallQuality>(() => qualityProp ?? detectQuality(), [qualityProp]);
@@ -2589,6 +2913,62 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
   const pageVisible = usePageVisible();
   const [hovered, setHovered] = useState<string | null>(null);
   const rigApi = useRef<RigApi | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  // Bấm vào ảnh -> phóng to ảnh đó; bấm ra ngoài / Đóng / Esc / Về cửa -> trở lại. Kéo không bao giờ được tính là bấm.
+  const [zoomId, dispatchZoom] = useReducer(zoomReducer, null);
+  const dragRef = useRef<DragState>({ wasDrag: false, dragging: false });
+  const exitZoom = React.useCallback(() => dispatchZoom({ type: 'reset' }), []);
+  const handleSelect = (id: string) => {
+    dispatchZoom({ type: 'click', id, wasDrag: false }); // PortraitFrame đã loại các lần kéo trước khi gọi
+    onSelect(id);
+  };
+
+  // Ngày giỗ (âm lịch) của các bài vị đang hiển thị, theo ngày giờ Việt Nam. Không đổi được thì không có hiệu ứng.
+  const todayVn: SolarDate = vietnamToday(today ?? new Date());
+  const todayKey = `${todayVn.y}-${todayVn.m}-${todayVn.d}`;
+  const memorialIds = useMemo(
+    () => memorialIdsOf(tiers.slice(0, MAX_TIERS).flatMap((tier) => tier.tablets), todayVn),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tiers, todayKey]
+  );
+
+  // Danh sách ảnh đang hiển thị đổi (chuyển trang...) mà ảnh đang xem sát không còn: thu nhỏ lại.
+  const visibleIds = tiers.slice(0, MAX_TIERS).flatMap((tier) => tier.tablets.map((item) => item.id));
+  const visibleKey = visibleIds.join('|');
+  useEffect(() => {
+    dispatchZoom({ type: 'available', ids: visibleIds });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleKey]);
+  // Chọn ảnh khác từ bên ngoài (danh sách của trang) khi đang xem sát: chuyển sang ảnh đó.
+  useEffect(() => {
+    if (zoomId !== null && selectedId && selectedId !== zoomId && visibleIds.includes(selectedId)) {
+      dispatchZoom({ type: 'click', id: selectedId, wasDrag: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+  // Esc thu nhỏ lại (kể cả khi tiêu điểm đang ở nút Đóng, không ở canvas).
+  useEffect(() => {
+    if (zoomId === null) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dispatchZoom({ type: 'escape' });
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [zoomId]);
+  // Báo cho trang để tải ảnh gốc đúng lúc phóng to.
+  const onZoomChangeRef = useRef(onZoomChange);
+  onZoomChangeRef.current = onZoomChange;
+  const prevZoom = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevZoom.current === zoomId) return;
+    const closed = prevZoom.current !== null && zoomId === null;
+    prevZoom.current = zoomId;
+    onZoomChangeRef.current?.(zoomId);
+    // Thẻ thông tin biến mất kéo theo tiêu điểm: trả tiêu điểm về canvas để phím điều hướng vẫn dùng được.
+    if (closed && (document.activeElement === document.body || document.activeElement === null)) {
+      wrapRef.current?.querySelector('canvas')?.focus({ preventScroll: true });
+    }
+  }, [zoomId]);
 
   const onErrorRef = useRef(onError);
   useEffect(() => {
@@ -2608,8 +2988,9 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
 
   const high = quality === 'high';
   const isEmpty = !tiers.some((tier) => tier.tablets.length > 0);
+  const zoomedAncestor = zoomId !== null ? tiers.flatMap((tier) => tier.tablets).find((item) => item.id === zoomId) : undefined;
   const hoveredAncestor =
-    hovered !== null && hovered !== selectedId
+    zoomId === null && hovered !== null && hovered !== selectedId
       ? tiers.flatMap((tier) => tier.tablets).find((item) => item.id === hovered)
       : undefined;
   // Mỗi tầng có nhiều hơn 9 bài vị thì có bộ chuyển trang riêng.
@@ -2618,13 +2999,15 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
   return (
     <Hall3DErrorBoundary fallback={fallback} onError={onError}>
       <div className="hall3d-root">
-        <div className="hall3d-wrap">
+        <div className="hall3d-wrap" ref={wrapRef}>
           <Canvas
             shadows={high}
             dpr={high ? [1, 1.75] : [1, 1.25]}
             frameloop={pageVisible ? 'always' : 'never'}
             camera={{ position: [0, EYE_Y, DOOR_Z], fov: BASE_FOV }}
             gl={{ antialias: high, powerPreference: 'high-performance' }}
+            // Bấm ra ngoài (không trúng ảnh nào, không phải kéo) thì thu nhỏ lại.
+            onPointerMissed={() => dispatchZoom({ type: 'missed', wasDrag: dragRef.current.wasDrag })}
             onCreated={({ gl }) => {
               gl.domElement.addEventListener('webglcontextlost', (event) => {
                 event.preventDefault();
@@ -2635,7 +3018,7 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
             <HallScene
               tiers={tiers}
               selectedId={selectedId}
-              onSelect={onSelect}
+              onSelect={handleSelect}
               incenseCount={incenseCount}
               isBurning={isBurning}
               hallTitle={hallTitle}
@@ -2645,8 +3028,20 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
               onHover={setHovered}
               rigApi={rigApi}
               offeringToken={offeringToken}
+              drag={dragRef}
+              grayscale={portraitGrayscale}
+              zoomId={zoomId}
+              onExitZoom={exitZoom}
+              memorialIds={memorialIds}
             />
           </Canvas>
+          {zoomedAncestor && (
+            <AncestorInfoCard
+              ancestor={zoomedAncestor}
+              memorialToday={memorialIds.has(zoomedAncestor.id) ? memorialLabel(zoomedAncestor.deathDate) : null}
+              onClose={() => dispatchZoom({ type: 'close' })}
+            />
+          )}
           {hoveredAncestor && (
             <div className="hall3d-hovercard" aria-hidden="true">
               <strong>{hoveredAncestor.name}</strong>
@@ -2657,7 +3052,7 @@ export const AncestralHall3D: React.FC<AncestralHall3DProps> = ({
         </div>
         <div className="hall3d-footer">
           <p className="hall3d-hint">
-            {isEmpty ? emptyHint : 'Kéo để nhìn quanh · Cuộn hoặc W/S để tiến lùi · Bấm ảnh thờ để xem thông tin'}
+            {isEmpty ? emptyHint : 'Kéo để nhìn quanh · Cuộn hoặc W/S để tiến lùi · Bấm ảnh thờ để xem sát, bấm ra ngoài hoặc Esc để quay lại'}
           </p>
           <div className="hall3d-controls" role="group" aria-label="Điều khiển góc nhìn">
             <button type="button" onClick={() => rigApi.current?.move(-0.9)}>

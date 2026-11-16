@@ -42,6 +42,7 @@ __all__ = [
     "WorshipPerson",
     "WorshipDailyOffering",
     "WorshipStreak",
+    "WorshipRemovedPerson",
 ]
 
 
@@ -75,6 +76,10 @@ class WorshipSpace(Base):
         Boolean, nullable=False, server_default=text("true")
     )
     cover_image_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Anh bai vi hien den trang trong canh 3D (migration 0016)
+    portrait_grayscale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -199,5 +204,28 @@ class WorshipStreak(Base):
     total_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     last_offer_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class WorshipRemovedPerson(Base):
+    """Dau vet: Truong toc da GO bai vi cua nguoi nay khoi phong tho (migration 0017).
+
+    Chi de viec tu dong lap bai vi khi mot nguoi chuyen thanh "da mat" khong them lai bai vi da bi go.
+    Them tay qua API van duoc phep (va xoa dau vet nay)."""
+
+    __tablename__ = "worship_removed_persons"
+    __table_args__ = (PrimaryKeyConstraint("space_id", "person_id", name="pk_worship_removed_persons"),)
+
+    space_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("worship_spaces.space_id", ondelete="CASCADE"), nullable=False
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("persons.person_id", ondelete="CASCADE"), nullable=False
+    )
+    removed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True
+    )
+    removed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )

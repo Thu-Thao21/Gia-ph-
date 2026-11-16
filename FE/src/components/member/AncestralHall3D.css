@@ -71,6 +71,114 @@
   font-size: 11px;
 }
 
+/* Thẻ thông tin khi phóng to một ảnh thờ (camera tiến sát) */
+.hall3d-infocard {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  width: min(300px, calc(100% - 28px));
+  max-height: calc(100% - 28px);
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+  color: #fff4d1;
+  background: rgba(26, 12, 7, 0.9);
+  border: 1px solid rgba(231, 182, 74, 0.65);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  animation: hall3dInfoIn 180ms ease-out;
+}
+
+@keyframes hall3dInfoIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.hall3d-infocard > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hall3d-infocard > header strong {
+  display: block;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.hall3d-infocard > header span {
+  color: #eacb77;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hall3d-infocard > header button {
+  flex: none;
+  min-width: 56px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: #3a2208;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #f7d77d, #d9a93d);
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.hall3d-infocard > header button:focus-visible {
+  outline: 3px solid rgba(255, 244, 209, 0.7);
+  outline-offset: 2px;
+}
+
+.hall3d-infocard-memorial {
+  margin: 0;
+  padding: 6px 10px;
+  color: #3a2208;
+  font-size: 12.5px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #ffe39a, #f5c451);
+  border-radius: 8px;
+}
+
+.hall3d-infocard dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.hall3d-infocard dl div {
+  padding: 6px 9px;
+  background: rgba(255, 244, 209, 0.07);
+  border-radius: 8px;
+}
+
+.hall3d-infocard dt {
+  color: rgba(255, 244, 209, 0.65);
+  font-size: 11px;
+}
+
+.hall3d-infocard dd {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.hall3d-infocard-note {
+  margin: 0;
+  color: rgba(255, 244, 209, 0.88);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .hall3d-footer {
   display: flex;
   flex-wrap: wrap;
@@ -177,10 +285,20 @@
   }
 
   .hall3d-hovercard strong { font-size: 13px; }
+
+  /* Điện thoại: thẻ thông tin trải ngang, nằm sát đáy khung 3D */
+  .hall3d-infocard {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-height: 56%;
+  }
   .hall3d-hint { font-size: 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hall3d-infocard { animation: none; }
   .hall3d-controls button,
   .hall3d-pager button { transition: none; }
 }

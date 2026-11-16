@@ -3,7 +3,10 @@
 PHẦN A - Unit KHÔNG cần DB (chạy mặc định bằng `pytest tests/test_c09_worship_hall.py`):
   vn_today / next_offer_at (đổi ngày 00:00 giờ Việt Nam), compute_next_streak, effective_streak,
   tier_for_generation, moderate_blessing, validate_image_filename, quyền xem / quản lý, schema,
-  đối chiếu ORM với migration 0014 (bằng đọc mã nguồn, không kết nối DB), các route đã đăng ký.
+  đối chiếu ORM với migration 0014 / 0016 (bằng đọc mã nguồn, không kết nối DB), các route đã đăng ký,
+  giới hạn tải ảnh (jpg/png/webp, 5MB, 4000px), bản nhỏ 512px webp, cài đặt ảnh đen trắng (portraitGrayscale),
+  tự lập bài vị khi một người thành "đã mất" (không trùng, không thêm lại bài vị đã gỡ, đủ 300, lỗi không
+  làm hỏng việc lưu người), GET hall không ghi DB, script backfill, migration 0017.
 
 PHẦN B - Tích hợp CẦN DB (class TestWorshipHallIntegration, đánh dấu `integration`):
   Mặc định bị loại bởi pytest.ini (`-m "not integration"`). Chỉ chạy khi có ALLOW_DB_TESTS=1 và `-m integration`,
@@ -16,6 +19,8 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import importlib.util
+import io
 import os
 import re
 import time
@@ -30,6 +35,7 @@ from app.core.errors import AppError
 from app.schemas.errors import DEFAULT_ERROR_MESSAGE, ERROR_HTTP_STATUS, ErrorCode
 from app.schemas.worship_hall import (
     BlessingCreate,
+    HallInfo,
     HallUpdate,
     MeInfo,
     TabletBulkCreate,
@@ -517,9 +523,13 @@ def test_migration_orm_columns_exist_in_migration():
     )
 
     _, upgrade, _ = _migration_parts()
+    # Cot them sau 0014: duoc doi chieu voi migration rieng (xem A9: test_migration_0016_*)
+    later_columns = {("worship_spaces", "portrait_grayscale")}
     for model in (WorshipSpace, WorshipTier, WorshipPerson, WorshipDailyOffering, WorshipStreak):
         assert re.search(rf"\b{model.__tablename__}\b", upgrade), model.__tablename__
         for column in model.__table__.columns:
+            if (model.__tablename__, column.name) in later_columns:
+                continue
             assert re.search(rf"\b{column.name}\b", upgrade), f"{model.__tablename__}.{column.name} thiếu trong migration"
 
 
@@ -674,16 +684,1037 @@ def test_all_worship_hall_routes_are_registered():
 
 
 # =============================================================================
+# A9. ẢNH PHÒNG THỜ: GIỚI HẠN TẢI LÊN, BẢN NHỎ (THUMBNAIL), CÀI ĐẶT ẢNH ĐEN TRẮNG (không cần DB)
+# =============================================================================
+
+MIGRATION_0016 = (
+    Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0016_worship_portrait_gray.py"
+)
+
+
+def _image_bytes(fmt: str, size=(64, 48), mode: str = "RGB") -> bytes:
+    """Ảnh thật (Pillow tạo) để thử kiểm tra nội dung và tạo bản nhỏ."""
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new(mode, size, (200, 30, 30) if mode == "RGB" else 0).save(buf, format=fmt)
+    return buf.getvalue()
+
+
+def _upload(data: bytes, name: str = "a.jpg"):
+    from fastapi import UploadFile
+
+    return UploadFile(file=io.BytesIO(data), filename=name)
+
+
+def _store(tmp_path, monkeypatch, data: bytes, name: str = "a.jpg", **kwargs) -> str:
+    monkeypatch.setattr(hs, "WORSHIP_IMAGE_DIR", str(tmp_path))
+    return asyncio.run(WorshipHallService(None)._store_image(_upload(data, name), **kwargs))
+
+
+def _rejected(tmp_path, monkeypatch, data: bytes, name: str = "a.jpg", **kwargs) -> AppError:
+    with pytest.raises(AppError) as exc:
+        _store(tmp_path, monkeypatch, data, name, **kwargs)
+    assert list(tmp_path.iterdir()) == [], "ảnh bị từ chối thì không được để lại tệp nào"
+    return exc.value
+
+
+def test_upload_limits_are_5mb_and_4000px():
+    assert hs.WORSHIP_IMAGE_MAX_BYTES == 5 * 1024 * 1024
+    assert hs.WORSHIP_IMAGE_MAX_SIDE == 4000
+    assert hs.THUMB_MAX_SIDE == 512
+
+
+@pytest.mark.parametrize("name", ["fake.jpg", "fake.png", "fake.webp", "fake.jpeg"])
+def test_upload_rejects_text_renamed_to_image(tmp_path, monkeypatch, name):
+    err = _rejected(tmp_path, monkeypatch, b"day khong phai anh, chi la van ban", name, with_thumbnail=True)
+    assert err.status_code == 422
+    assert "JPG, PNG hoặc WebP" in err.message
+
+
+def test_upload_rejects_other_real_formats_even_with_jpg_extension(tmp_path, monkeypatch):
+    gif = _image_bytes("GIF")
+    err = _rejected(tmp_path, monkeypatch, gif, "photo.jpg")
+    assert err.status_code == 422 and "JPG, PNG hoặc WebP" in err.message
+    svg = b"<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'></svg>"
+    assert _rejected(tmp_path, monkeypatch, svg, "photo.png").status_code == 422
+    html_in_jpg = b"\xff\xd8\xff\xe0" + b"<html><script>alert(1)</script></html>" * 4
+    assert _rejected(tmp_path, monkeypatch, html_in_jpg, "photo.jpg").status_code == 422
+
+
+def test_upload_rejects_empty_file(tmp_path, monkeypatch):
+    assert _rejected(tmp_path, monkeypatch, b"", "a.png").status_code == 422
+
+
+def test_upload_rejects_file_over_5mb(tmp_path, monkeypatch):
+    just_over = _image_bytes("JPEG") + b"\x00" * (5 * 1024 * 1024)
+    assert len(just_over) > 5 * 1024 * 1024
+    err = _rejected(tmp_path, monkeypatch, just_over, "big.jpg", with_thumbnail=True)
+    assert err.status_code == 422 and "5MB" in err.message
+
+
+def test_upload_accepts_file_between_2mb_and_5mb_old_limit_is_gone(tmp_path, monkeypatch):
+    # 3 MB: bị từ chối ở bản cũ (giới hạn 2 MB), nay phải được nhận
+    data = _image_bytes("PNG") + b"\x00" * (3 * 1024 * 1024)
+    assert len(data) < hs.WORSHIP_IMAGE_MAX_BYTES
+    name = _store(tmp_path, monkeypatch, data, "ok.png")
+    assert (tmp_path / name).is_file()
+
+
+def test_upload_rejects_side_over_4000px_but_accepts_exactly_4000(tmp_path, monkeypatch):
+    err = _rejected(tmp_path, monkeypatch, _image_bytes("PNG", (4001, 16)), "wide.png", with_thumbnail=True)
+    assert err.status_code == 422 and "4000px" in err.message
+    tall = _rejected(tmp_path, monkeypatch, _image_bytes("PNG", (16, 4001)), "tall.png")
+    assert tall.status_code == 422
+    name = _store(tmp_path, monkeypatch, _image_bytes("PNG", (4000, 16)), "edge.png", with_thumbnail=True)
+    assert (tmp_path / name).is_file()
+
+
+def test_upload_rejects_image_below_min_side(tmp_path, monkeypatch):
+    assert _rejected(tmp_path, monkeypatch, _image_bytes("PNG", (8, 8)), "tiny.png").status_code == 422
+
+
+def test_upload_rejects_header_ok_but_undecodable_image_when_thumbnail_needed(tmp_path, monkeypatch):
+    broken = _image_bytes("PNG", (200, 200))[:60]  # còn đủ header, mất dữ liệu ảnh
+    err = _rejected(tmp_path, monkeypatch, broken, "cut.png", with_thumbnail=True)
+    assert err.status_code == 422 and "hỏng" in err.message
+
+
+def test_image_errors_are_validation_error_422_in_vietnamese():
+    assert ERROR_HTTP_STATUS[ErrorCode.VALIDATION_ERROR] == 422
+    assert set(hs._IMAGE_MESSAGES) >= {"too_large", "empty", "unknown_type", "corrupt", "bad_dimensions"}
+    assert "5MB" in hs._IMAGE_MESSAGES["too_large"] and "4000px" in hs._IMAGE_MESSAGES["bad_dimensions"]
+
+
+# ---- bản nhỏ ---------------------------------------------------------------
+def test_thumbnail_name_convention():
+    assert hs.thumbnail_name("abc123.jpg") == "abc123_thumb.webp"
+    assert hs.thumbnail_name("abc123.png") == "abc123_thumb.webp"
+    assert hs.thumbnail_name("abc123.webp") == "abc123_thumb.webp"
+    assert validate_image_filename(hs.thumbnail_name("abc123.jpg")) == "image/webp"  # phục vụ được qua GET images
+
+
+def test_original_candidates_map_thumbnail_back_to_stored_names():
+    assert hs.original_candidates("abc_thumb.webp") == ["abc_thumb.webp", "abc.jpg", "abc.png", "abc.webp"]
+    assert hs.original_candidates("abc.jpg") == ["abc.jpg"]
+    assert hs.original_candidates("abc.webp") == ["abc.webp"]
+    assert hs.original_candidates("_thumb.webp") == ["_thumb.webp"]
+
+
+@pytest.mark.parametrize("fmt", ["JPEG", "PNG", "WEBP"])
+def test_make_thumbnail_downsizes_to_512_keeping_aspect_ratio(fmt):
+    from PIL import Image
+
+    thumb = hs.make_thumbnail(_image_bytes(fmt, (1600, 1000)))
+    with Image.open(io.BytesIO(thumb)) as img:
+        assert img.format == "WEBP"
+        assert img.size == (512, 320)
+
+
+def test_make_thumbnail_portrait_orientation_and_no_upscaling():
+    from PIL import Image
+
+    with Image.open(io.BytesIO(hs.make_thumbnail(_image_bytes("PNG", (1000, 2000))))) as tall:
+        assert tall.size == (256, 512)
+    with Image.open(io.BytesIO(hs.make_thumbnail(_image_bytes("PNG", (100, 80))))) as small:
+        assert small.size == (100, 80)  # ảnh nhỏ giữ nguyên, không phóng to
+
+
+def test_make_thumbnail_handles_transparency_and_palette_modes():
+    from PIL import Image
+
+    with Image.open(io.BytesIO(hs.make_thumbnail(_image_bytes("PNG", (900, 900), mode="RGBA")))) as rgba:
+        assert rgba.size == (512, 512)
+    with Image.open(io.BytesIO(hs.make_thumbnail(_image_bytes("PNG", (900, 900), mode="P")))) as pal:
+        assert pal.size == (512, 512)
+    with Image.open(io.BytesIO(hs.make_thumbnail(_image_bytes("JPEG", (900, 900), mode="L")))) as gray:
+        assert gray.size == (512, 512)
+
+
+def test_make_thumbnail_rejects_garbage():
+    with pytest.raises(hs.ImageRejected) as exc:
+        hs.make_thumbnail(b"not an image at all")
+    assert exc.value.reason == "corrupt"
+
+
+def test_store_portrait_writes_original_and_thumbnail_side_by_side(tmp_path, monkeypatch):
+    from PIL import Image
+
+    data = _image_bytes("JPEG", (2000, 1500))
+    name = _store(tmp_path, monkeypatch, data, "ong-noi.jpg", with_thumbnail=True)
+    assert name.endswith(".jpg") and name != "ong-noi.jpg"  # tên do server sinh, không dùng tên người dùng
+    assert (tmp_path / name).read_bytes() == data  # tệp gốc giữ nguyên
+    thumb_path = tmp_path / hs.thumbnail_name(name)
+    assert thumb_path.is_file()
+    with Image.open(thumb_path) as img:
+        assert img.format == "WEBP" and max(img.size) == 512
+    assert sorted(p.name for p in tmp_path.iterdir()) == sorted([name, hs.thumbnail_name(name)])
+
+
+def test_store_image_without_thumbnail_flag_writes_only_the_original(tmp_path, monkeypatch):
+    """Ảnh nền phòng thờ (cover) không tạo bản nhỏ."""
+    name = _store(tmp_path, monkeypatch, _image_bytes("PNG", (800, 600)), "bia.png")
+    assert [p.name for p in tmp_path.iterdir()] == [name]
+
+
+def test_remove_portrait_files_deletes_original_and_thumbnail(tmp_path, monkeypatch):
+    name = _store(tmp_path, monkeypatch, _image_bytes("PNG", (800, 600)), "a.png", with_thumbnail=True)
+    assert len(list(tmp_path.iterdir())) == 2
+    hs._remove_portrait_files(name)
+    assert list(tmp_path.iterdir()) == []
+    hs._remove_portrait_files(None)  # không lỗi
+    hs._remove_portrait_files("../x.png")  # không đụng tệp ngoài thư mục
+
+
+def _tablet_with(portrait_file):
+    from types import SimpleNamespace
+
+    wp = SimpleNamespace(
+        worship_person_id=uuid.uuid4(), portrait_image_path=portrait_file, note=None, display_order=0,
+        tier_id=uuid.uuid4(), is_visible=True,
+    )
+    person = SimpleNamespace(
+        id=uuid.uuid4(), full_name="Nguyễn Văn A", generation=2, birth_date=None, death_date=None, avatar_url=None,
+    )
+    return wp, person
+
+
+def test_tablet_item_thumbnail_url_points_to_the_thumbnail_when_it_exists(tmp_path, monkeypatch):
+    clan_id = uuid.uuid4()
+    name = _store(tmp_path, monkeypatch, _image_bytes("PNG", (800, 600)), "a.png", with_thumbnail=True)
+    wp, person = _tablet_with(name)
+    item = WorshipHallService(None)._tablet_item(wp, person, None, clan_id, Viewer(uuid.uuid4(), is_member=True))
+    assert item.portrait_url == f"/families/{clan_id}/worship/images/{name}"  # portraitUrl cũ giữ nguyên
+    assert item.thumbnail_url == f"/families/{clan_id}/worship/images/{hs.thumbnail_name(name)}"
+    dumped = item.model_dump(by_alias=True)
+    assert "portraitUrl" in dumped and dumped["thumbnailUrl"] == item.thumbnail_url
+
+
+def test_tablet_item_old_portrait_without_thumbnail_falls_back_to_portrait_url(tmp_path, monkeypatch):
+    monkeypatch.setattr(hs, "WORSHIP_IMAGE_DIR", str(tmp_path))
+    (tmp_path / "old.jpg").write_bytes(b"x")  # ảnh cũ: có tệp gốc, chưa có bản nhỏ
+    wp, person = _tablet_with("old.jpg")
+    clan_id = uuid.uuid4()
+    item = WorshipHallService(None)._tablet_item(wp, person, None, clan_id, Viewer(uuid.uuid4(), is_member=True))
+    assert item.thumbnail_url == item.portrait_url == f"/families/{clan_id}/worship/images/old.jpg"
+
+
+def test_tablet_item_without_any_portrait_has_no_thumbnail_either():
+    wp, person = _tablet_with(None)
+    item = WorshipHallService(None)._tablet_item(wp, person, None, uuid.uuid4(), Viewer(uuid.uuid4(), is_member=True))
+    assert item.portrait_url is None and item.thumbnail_url is None
+
+
+def test_tablet_item_external_avatar_is_used_for_both_urls():
+    wp, person = _tablet_with(None)
+    person.avatar_url = "https://cdn.example/a.jpg"
+    item = WorshipHallService(None)._tablet_item(wp, person, None, uuid.uuid4(), Viewer(uuid.uuid4(), is_member=True))
+    assert item.portrait_url == item.thumbnail_url == "https://cdn.example/a.jpg"
+
+
+# ---- portraitGrayscale -------------------------------------------------------
+def test_hall_info_exposes_portrait_grayscale_default_false():
+    info = HallInfo(title="Phòng thờ", clan_name="Nguyễn", visibility="CLAN_ONLY")
+    assert info.portrait_grayscale is False
+    assert info.model_dump(by_alias=True)["portraitGrayscale"] is False
+    on = HallInfo(title="x", clan_name="y", visibility="PUBLIC", portrait_grayscale=True)
+    assert on.model_dump(by_alias=True)["portraitGrayscale"] is True
+
+
+def test_hall_info_for_clan_without_hall_has_grayscale_false():
+    from types import SimpleNamespace
+
+    clan = SimpleNamespace(clan_id=uuid.uuid4(), name="Nguyễn")
+    assert WorshipHallService(None)._hall_info(clan, None).portrait_grayscale is False
+
+
+def test_hall_update_accepts_portrait_grayscale_camel_case():
+    assert HallUpdate.model_validate({"portraitGrayscale": True}).portrait_grayscale is True
+    assert HallUpdate.model_validate({"portraitGrayscale": False}).portrait_grayscale is False
+    assert HallUpdate.model_validate({}).portrait_grayscale is None  # không gửi = không đổi
+    with pytest.raises(ValidationError):
+        HallUpdate.model_validate({"portraitGrayscale": "khong-phai-bool"})
+
+
+def _update_hall_as(viewer, data):
+    """Chạy WorshipHallService.update_hall với DB giả; trả về (phòng thờ, kết quả, danh sách commit)."""
+    from types import SimpleNamespace
+
+    hall = SimpleNamespace(
+        space_id=uuid.uuid4(), title="Phòng thờ", visibility="CLAN_ONLY", blessings_enabled=True,
+        cover_image_path=None, portrait_grayscale=False, updated_at=None,
+    )
+    clan = SimpleNamespace(clan_id=uuid.uuid4(), name="Nguyễn")
+    commits = []
+
+    class _Db:
+        async def commit(self):
+            commits.append(1)
+
+    svc = WorshipHallService(_Db())
+
+    async def context(clan_id, account):
+        return clan, viewer
+
+    async def space_for_write(clan_, actor_id, create=True):
+        return hall
+
+    svc.context = context
+    svc._space_for_write = space_for_write
+    svc._audit = lambda *a, **k: None
+    actor = SimpleNamespace(user_id=uuid.uuid4())
+    result = asyncio.run(svc.update_hall(clan.clan_id, actor, data))
+    return hall, result, commits
+
+
+def test_leader_and_admin_can_change_portrait_grayscale():
+    uid = uuid.uuid4()
+    for viewer in (Viewer(uid, is_leader=True), Viewer(uid, is_system_admin=True)):
+        hall, result, commits = _update_hall_as(viewer, HallUpdate(portrait_grayscale=True))
+        assert hall.portrait_grayscale is True and result.portrait_grayscale is True and commits == [1]
+        assert result.model_dump(by_alias=True)["portraitGrayscale"] is True
+
+
+def test_update_without_portrait_grayscale_leaves_it_unchanged():
+    hall, result, _ = _update_hall_as(Viewer(uuid.uuid4(), is_leader=True), HallUpdate(title="Tên mới"))
+    assert hall.portrait_grayscale is False and result.portrait_grayscale is False and hall.title == "Tên mới"
+
+
+@pytest.mark.parametrize("viewer", [Viewer(), Viewer(uuid.uuid4()), Viewer(uuid.uuid4(), is_member=True)])
+def test_guest_outsider_and_member_cannot_change_portrait_grayscale(viewer):
+    with pytest.raises(AppError) as exc:
+        _update_hall_as(viewer, HallUpdate(portrait_grayscale=True))
+    assert exc.value.status_code in (401, 403)
+
+
+# ---- migration 0016 ----------------------------------------------------------
+def _migration_0016_parts() -> tuple[str, str, str]:
+    text = MIGRATION_0016.read_text(encoding="utf-8")
+    head, _, rest = text.partition("def upgrade()")
+    upgrade, _, downgrade = rest.partition("def downgrade()")
+    return head, upgrade, downgrade
+
+
+def test_migration_0016_chain_and_revision_name_fits_alembic_version():
+    head, _, _ = _migration_0016_parts()
+    assert re.search(r'revision: str = "0016_worship_portrait_gray"', head)
+    assert re.search(r'down_revision: .* = "0015_worship_vis_clan_only"', head)
+    assert len("0016_worship_portrait_gray") <= 32
+
+
+def test_migration_0016_adds_only_the_boolean_column_with_default_false():
+    _, upgrade, downgrade = _migration_0016_parts()
+    assert re.search(
+        r"ALTER TABLE worship_spaces ADD COLUMN IF NOT EXISTS portrait_grayscale BOOLEAN NOT NULL DEFAULT false",
+        upgrade,
+    )
+    assert not re.search(r"TRUNCATE|DELETE\s+FROM|DROP|UPDATE\s", upgrade, re.I)
+    assert set(re.findall(r"ALTER TABLE (\w+)", upgrade + downgrade)) == {"worship_spaces"}
+    assert re.search(r"DROP COLUMN IF EXISTS portrait_grayscale", downgrade)
+
+
+def test_orm_portrait_grayscale_matches_migration_0016():
+    from app.models.worship.entities import WorshipSpace
+
+    column = WorshipSpace.__table__.c.portrait_grayscale
+    assert column.type.__class__.__name__ == "Boolean"
+    assert column.nullable is False
+    assert str(column.server_default.arg) == "false"
+
+
+def test_requirements_pin_pillow_for_thumbnails():
+    root = Path(__file__).resolve().parent.parent
+    assert re.search(r"^Pillow==\d", (root / "requirements.txt").read_text(encoding="utf-8"), re.M)
+    assert re.search(r"^pillow==\d", (root / "constraints.txt").read_text(encoding="utf-8"), re.M)
+
+
+# =============================================================================
+# A10. TỰ ĐỘNG LẬP BÀI VỊ KHI MỘT NGƯỜI THÀNH "ĐÃ MẤT" (không cần DB: DB giả + thay thế các hàm truy vấn)
+# =============================================================================
+
+import inspect
+import logging
+from types import SimpleNamespace
+
+
+class _Rows:
+    def __init__(self, items=()):
+        self.items = list(items)
+
+    def scalars(self):
+        return self
+
+    def all(self):
+        return list(self.items)
+
+    def first(self):
+        return self.items[0] if self.items else None
+
+    def scalar_one_or_none(self):
+        return self.items[0] if self.items else None
+
+
+class _Nested:
+    def __init__(self, db):
+        self.db = db
+
+    async def __aenter__(self):
+        self.db.nested_entered += 1
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        if exc_type is not None:
+            self.db.nested_rolled_back += 1
+        return False  # không nuốt lỗi: chính auto_add_tablet mới nuốt
+
+
+class _AutoDb:
+    """AsyncSession giả: ghi lại add / flush / commit / rollback / savepoint / câu lệnh đã chạy."""
+
+    def __init__(self, flush_error=None, queue=()):
+        self.added, self.deleted, self.executed = [], [], []
+        self.flushes = self.commits = self.rollbacks = 0
+        self.nested_entered = self.nested_rolled_back = 0
+        self.flush_error = flush_error
+        self.queue = list(queue)
+        self.events = []
+
+    def add(self, obj):
+        self.added.append(obj)
+
+    async def delete(self, obj):
+        self.deleted.append(obj)
+        self.events.append("delete")
+
+    async def flush(self):
+        self.flushes += 1
+        if self.flush_error is not None and self.flushes == 1:
+            raise self.flush_error
+
+    def begin_nested(self):
+        return _Nested(self)
+
+    async def commit(self):
+        self.commits += 1
+        self.events.append("commit")
+
+    async def rollback(self):
+        self.rollbacks += 1
+
+    async def refresh(self, obj):
+        return None
+
+    async def execute(self, stmt, *args, **kwargs):
+        self.executed.append(stmt)
+        self.events.append("execute")
+        return self.queue.pop(0) if self.queue else _Rows()
+
+
+def _auto_world(monkeypatch, *, has=False, removed=False, count=0, space_error=None, clan="ok", real_space=False):
+    """Thay các hàm truy vấn của WorshipHallService bằng bản giả có ghi lại; trả về trạng thái để kiểm tra."""
+    st = SimpleNamespace(
+        clan=SimpleNamespace(clan_id=uuid.uuid4(), name="Nguyễn", created_by=uuid.uuid4()),
+        space_id=uuid.uuid4(), space_calls=[], tier_nos=[], ensure_calls=[], audits=[],
+    )
+
+    async def clan_of(self, family_id):
+        return st.clan if clan == "ok" else None
+
+    async def space_for_write(self, clan_, actor_id, *, create=True):
+        st.space_calls.append((clan_, actor_id, create))
+        if space_error is not None:
+            raise space_error
+        return SimpleNamespace(space_id=st.space_id)
+
+    async def ensure_hall(self, clan_, actor_id=None):
+        st.ensure_calls.append((clan_, actor_id))
+        return SimpleNamespace(space_id=st.space_id)
+
+    async def has_tablet(self, space_id, person_id):
+        return has
+
+    async def is_removed(self, space_id, person_id):
+        return removed
+
+    async def tablet_count(self, space_id):
+        return count
+
+    async def tiers_of(self, space_id):
+        return []
+
+    async def get_or_create_tier(self, space, tier_no, cache):
+        st.tier_nos.append(tier_no)
+        return SimpleNamespace(tier_id=uuid.uuid4(), tier_no=tier_no)
+
+    async def next_order(self, space_id, tier_id):
+        return 7
+
+    def audit(self, *args, **kwargs):
+        st.audits.append(args)
+
+    cls = WorshipHallService
+    monkeypatch.setattr(cls, "_clan_of", clan_of)
+    if real_space:
+        monkeypatch.setattr(cls, "ensure_hall", ensure_hall)
+    else:
+        monkeypatch.setattr(cls, "_space_for_write", space_for_write)
+    for name, fn in (("_has_tablet", has_tablet), ("_is_removed", is_removed), ("_tablet_count", tablet_count),
+                     ("_tiers_of", tiers_of), ("_get_or_create_tier", get_or_create_tier),
+                     ("_next_order", next_order), ("_audit", audit)):
+        monkeypatch.setattr(cls, name, fn)
+    return st
+
+
+def _dead_person(generation=3, **kw):
+    fields = dict(id=uuid.uuid4(), family_id=uuid.uuid4(), generation=generation, is_alive=False,
+                  death_date=None, full_name="Nguyễn Văn Tổ")
+    fields.update(kw)
+    return SimpleNamespace(**fields)
+
+
+def _auto(db, person, actor=None):
+    return asyncio.run(WorshipHallService(db).auto_add_tablet(person, actor or uuid.uuid4()))
+
+
+def _tablets(db):
+    from app.models.worship.entities import WorshipPerson
+
+    return [o for o in db.added if isinstance(o, WorshipPerson)]
+
+
+# ---- 1. tự tạo, tầng theo đời ------------------------------------------------
+def test_auto_add_creates_tablet_for_person_marked_not_living(monkeypatch):
+    st = _auto_world(monkeypatch)
+    db, person, actor = _AutoDb(), _dead_person(generation=3), uuid.uuid4()
+    assert _auto(db, person, actor) == hs.AUTO_ADDED
+    (wp,) = _tablets(db)
+    assert wp.person_id == person.id and wp.space_id == st.space_id
+    assert wp.is_visible is True and wp.added_by == actor and wp.display_order == 7
+    assert st.tier_nos == [tier_for_generation(3)]
+    assert db.commits == 0 and db.rollbacks == 0, "tự lập bài vị không được commit / rollback giao dịch của người gọi"
+    assert db.nested_entered == 1 and db.nested_rolled_back == 0
+    assert [a[2] for a in st.audits] == ["WORSHIP_TABLET_AUTO_ADD"]
+
+
+def test_auto_add_creates_tablet_when_only_death_date_is_set(monkeypatch):
+    _auto_world(monkeypatch)
+    db = _AutoDb()
+    person = _dead_person(is_alive=True, death_date=date(1990, 5, 5))
+    assert _auto(db, person) == hs.AUTO_ADDED and len(_tablets(db)) == 1
+
+
+@pytest.mark.parametrize("generation", [None, 1, 2, 3, 4, 5, 6, 7, 12])
+def test_auto_add_tier_follows_generation(monkeypatch, generation):
+    st = _auto_world(monkeypatch)
+    assert _auto(_AutoDb(), _dead_person(generation=generation)) == hs.AUTO_ADDED
+    assert st.tier_nos == [tier_for_generation(generation)]
+
+
+def test_auto_add_ignores_living_person_and_never_touches_the_hall(monkeypatch):
+    st = _auto_world(monkeypatch)
+    db = _AutoDb()
+    assert _auto(db, _dead_person(is_alive=True, death_date=None)) == hs.AUTO_NOT_DECEASED
+    assert _auto(db, _dead_person(is_alive=None, death_date=None)) == hs.AUTO_NOT_DECEASED
+    assert st.space_calls == [] and db.added == [] and db.flushes == 0 and db.nested_entered == 0
+
+
+def test_auto_add_creates_the_hall_through_ensure_hall_when_clan_has_none(monkeypatch):
+    st = _auto_world(monkeypatch, real_space=True)
+    db, actor = _AutoDb(), uuid.uuid4()
+    assert _auto(db, _dead_person(), actor) == hs.AUTO_ADDED
+    assert st.ensure_calls == [(st.clan, actor)]  # _space_for_write(create=True) -> ensure_hall
+    assert len(_tablets(db)) == 1
+
+
+# ---- 2. không trùng / không thêm lại bài vị đã gỡ / đủ 300 -------------------------
+def test_auto_add_does_not_duplicate_existing_tablet(monkeypatch):
+    _auto_world(monkeypatch, has=True)
+    db = _AutoDb()
+    assert _auto(db, _dead_person()) == hs.AUTO_ALREADY_EXISTS
+    assert _tablets(db) == []
+
+
+def test_auto_add_does_not_readd_tablet_the_leader_removed(monkeypatch):
+    _auto_world(monkeypatch, removed=True)
+    db = _AutoDb()
+    assert _auto(db, _dead_person()) == hs.AUTO_REMOVED_BY_LEADER
+    assert _tablets(db) == [] and db.commits == 0
+
+
+def test_auto_add_skips_when_hall_already_has_300_and_logs_a_warning(monkeypatch, caplog):
+    _auto_world(monkeypatch, count=hs.MAX_TABLETS_PER_HALL)
+    db = _AutoDb()
+    with caplog.at_level(logging.WARNING, logger=hs.logger.name):
+        assert _auto(db, _dead_person()) == hs.AUTO_LIMIT_REACHED
+    assert _tablets(db) == []
+    assert any(r.levelno == logging.WARNING and "300" in r.getMessage() for r in caplog.records)
+
+
+def test_auto_add_still_adds_the_300th_tablet(monkeypatch):
+    _auto_world(monkeypatch, count=hs.MAX_TABLETS_PER_HALL - 1)
+    db = _AutoDb()
+    assert _auto(db, _dead_person()) == hs.AUTO_ADDED and len(_tablets(db)) == 1
+
+
+# ---- 3. lỗi bài vị không làm hỏng việc lưu người -----------------------------------
+def test_auto_add_failure_is_swallowed_logged_and_rolled_back_to_savepoint(monkeypatch, caplog):
+    _auto_world(monkeypatch, space_error=RuntimeError("DB hong"))
+    db = _AutoDb()
+    with caplog.at_level(logging.WARNING, logger=hs.logger.name):
+        assert _auto(db, _dead_person()) == hs.AUTO_ERROR  # không ném lỗi
+    assert db.nested_rolled_back == 1, "chỉ SAVEPOINT bị hủy"
+    assert db.rollbacks == 0 and db.commits == 0, "giao dịch lưu người không bị đụng tới"
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_auto_add_missing_clan_is_an_error_not_a_crash(monkeypatch):
+    _auto_world(monkeypatch, clan=None)
+    assert _auto(_AutoDb(), _dead_person()) == hs.AUTO_ERROR
+
+
+def test_auto_add_does_not_swallow_the_errors_of_saving_the_person_itself(monkeypatch):
+    """Lần flush đầu là của CHÍNH việc lưu người: lỗi ở đó phải đến tay người gọi (và được rollback ở đó)."""
+    _auto_world(monkeypatch)
+    db = _AutoDb(flush_error=ValueError("ngay mat khong hop le"))
+    with pytest.raises(ValueError):
+        _auto(db, _dead_person())
+    assert db.nested_entered == 0
+
+
+def _person_ns(**kw):
+    fields = dict(
+        id=uuid.uuid4(), family_id=uuid.uuid4(), branch_id=None, full_name="Cụ A", gender="MALE", birth_date=None,
+        death_date=None, generation=2, avatar_url=None, is_alive=True, status="ACTIVE",
+    )
+    fields.update(kw)
+    return SimpleNamespace(**fields)
+
+
+def _genealogy(db, before=None, after=None):
+    from app.services.genealogy.genealogy_service import GenealogyService
+
+    class _Repo:
+        async def get_person_by_id(self, pid):
+            return before
+
+        async def update_person(self, pid, data):
+            return after
+
+        async def create_person(self, person):
+            return person
+
+        async def insert_closure_self(self, pid, fid):
+            return None
+
+    class _Access:
+        async def require_family_permission(self, *args):
+            return None
+
+    class _FamilyRepo:
+        async def get_family_by_id(self, fid):
+            return SimpleNamespace(clan_id=fid)
+
+    svc = object.__new__(GenealogyService)
+    svc.db, svc.repo, svc.access, svc.family_repo = db, _Repo(), _Access(), _FamilyRepo()
+
+    async def no_branch(family_id, branch_id):
+        return None
+
+    svc._validate_branch = no_branch
+    return svc
+
+
+def _recording_hook(monkeypatch, db):
+    calls = []
+
+    async def hook(session, person, actor_id):
+        calls.append((person, actor_id, list(db.events)))
+        return hs.AUTO_ADDED
+
+    monkeypatch.setattr(hs, "auto_add_tablet_for_person", hook)
+    return calls
+
+
+def test_create_person_as_deceased_calls_the_hook_before_the_single_commit(monkeypatch):
+    from app.schemas.genealogy import PersonCreate
+
+    db = _AutoDb()
+    calls = _recording_hook(monkeypatch, db)
+    account = SimpleNamespace(id=uuid.uuid4())
+    result = asyncio.run(_genealogy(db).create_person(str(uuid.uuid4()), PersonCreate(fullName="Cụ A", isLiving=False), account))
+    assert result.is_alive is False
+    assert len(calls) == 1 and calls[0][1] == account.id
+    assert "commit" not in calls[0][2] and db.commits == 1  # cùng giao dịch: hook chạy trước commit
+
+
+def test_create_person_survives_a_failing_worship_hall(monkeypatch):
+    from app.schemas.genealogy import PersonCreate
+
+    _auto_world(monkeypatch, space_error=RuntimeError("phong tho hong"))
+    db = _AutoDb()
+    result = asyncio.run(_genealogy(db).create_person(
+        str(uuid.uuid4()), PersonCreate(fullName="Cụ A", deathDate=date(1990, 1, 1), isLiving=False),
+        SimpleNamespace(id=uuid.uuid4())))
+    assert result.full_name == "Cụ A" and db.commits == 1 and db.rollbacks == 0 and _tablets(db) == []
+
+
+def test_create_living_person_creates_no_tablet(monkeypatch):
+    from app.schemas.genealogy import PersonCreate
+
+    st = _auto_world(monkeypatch)
+    db = _AutoDb()
+    asyncio.run(_genealogy(db).create_person(str(uuid.uuid4()), PersonCreate(fullName="Còn sống"), SimpleNamespace(id=uuid.uuid4())))
+    assert st.space_calls == [] and _tablets(db) == [] and db.commits == 1
+
+
+def _update(monkeypatch, before, after, payload):
+    from app.schemas.genealogy import PersonUpdate
+
+    db = _AutoDb()
+    calls = _recording_hook(monkeypatch, db)
+    svc = _genealogy(db, before=before, after=after)
+    asyncio.run(svc.update_person(str(before.family_id), str(before.id), PersonUpdate.model_validate(payload),
+                                  SimpleNamespace(id=uuid.uuid4())))
+    return db, calls
+
+
+def test_update_person_to_deceased_calls_the_hook_in_the_same_transaction(monkeypatch):
+    before = _person_ns(is_alive=True)
+    db, calls = _update(monkeypatch, before, _person_ns(id=before.id, family_id=before.family_id, is_alive=False),
+                        {"isLiving": False})
+    assert len(calls) == 1 and "commit" not in calls[0][2] and db.commits == 1
+
+
+def test_update_person_by_death_date_calls_the_hook(monkeypatch):
+    before = _person_ns(is_alive=True)
+    after = _person_ns(id=before.id, family_id=before.family_id, is_alive=True, death_date=date(2001, 1, 1))
+    _, calls = _update(monkeypatch, before, after, {"deathDate": "2001-01-01"})
+    assert len(calls) == 1
+
+
+def test_update_person_already_deceased_does_not_call_the_hook_again(monkeypatch):
+    before = _person_ns(is_alive=False)
+    after = _person_ns(id=before.id, family_id=before.family_id, is_alive=False, full_name="Đổi tên")
+    db, calls = _update(monkeypatch, before, after, {"fullName": "Đổi tên"})
+    assert calls == [] and db.commits == 1
+
+
+def test_update_person_back_to_living_neither_calls_the_hook_nor_deletes_the_tablet(monkeypatch):
+    before = _person_ns(is_alive=False, death_date=date(2001, 1, 1))
+    after = _person_ns(id=before.id, family_id=before.family_id, is_alive=True, death_date=None)
+    db, calls = _update(monkeypatch, before, after, {"isLiving": True, "deathDate": None})
+    assert calls == [] and db.deleted == [] and db.executed == []  # không đụng bảng bài vị
+
+
+def test_update_person_survives_a_failing_worship_hall(monkeypatch):
+    from app.schemas.genealogy import PersonUpdate
+
+    _auto_world(monkeypatch, space_error=RuntimeError("phong tho hong"))
+    before = _person_ns(is_alive=True)
+    after = _person_ns(id=before.id, family_id=before.family_id, is_alive=False)
+    db = _AutoDb()
+    result = asyncio.run(_genealogy(db, before, after).update_person(
+        str(before.family_id), str(before.id), PersonUpdate.model_validate({"isLiving": False}),
+        SimpleNamespace(id=uuid.uuid4())))
+    assert result.is_alive is False and db.commits == 1 and db.rollbacks == 0
+
+
+def _members(monkeypatch):
+    from app.controllers.member_management import members_router
+
+    async def allow(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(members_router, "_require_branch_scope", allow)
+    monkeypatch.setattr(members_router, "_require", allow)
+    return members_router
+
+
+def test_members_router_update_member_to_deceased_calls_the_hook_before_commit(monkeypatch):
+    router = _members(monkeypatch)
+    p = SimpleNamespace(id=uuid.uuid4(), family_id=uuid.uuid4(), branch_id=None, full_name="Cụ B", gender="MALE",
+                        generation=2, is_alive=True, death_date=None, bio=None)
+    db = _AutoDb(queue=[_Rows([p])])
+    calls = _recording_hook(monkeypatch, db)
+    out = asyncio.run(router.update_member(str(p.id), router.MemberUpdateRequest(isAlive=False), db,
+                                           SimpleNamespace(id=uuid.uuid4())))
+    assert out["isAlive"] is False and len(calls) == 1 and calls[0][0] is p
+    assert "commit" not in calls[0][2] and db.commits == 1
+
+
+def test_members_router_update_member_already_deceased_or_still_living_does_not_call_the_hook(monkeypatch):
+    router = _members(monkeypatch)
+    for is_alive, death_date, payload in ((False, None, {"fullName": "X"}), (True, None, {"fullName": "X"}),
+                                          (False, date(2000, 1, 1), {"isAlive": True, "deathDate": ""})):
+        p = SimpleNamespace(id=uuid.uuid4(), family_id=uuid.uuid4(), branch_id=None, full_name="Cụ B", gender="MALE",
+                            generation=2, is_alive=is_alive, death_date=death_date, bio=None)
+        db = _AutoDb(queue=[_Rows([p])])
+        calls = _recording_hook(monkeypatch, db)
+        asyncio.run(router.update_member(str(p.id), router.MemberUpdateRequest(**payload), db,
+                                         SimpleNamespace(id=uuid.uuid4())))
+        assert calls == [] and db.commits == 1 and db.deleted == []
+
+
+def test_members_router_create_member_as_deceased_calls_the_hook_before_commit(monkeypatch):
+    router = _members(monkeypatch)
+    db = _AutoDb()
+    calls = _recording_hook(monkeypatch, db)
+    out = asyncio.run(router.create_member(
+        router.MemberCreateRequest(fullName="Cụ C", family_id=str(uuid.uuid4()), isAlive=False, generation=2), db,
+        SimpleNamespace(id=uuid.uuid4())))
+    assert out["isAlive"] is False and len(calls) == 1 and "commit" not in calls[0][2] and db.commits == 1
+
+
+def test_members_router_create_member_survives_a_failing_worship_hall(monkeypatch):
+    router = _members(monkeypatch)
+    _auto_world(monkeypatch, space_error=RuntimeError("phong tho hong"))
+    db = _AutoDb()
+    out = asyncio.run(router.create_member(
+        router.MemberCreateRequest(fullName="Cụ C", family_id=str(uuid.uuid4()), isAlive=False), db,
+        SimpleNamespace(id=uuid.uuid4())))
+    assert out["message"] and db.commits == 1 and db.rollbacks == 0
+
+
+# ---- 4. đánh dấu "Trưởng tộc đã gỡ" -----------------------------------------------
+def _sql(stmt) -> str:
+    from sqlalchemy.dialects import postgresql
+
+    return str(stmt.compile(dialect=postgresql.dialect()))
+
+
+def _delete_tablet_world(monkeypatch):
+    clan = SimpleNamespace(clan_id=uuid.uuid4())
+    wp = SimpleNamespace(worship_person_id=uuid.uuid4(), person_id=uuid.uuid4(), tier_id=uuid.uuid4(),
+                         portrait_image_path=None)
+    db = _AutoDb()
+    svc = WorshipHallService(db)
+
+    async def context(clan_id, account):
+        return clan, Viewer(uuid.uuid4(), is_leader=True)
+
+    async def space(clan_, actor_id, create=True):
+        return SimpleNamespace(space_id=uuid.uuid4())
+
+    async def tablet(space_, tablet_id):
+        return wp
+
+    svc.context, svc._space_for_write, svc._tablet_for_write = context, space, tablet
+    svc._audit = lambda *a, **k: None
+    return svc, db, wp
+
+
+def test_delete_tablet_leaves_a_removed_marker_before_deleting_the_row(monkeypatch):
+    svc, db, wp = _delete_tablet_world(monkeypatch)
+    msg = asyncio.run(svc.delete_tablet(uuid.uuid4(), wp.worship_person_id, SimpleNamespace(user_id=uuid.uuid4())))
+    assert "xóa" in msg.lower()
+    (stmt,) = db.executed
+    sql = _sql(stmt)
+    assert "INSERT INTO worship_removed_persons" in sql and "ON CONFLICT DO NOTHING" in sql
+    assert db.deleted == [wp] and db.commits == 1
+    assert db.events == ["execute", "delete", "commit"]  # dấu vết và xóa cùng một giao dịch, rồi mới commit
+
+
+def test_manual_add_paths_clear_the_removed_marker_and_are_not_blocked_by_it():
+    assert "_clear_removed_marks" in inspect.getsource(WorshipHallService.add_tablet)
+    assert "_clear_removed_marks" in inspect.getsource(WorshipHallService.bulk_add_tablets)
+    for fn in (WorshipHallService.add_tablet, WorshipHallService.bulk_add_tablets):
+        assert "_is_removed" not in inspect.getsource(fn), "thêm tay vẫn phải được phép thêm lại"
+
+
+def test_clear_removed_marks_deletes_only_this_hall_and_these_people():
+    db = _AutoDb()
+    ids = [uuid.uuid4(), uuid.uuid4()]
+    asyncio.run(WorshipHallService(db)._clear_removed_marks(uuid.uuid4(), ids))
+    sql = _sql(db.executed[0])
+    assert sql.startswith("DELETE FROM worship_removed_persons") and "space_id" in sql and "person_id IN" in sql
+    asyncio.run(WorshipHallService(db)._clear_removed_marks(uuid.uuid4(), []))
+    assert len(db.executed) == 1  # danh sách rỗng: không chạy câu lệnh nào
+
+
+# ---- 5. GET hall không ghi DB ------------------------------------------------------
+def test_get_hall_view_never_writes_even_when_the_clan_has_no_hall():
+    class _ReadOnlyDb:
+        def add(self, *a, **k):
+            raise AssertionError("GET hall khong duoc ghi DB")
+
+        async def flush(self):
+            raise AssertionError("GET hall khong duoc ghi DB")
+
+        async def commit(self):
+            raise AssertionError("GET hall khong duoc ghi DB")
+
+        def begin_nested(self):
+            raise AssertionError("GET hall khong duoc ghi DB")
+
+    svc = WorshipHallService(_ReadOnlyDb())
+    clan = SimpleNamespace(clan_id=uuid.uuid4(), name="Nguyễn")
+
+    async def context(clan_id, account):
+        return clan, Viewer(uuid.uuid4(), is_member=True)
+
+    async def no_hall(clan_id):
+        return None
+
+    svc.context, svc.get_hall = context, no_hall
+    out = asyncio.run(svc.get_hall_view(clan.clan_id, None, datetime.now(timezone.utc)))
+    assert out.tiers == [] and out.hall.id is None
+
+
+@pytest.mark.parametrize("name", ["get_hall_view", "list_tier_tablets", "_tablets_page", "list_blessings", "_tablet_item"])
+def test_read_paths_do_not_use_any_write_helper(name):
+    source = inspect.getsource(getattr(WorshipHallService, name))
+    for forbidden in ("ensure_hall", "auto_add_tablet", "_create_tablet_if_missing", "_space_for_write",
+                      ".commit(", ".add(", ".flush(", "pg_insert"):
+        assert forbidden not in source, f"{name} dung {forbidden}"
+
+
+# ---- 6. backfill -------------------------------------------------------------------
+def _backfill_world(monkeypatch, *, have=(), removed=(), deceased=(), hall=True):
+    clan = SimpleNamespace(clan_id=uuid.uuid4(), name="Nguyễn", created_by=uuid.uuid4())
+    st = SimpleNamespace(clan=clan, auto_calls=[])
+    queue = ([_Rows(have), _Rows(removed)] if hall else []) + [_Rows(deceased)]
+    db = _AutoDb(queue=queue)
+
+    async def clan_of(self, family_id):
+        return clan
+
+    async def get_hall(self, clan_id):
+        return SimpleNamespace(space_id=uuid.uuid4()) if hall else None
+
+    async def auto_add(self, person, actor_id):
+        st.auto_calls.append((person, actor_id))
+        return hs.AUTO_ADDED
+
+    monkeypatch.setattr(WorshipHallService, "_clan_of", clan_of)
+    monkeypatch.setattr(WorshipHallService, "get_hall", get_hall)
+    monkeypatch.setattr(WorshipHallService, "auto_add_tablet", auto_add)
+    return st, db
+
+
+def _run_backfill(db, clan_id, apply):
+    return asyncio.run(WorshipHallService(db).backfill_missing_tablets(clan_id, apply=apply))
+
+
+def test_backfill_dry_run_lists_candidates_and_writes_nothing(monkeypatch):
+    people = [_dead_person(generation=g) for g in (1, 2, 3)]
+    already, gone = people[0], people[1]
+    st, db = _backfill_world(monkeypatch, have=[already.id], removed=[gone.id], deceased=people)
+    result = _run_backfill(db, st.clan.clan_id, apply=False)
+    assert [p.id for p in result["to_add"]] == [people[2].id]
+    assert result["removed_by_leader"] == 1 and result["existing"] == 1 and result["added"] == 0
+    assert st.auto_calls == [] and db.added == [] and db.flushes == 0 and db.commits == 0
+
+
+def test_backfill_apply_adds_through_auto_add_tablet_with_the_clan_owner_as_actor(monkeypatch):
+    people = [_dead_person(generation=g) for g in (1, 2)]
+    st, db = _backfill_world(monkeypatch, deceased=people)
+    result = _run_backfill(db, st.clan.clan_id, apply=True)
+    assert result["added"] == 2 and result["failed"] == 0
+    assert [(p.id, a) for p, a in st.auto_calls] == [(p.id, st.clan.created_by) for p in people]
+    assert db.commits == 0  # commit là việc của script
+
+
+def test_backfill_respects_the_300_limit(monkeypatch):
+    have = [uuid.uuid4() for _ in range(hs.MAX_TABLETS_PER_HALL - 1)]
+    people = [_dead_person() for _ in range(3)]
+    st, db = _backfill_world(monkeypatch, have=have, deceased=people)
+    result = _run_backfill(db, st.clan.clan_id, apply=False)
+    assert len(result["to_add"]) == 1 and len(result["over_limit"]) == 2
+
+
+def test_backfill_for_clan_without_hall_lists_everyone(monkeypatch):
+    people = [_dead_person() for _ in range(2)]
+    st, db = _backfill_world(monkeypatch, deceased=people, hall=False)
+    result = _run_backfill(db, st.clan.clan_id, apply=False)
+    assert result["hall_exists"] is False and len(result["to_add"]) == 2
+
+
+def test_backfill_query_only_picks_deceased_people_of_the_given_clan(monkeypatch):
+    st, db = _backfill_world(monkeypatch, deceased=[], hall=False)
+    _run_backfill(db, st.clan.clan_id, apply=False)
+    sql = _sql(db.executed[-1])
+    assert "persons.clan_id = %(clan_id_1)s" in sql
+    assert "is_living is false" in sql.lower()
+    assert "death_date IS NOT NULL" in sql
+
+
+def _backfill_script():
+    spec = importlib.util.spec_from_file_location(
+        "backfill_worship_tablets", Path(__file__).resolve().parent.parent / "scripts" / "backfill_worship_tablets.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_backfill_script_is_dry_run_by_default_and_needs_exactly_one_clan_id():
+    script = _backfill_script()
+    clan_id = uuid.uuid4()
+    args = script._parse_args(["--clan-id", str(clan_id)])
+    assert args.apply is False and args.clan_id == clan_id
+    assert script._parse_args(["--clan-id", str(clan_id), "--apply"]).apply is True
+    for bad in ([], ["--apply"], ["--clan-id", "khong-phai-uuid"], ["--clan-id", str(clan_id), "--apply", "--dry-run"],
+                ["--clan-id", str(clan_id), "--clan-id2", "x"]):
+        with pytest.raises(SystemExit):
+            script._parse_args(bad)
+
+
+def test_backfill_script_report_says_dry_run_until_apply():
+    script = _backfill_script()
+    person = _dead_person(full_name="Cụ Tổ")
+    result = {"clan": SimpleNamespace(clan_id=uuid.uuid4(), name="Nguyễn"), "hall_exists": True, "existing": 4,
+              "removed_by_leader": 1, "to_add": [person], "over_limit": [], "added": 0, "failed": 0}
+    assert "DRY-RUN" in script.format_report(result, apply=False) and "Cụ Tổ" in script.format_report(result, apply=False)
+    assert "DRY-RUN" not in script.format_report({**result, "added": 1}, apply=True)
+    source = inspect.getsource(script.run)
+    assert source.index("if apply:") < source.index("session.commit()") and "rollback()" in source
+
+
+# ---- 7. migration 0017 + model ----------------------------------------------------
+MIGRATION_0017 = (
+    Path(__file__).resolve().parent.parent / "alembic" / "versions" / "0017_worship_removed_persons.py"
+)
+
+
+def _migration_0017_parts() -> tuple[str, str, str]:
+    text = MIGRATION_0017.read_text(encoding="utf-8")
+    head, _, rest = text.partition("def upgrade()")
+    upgrade, _, downgrade = rest.partition("def downgrade()")
+    return head, upgrade, downgrade
+
+
+def test_migration_0017_chain_and_revision_name_fits_alembic_version():
+    head, _, _ = _migration_0017_parts()
+    assert re.search(r'revision: str = "0017_worship_removed_persons"', head)
+    assert re.search(r'down_revision: .* = "0016_worship_portrait_gray"', head)
+    assert len("0017_worship_removed_persons") <= 32
+
+
+def test_migration_0017_only_adds_a_new_table():
+    _, upgrade, downgrade = _migration_0017_parts()
+    assert re.search(r"CREATE TABLE IF NOT EXISTS worship_removed_persons", upgrade)
+    assert not re.search(r"TRUNCATE|DELETE\s+FROM|DROP|ALTER\s+TABLE|UPDATE\s", upgrade, re.I)
+    assert re.search(r"DROP TABLE IF EXISTS worship_removed_persons", downgrade)
+
+
+def test_orm_removed_person_matches_migration_0017():
+    from app.models.worship.entities import WorshipRemovedPerson
+
+    _, upgrade, _ = _migration_0017_parts()
+    table = WorshipRemovedPerson.__table__
+    assert table.name == "worship_removed_persons"
+    assert [c.name for c in table.primary_key.columns] == ["space_id", "person_id"]
+    for column in table.columns:
+        assert re.search(rf"\b{column.name}\b", upgrade), column.name
+    assert {fk.column.table.name for fk in table.foreign_keys} == {"worship_spaces", "persons", "users"}
+
+
+# =============================================================================
 # PHẦN B. TÍCH HỢP (CẦN DB) - chỉ viết, chạy trên nhánh DB riêng
 # =============================================================================
 
 integration = pytest.mark.integration
 
-PNG_16 = (
-    b"\x89PNG\r\n\x1a\n"
-    b"\x00\x00\x00\rIHDR"
-    b"\x00\x00\x00\x64\x00\x00\x00\x64\x08\x02\x00\x00\x00"
-)
+PNG_16 = _image_bytes("PNG", (100, 100))  # anh PNG that (giai ma duoc): bai vi nay tao ban nho bang Pillow
 
 
 class _Clock:
@@ -1208,13 +2239,19 @@ class TestWorshipHallIntegration:
         tablet = (await _add(w, w.p1)).json()
         path = f"/tablets/{tablet['id']}/portrait"
         not_image = await _call(w, "POST", w.clan_a, path, w.leader_a, files={"file": ("a.png", b"hello world", "image/png")})
-        assert not_image.status_code == 400, not_image.text
+        assert not_image.status_code == 422, not_image.text
+        fake_jpg = await _call(w, "POST", w.clan_a, path, w.leader_a,
+                               files={"file": ("a.jpg", b"hello world", "image/jpeg")})
+        assert fake_jpg.status_code == 422 and "JPG, PNG hoặc WebP" in fake_jpg.json()["message"]
         svg = await _call(w, "POST", w.clan_a, path, w.leader_a,
                           files={"file": ("a.svg", b"<svg xmlns='http://www.w3.org/2000/svg'></svg>", "image/svg+xml")})
-        assert svg.status_code == 400
-        big = PNG_16 + b"\x00" * (2 * 1024 * 1024 + 1)
+        assert svg.status_code == 422
+        big = PNG_16 + b"\x00" * (5 * 1024 * 1024 + 1)
         too_large = await _call(w, "POST", w.clan_a, path, w.leader_a, files={"file": ("big.png", big, "image/png")})
-        assert too_large.status_code == 400
+        assert too_large.status_code == 422
+        too_wide = await _call(w, "POST", w.clan_a, path, w.leader_a,
+                               files={"file": ("wide.png", _image_bytes("PNG", (4001, 16)), "image/png")})
+        assert too_wide.status_code == 422
         ok = await _call(w, "POST", w.clan_a, path, w.leader_a, files={"file": ("a.png", PNG_16, "image/png")})
         assert ok.status_code == 200, ok.text
         url = ok.json()["portraitUrl"]
@@ -1227,6 +2264,38 @@ class TestWorshipHallIntegration:
         replaced = await _call(w, "POST", w.clan_a, path, w.leader_a, files={"file": ("b.png", PNG_16 + b"\x01", "image/png")})
         assert replaced.status_code == 200 and replaced.json()["portraitUrl"] != url
         assert (await w.client.get(url, headers=_h(w.member_a))).status_code == 404
+
+    async def test_portrait_thumbnail_is_listed_served_and_replaced(self, world):
+        w = world
+        tablet = (await _add(w, w.p1)).json()
+        path = f"/tablets/{tablet['id']}/portrait"
+        up = await _call(w, "POST", w.clan_a, path, w.leader_a,
+                         files={"file": ("a.png", _image_bytes("PNG", (1200, 900)), "image/png")})
+        assert up.status_code == 200, up.text
+        hall = (await _call(w, "GET", w.clan_a, "/hall", w.member_a)).json()
+        item = next(t for tier in hall["tiers"] for t in tier["tablets"] if t["id"] == tablet["id"])
+        assert item["portraitUrl"] == up.json()["portraitUrl"]
+        assert item["thumbnailUrl"] != item["portraitUrl"] and item["thumbnailUrl"].endswith("_thumb.webp")
+        served = await w.client.get(item["thumbnailUrl"], headers=_h(w.member_a))
+        assert served.status_code == 200 and served.headers["content-type"] == "image/webp"
+        assert (await w.client.get(item["thumbnailUrl"], headers=_h(w.outsider))).status_code == 403
+        # thay anh: ban nho cu khong con duoc phuc vu
+        again = await _call(w, "POST", w.clan_a, path, w.leader_a,
+                            files={"file": ("b.png", _image_bytes("PNG", (800, 800)), "image/png")})
+        assert again.status_code == 200
+        assert (await w.client.get(item["thumbnailUrl"], headers=_h(w.member_a))).status_code == 404
+
+    async def test_portrait_grayscale_setting(self, world):
+        w = world
+        await _make_hall(w)
+        hall = (await _call(w, "GET", w.clan_a, "/hall", w.member_a)).json()["hall"]
+        assert hall["portraitGrayscale"] is False
+        denied = await _call(w, "PATCH", w.clan_a, "/hall", w.member_a, json={"portraitGrayscale": True})
+        assert denied.status_code == 403
+        ok = await _call(w, "PATCH", w.clan_a, "/hall", w.leader_a, json={"portraitGrayscale": True})
+        assert ok.status_code == 200 and ok.json()["portraitGrayscale"] is True
+        hall = (await _call(w, "GET", w.clan_a, "/hall", w.member_a)).json()["hall"]
+        assert hall["portraitGrayscale"] is True
 
     async def test_image_endpoint_rejects_traversal_and_bad_extensions(self, world):
         w = world

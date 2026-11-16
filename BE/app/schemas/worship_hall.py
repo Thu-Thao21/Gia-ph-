@@ -32,6 +32,7 @@ class HallInfo(CamelModel):
     visibility: str
     blessings_enabled: bool = True
     cover_image_url: Optional[str] = None
+    portrait_grayscale: bool = False  # anh bai vi hien den trang (canh 3D)
 
 
 class TabletItem(CamelModel):
@@ -44,6 +45,7 @@ class TabletItem(CamelModel):
     birth_date: Optional[str] = None
     death_date: Optional[str] = None
     portrait_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None  # ban 512px webp; anh cu chua co ban nho thi bang portrait_url
     note: Optional[str] = None
     display_order: int = 0
     tier_id: Optional[uuid.UUID] = None
@@ -157,6 +159,7 @@ class HallUpdate(CamelModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=255)
     visibility: Optional[Literal["PUBLIC", "CLAN_ONLY"]] = None
     blessings_enabled: Optional[bool] = None
+    portrait_grayscale: Optional[bool] = None
 
 
 class TabletCreate(CamelModel):

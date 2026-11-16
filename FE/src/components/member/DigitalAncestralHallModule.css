@@ -439,312 +439,6 @@
 
 .ancestor-selector small { color: #8a98ad; font-size: 10px; }
 
-.digital-altar-card {
-  position: relative;
-  isolation: isolate;
-  min-height: 570px;
-  overflow: hidden;
-  padding: 38px 28px 34px;
-  color: #ffffff;
-  background:
-    linear-gradient(180deg, rgba(7, 15, 38, 0.08), rgba(4, 11, 31, 0.66)),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 38px),
-    linear-gradient(145deg, #172a57 0%, #121d3f 53%, #331e30 100%);
-  border: 1px solid rgba(213, 177, 91, 0.35);
-  border-radius: 26px;
-  box-shadow: 0 18px 48px rgba(15, 27, 58, 0.2);
-  text-align: center;
-}
-
-.digital-altar-card::before,
-.digital-altar-card::after {
-  position: absolute;
-  top: 38px;
-  bottom: 38px;
-  z-index: -1;
-  width: 90px;
-  border: 1px solid rgba(231, 182, 74, 0.15);
-  content: '';
-}
-
-.digital-altar-card::before { left: -35px; border-radius: 0 50% 50% 0; }
-.digital-altar-card::after { right: -35px; border-radius: 50% 0 0 50%; }
-
-.digital-altar-glow {
-  position: absolute;
-  top: 30px;
-  left: 50%;
-  z-index: -1;
-  width: min(660px, 80%);
-  height: 440px;
-  background: radial-gradient(ellipse, rgba(238, 184, 74, 0.17), rgba(238, 184, 74, 0.025) 54%, transparent 72%);
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.digital-altar-content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-}
-
-.digital-altar-kicker {
-  display: inline-flex;
-  padding: 5px 14px;
-  color: #ffe9a4;
-  background: rgba(231, 182, 74, 0.12);
-  border: 1px solid rgba(231, 182, 74, 0.35);
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.15em;
-}
-
-.digital-altar-content > h2 {
-  margin: 11px 0 21px;
-  color: #fff5d3;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(24px, 4vw, 34px);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.digital-altar-tablet {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: min(350px, 80vw);
-  min-height: 130px;
-  padding: 23px 28px;
-  flex-direction: column;
-  justify-content: center;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 20% 80%, rgba(255, 255, 255, 0.04)),
-    linear-gradient(160deg, #713522, #3a1d20);
-  border: 3px solid #c99835;
-  border-radius: 50% 50% 10px 10px / 22% 22% 10px 10px;
-  box-shadow: inset 0 0 0 3px #442021, inset 0 0 0 5px rgba(237, 195, 93, 0.3), 0 16px 35px rgba(0, 0, 0, 0.33);
-}
-
-.digital-altar-crest {
-  position: absolute;
-  top: -17px;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  color: #49231b;
-  background: #e6b84c;
-  border: 3px solid #39201e;
-  border-radius: 50%;
-  font-family: Georgia, serif;
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.digital-altar-tablet strong {
-  color: #f4d77c;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(18px, 3vw, 25px);
-  letter-spacing: 0.06em;
-}
-
-.digital-altar-tablet small {
-  margin-top: 8px;
-  color: rgba(255, 238, 186, 0.72);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.altar-offerings {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: clamp(14px, 5vw, 54px);
-  margin: 15px 0 -5px;
-}
-
-.altar-offering {
-  display: flex;
-  align-items: center;
-  min-width: 84px;
-  flex-direction: column;
-  color: #f9d77f;
-}
-
-.altar-offering span {
-  display: grid;
-  place-items: center;
-  min-height: 37px;
-  font-family: Georgia, serif;
-  font-size: 27px;
-  letter-spacing: -0.1em;
-  text-shadow: 0 0 18px rgba(245, 199, 87, 0.42);
-}
-
-.altar-offering-fruit span {
-  padding: 7px 12px 5px;
-  color: #d1a647;
-  background: rgba(108, 54, 39, 0.75);
-  border: 1px solid rgba(237, 193, 91, 0.35);
-  border-radius: 50% 50% 12px 12px;
-  font-size: 10px;
-}
-
-.altar-offering small { margin-top: 5px; color: rgba(255, 239, 195, 0.58); font-size: 9px; }
-
-.altar-lantern {
-  position: absolute;
-  top: 84px;
-  z-index: 1;
-  width: 48px;
-  height: 80px;
-  background: linear-gradient(90deg, #7b2e2d, #ac4933, #7b2e2d);
-  border: 2px solid #d2a243;
-  border-radius: 11px 11px 20px 20px;
-  box-shadow: 0 0 28px rgba(230, 155, 62, 0.26);
-  opacity: 0.84;
-}
-
-.altar-lantern::before,
-.altar-lantern::after {
-  position: absolute;
-  left: 50%;
-  width: 31px;
-  height: 7px;
-  background: #c99938;
-  border-radius: 3px;
-  content: '';
-  transform: translateX(-50%);
-}
-
-.altar-lantern::before { top: -6px; }
-.altar-lantern::after { bottom: -6px; }
-.altar-lantern span { position: absolute; left: 50%; bottom: -23px; width: 2px; height: 18px; background: #c99938; }
-.altar-lantern-left { left: clamp(28px, 9vw, 150px); }
-.altar-lantern-right { right: clamp(28px, 9vw, 150px); }
-
-.digital-incense-burner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 148px;
-  margin-top: 0;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.incense-pot {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 91px;
-  height: 52px;
-  color: #f2d17a;
-  background: linear-gradient(90deg, #6f321f, #a6542d 50%, #6f321f);
-  border: 2px solid #d2a24b;
-  border-radius: 10px 10px 32px 32px;
-  box-shadow: inset 0 8px 10px rgba(0, 0, 0, 0.23), 0 7px 17px rgba(0, 0, 0, 0.28);
-}
-
-.incense-pot::before {
-  position: absolute;
-  top: -7px;
-  left: -5px;
-  width: 97px;
-  height: 13px;
-  background: #8a4427;
-  border: 2px solid #d2a24b;
-  border-radius: 50%;
-  content: '';
-}
-
-.incense-pot span { position: relative; z-index: 1; font-family: Georgia, serif; font-size: 11px; font-weight: 800; }
-
-.incense-sticks {
-  position: absolute;
-  bottom: 50px;
-  left: 50%;
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: 5px;
-  transform: translateX(-50%);
-}
-
-.incense-sticks i {
-  position: relative;
-  display: block;
-  width: 3px;
-  height: 52px;
-  background: linear-gradient(#de704a 0 22%, #c99040 23% 100%);
-  border-radius: 3px 3px 0 0;
-}
-
-.incense-sticks i:nth-child(2) { height: 61px; }
-
-.incense-sticks i::before {
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 7px;
-  height: 7px;
-  background: #e7643e;
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(255, 198, 102, 0.16), 0 0 12px #ffb55f;
-  content: '';
-  opacity: 0.36;
-}
-
-.digital-incense-burner.is-burning .incense-sticks i::before {
-  opacity: 1;
-  animation: incenseEmber 760ms ease-in-out infinite alternate;
-}
-
-.incense-smoke {
-  position: absolute;
-  bottom: 105px;
-  left: 50%;
-  width: 80px;
-  height: 90px;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.incense-smoke span {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 8px;
-  height: 44px;
-  border-left: 2px solid rgba(235, 240, 255, 0.63);
-  border-radius: 50%;
-  opacity: 0;
-  filter: blur(0.3px);
-}
-
-.incense-smoke span:nth-child(2) { left: 38%; animation-delay: 360ms; }
-.incense-smoke span:nth-child(3) { left: 61%; animation-delay: 720ms; }
-
-.digital-incense-burner.is-burning .incense-smoke span {
-  animation: incenseSmoke 1.7s ease-out infinite;
-}
-
-.digital-incense-burner > strong {
-  margin-top: 9px;
-  color: #ffe7a6;
-  font-size: 12px;
-}
-
-.digital-incense-burner > small {
-  margin-top: 3px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 10px;
-}
-
 .latest-offering-note {
   max-width: 520px;
   margin: 8px auto 0;
@@ -797,18 +491,6 @@
 .light-incense-button:not(:disabled):hover,
 .write-memorial-button:hover { transform: translateY(-2px); }
 .write-memorial-button:hover { background: rgba(255, 255, 255, 0.12); }
-
-@keyframes incenseSmoke {
-  0% { opacity: 0; transform: translate3d(0, 9px, 0) scale(0.7) rotate(0deg); }
-  18% { opacity: 0.65; }
-  60% { opacity: 0.35; transform: translate3d(7px, -25px, 0) scale(1) rotate(8deg); }
-  100% { opacity: 0; transform: translate3d(-7px, -58px, 0) scale(1.4) rotate(-12deg); }
-}
-
-@keyframes incenseEmber {
-  from { box-shadow: 0 0 4px #ff9b56; transform: scale(0.85); }
-  to { box-shadow: 0 0 15px #ffd178; transform: scale(1.15); }
-}
 
 .memorial-messages-section {
   padding: 26px;
@@ -1319,7 +1001,6 @@
   .ancestor-portrait { width: 150px; height: 200px; }
   .ancestor-focus-copy { padding: 30px 60px 30px 28px; }
   .ancestor-selector { grid-template-columns: repeat(4, 220px); }
-  .altar-lantern { opacity: 0.45; }
 }
 
 @media (max-width: 720px) {
@@ -1352,11 +1033,6 @@
   .ancestor-nav-previous { left: 10px; }
   .ancestor-nav-next { right: 10px; }
 
-  .digital-altar-card { min-height: 540px; padding: 32px 18px 30px; }
-  .altar-lantern { top: 100px; transform: scale(0.78); }
-  .altar-lantern-left { left: 10px; }
-  .altar-lantern-right { right: 10px; }
-
   .memorial-messages-section { padding: 20px; }
   .memorial-section-header { align-items: flex-start; flex-direction: column; }
   .memorial-section-header .ancestral-primary-button { width: 100%; }
@@ -1377,8 +1053,6 @@
   .ancestor-vitals-grid > div:last-child { border-bottom: 0 !important; }
   .ancestor-focus-actions > button { width: 100%; }
 
-  .altar-offerings { gap: 5px; }
-  .altar-offering { min-width: 75px; }
   .digital-altar-actions { width: 100%; }
   .light-incense-button,
   .write-memorial-button { width: 100%; }
@@ -1418,60 +1092,6 @@
 }
 
 /* ===== Phòng thờ 3D ===== */
-.ancestral-hall-page .hall3d-mode-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-}
-
-.ancestral-hall-page .hall3d-mode-toggle {
-  display: inline-flex;
-  padding: 4px;
-  background: #ffffff;
-  border: 1px solid var(--hall-border);
-  border-radius: 12px;
-  box-shadow: 0 4px 14px rgba(18, 33, 63, 0.06);
-}
-
-.ancestral-hall-page .hall3d-mode-toggle button {
-  min-height: 44px;
-  padding: 8px 18px;
-  color: var(--hall-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 9px;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.ancestral-hall-page .hall3d-mode-toggle button.active {
-  color: #ffffff;
-  background: var(--hall-blue);
-}
-
-.ancestral-hall-page .hall3d-mode-toggle button:not(.active):not(:disabled):hover {
-  color: var(--hall-ink);
-  background: #eef3fb;
-}
-
-.ancestral-hall-page .hall3d-mode-toggle button:focus-visible {
-  outline: 2px solid var(--hall-blue);
-  outline-offset: 2px;
-}
-
-.ancestral-hall-page .hall3d-mode-toggle button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.ancestral-hall-page .hall3d-mode-note {
-  color: var(--hall-muted);
-  font-size: 12px;
-}
-
 .ancestral-hall-page .hall3d-section {
   padding: 16px;
   color: #ffffff;
@@ -1482,6 +1102,56 @@
   border-radius: 22px;
   box-shadow: 0 18px 48px rgba(15, 27, 58, 0.2);
 }
+
+/* Thay cho khung 3D khi thiết bị không có WebGL hoặc cảnh 3D lỗi */
+.ancestral-hall-page .hall3d-unsupported {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  color: #fff4d1;
+  background: radial-gradient(ellipse at 50% 45%, #2a140b 0%, #120a07 75%);
+  border: 1px solid rgba(217, 173, 69, 0.35);
+  border-radius: 16px;
+}
+
+.ancestral-hall-page .hall3d-unsupported strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.ancestral-hall-page .hall3d-unsupported p {
+  margin: 0;
+  color: rgba(255, 244, 209, 0.82);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.ancestral-hall-page .hall3d-unsupported ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  margin: 6px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ancestral-hall-page .hall3d-unsupported li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 14px;
+  padding: 8px 12px;
+  background: rgba(255, 244, 209, 0.07);
+  border-radius: 10px;
+}
+
+.ancestral-hall-page .hall3d-unsupported li span { font-size: 14px; font-weight: 700; }
+.ancestral-hall-page .hall3d-unsupported li small { color: #eacb77; font-size: 12.5px; }
 
 .ancestral-hall-page .hall3d-loading {
   display: flex;
@@ -1567,8 +1237,6 @@
     border-radius: 18px;
   }
 
-  .ancestral-hall-page .hall3d-mode-toggle { width: 100%; }
-  .ancestral-hall-page .hall3d-mode-toggle button { flex: 1; padding: 8px 10px; }
   .ancestral-hall-page .hall3d-caption strong { font-size: 17px; }
 }
 

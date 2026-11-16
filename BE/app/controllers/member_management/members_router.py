@@ -412,6 +412,10 @@ async def create_member(
     db.add(new_person)
     await db.flush()
 
+    # Nguoi da mat -> tu lap bai vi trong phong tho (cung giao dich, loi chi ghi log)
+    from app.services.worship.hall_service import auto_add_tablet_for_person
+    await auto_add_tablet_for_person(db, new_person, admin_uid)
+
     # Create relationship if requested
     if parent_obj:
         rel = Relationship(
@@ -485,6 +489,9 @@ async def update_member(
     # Member không được tự sửa Person; chỉ Clan Admin / Family Admin có quyền
     await _require_branch_scope(db, account, p.family_id, p.branch_id, "person.update")
 
+    from app.services.worship.hall_service import auto_add_tablet_for_person, is_deceased_person
+    was_deceased = is_deceased_person(p)  # chi lap bai vi khi CHUYEN sang "da mat"
+
     if data.fullName is not None:
         name = data.fullName.strip()
         if name:
@@ -529,6 +536,9 @@ async def update_member(
                     p.death_date = date(parts[0], 1, 1)
             except Exception:
                 pass
+
+    if not was_deceased and is_deceased_person(p):
+        await auto_add_tablet_for_person(db, p, account.id)
 
     await db.commit()
     await db.refresh(p)
