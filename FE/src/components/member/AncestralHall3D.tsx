@@ -52,6 +52,16 @@ import {
   zoomDistance,
   zoomReducer,
 } from './hall3d/hallInteraction';
+import { ARRANGEMENT_HIGH, ARRANGEMENT_LOW, buildArrangement } from './hall3d/flowerArrangement';
+import {
+  applyBatch,
+  buildBouquet,
+  createFloraGeometries,
+  createVaseGeometry,
+  paintVaseTexture,
+  vaseProfilePoints,
+  type InstanceBatch,
+} from './hall3d/flowerBuild';
 import { formatSolarDate, memorialIdsOf, memorialLabel, vietnamToday, type SolarDate } from './hall3d/lunarCalendar';
 import {
   PORTRAIT_PROGRAM_KEY,
@@ -287,13 +297,6 @@ const INCENSE_SLOTS = Array.from({ length: MAX_INCENSE }, (_, i) => {
   };
 });
 
-// Hoa cúc cắm trong bình (vị trí cố định trên mặt vòm lá).
-const FLOWER_LAYOUT = Array.from({ length: 11 }, (_, i) => {
-  const angle = i * 2.399;
-  const radius = i === 0 ? 0 : 0.045 + (i % 3) * 0.032;
-  const dome = Math.sqrt(Math.max(0, 1 - (radius / 0.17) ** 2)) * 0.1;
-  return { x: Math.cos(angle) * radius * 1.5, y: dome + 0.02, z: Math.sin(angle) * radius * 1.5, white: i % 2 === 0 };
-});
 
 
 // Khoảng cách giữa các khung tỉ lệ theo cỡ khung (cỡ 1.8 là cỡ gốc).
@@ -915,6 +918,12 @@ const createResources = (quality: HallQuality) => {
   const defaultPortrait = track(createDefaultPortraitTexture());
   const bronzeTex = track(createBronzeTexture());
   const glassStreakTex = track(createGlassStreakTexture());
+  // Men gốm xanh ngọc + họa tiết vẽ bằng canvas (không ảnh ngoài), khớp với đường viền của bình.
+  const vaseTex = (() => {
+    const { canvas, ctx } = makeCanvas(512, high ? 1024 : 512);
+    paintVaseTexture(ctx, canvas.width, canvas.height, vaseProfilePoints(high ? 64 : 28));
+    return track(toTexture(canvas));
+  })();
 
   const apron = (width: number) => {
     const t = track(apronTex.clone());
@@ -942,6 +951,21 @@ const createResources = (quality: HallQuality) => {
     cloth: std({ map: clothTex, roughness: 0.85, side: DoubleSide }),
     clothPlain: std({ color: '#8c1613', roughness: 0.85 }),
     foliage: std({ color: '#3d6b2a', roughness: 0.9 }),
+    // Bình hoa: men gốm bóng (clearcoat nhẹ, chỉ ở chế độ high) + cánh hoa / lá / cành dùng chung cho cả hai bình.
+    vase: track(
+      new MeshPhysicalMaterial({
+        map: vaseTex,
+        roughness: 0.14,
+        metalness: 0,
+        clearcoat: high ? 0.5 : 0,
+        clearcoatRoughness: 0.1,
+        envMapIntensity: 1.1,
+        side: DoubleSide,
+      })
+    ),
+    petal: std({ roughness: 0.55, side: DoubleSide }),
+    leaf: std({ roughness: 0.62, side: DoubleSide }),
+    stemGreen: std({ color: '#4d7a35', roughness: 0.75 }),
     flowerYellow: std({ color: '#f2c230', roughness: 0.7 }),
     flowerWhite: std({ color: '#f7f3e8', roughness: 0.7 }),
     candle: std({ color: '#b01e16', roughness: 0.55 }),
@@ -1061,6 +1085,8 @@ const createResources = (quality: HallQuality) => {
     return geometry;
   };
 
+  const flora = createFloraGeometries(high);
+
   const geo = {
     box: track(new BoxGeometry(1, 1, 1)),
     cyl: track(new CylinderGeometry(1, 1, 1, high ? 24 : 14)),
@@ -1088,7 +1114,12 @@ const createResources = (quality: HallQuality) => {
     burnerHandle: track(new TubeGeometry(new CatmullRomCurve3([new Vector3(0, -0.07, 0), new Vector3(0.07, -0.04, 0), new Vector3(0.085, 0.03, 0), new Vector3(0.04, 0.085, 0), new Vector3(-0.01, 0.07, 0)]), high ? 16 : 8, 0.017, high ? 8 : 5, false)),
     // Đĩa có chân (mâm bồng).
     dish: track(latheSmooth([[0, 0], [0.11, 0.002], [0.122, 0.016], [0.062, 0.042], [0.046, 0.09], [0.075, 0.118], [0.2, 0.142], [0.272, 0.176], [0.282, 0.188], [0.262, 0.184], [0.18, 0.158], [0, 0.152]], seg, smp * 2)),
-    vase: track(latheSmooth([[0, 0], [0.07, 0.002], [0.086, 0.02], [0.12, 0.1], [0.136, 0.19], [0.116, 0.28], [0.072, 0.34], [0.056, 0.39], [0.076, 0.43], [0.102, 0.456], [0.09, 0.458], [0.062, 0.412]], seg, smp * 2)),
+    // Bình hoa tròn xoay (đường viền cong: chân đế, bụng phình, cổ thon, miệng loe) + cánh / lá / nụ / nhụy dùng chung.
+    vase: track(createVaseGeometry(high)),
+    petal: track(flora.petal),
+    leaf: track(flora.leaf),
+    bud: track(flora.bud),
+    center: track(flora.center),
     candleHolder: track(latheSmooth([[0, 0], [0.085, 0.002], [0.092, 0.016], [0.046, 0.032], [0.028, 0.07], [0.046, 0.1], [0.028, 0.13], [0.031, 0.158], [0.076, 0.18], [0.082, 0.192], [0.046, 0.192], [0, 0.186]], seg, smp * 2)),
     candleBody: track(new CylinderGeometry(0.033, 0.038, 0.28, high ? 20 : 10)),
     // Ngọn lửa hình giọt nước.
@@ -1987,34 +2018,66 @@ const FruitTray: React.FC = () => {
   );
 };
 
-const FlowerVase: React.FC<{ x: number }> = ({ x }) => {
-  const { res, high } = useHall();
+/**
+ * Bình hoa men gốm xanh ngọc cắm cúc, huệ, nụ và lá. Bố cục sinh một lần từ seed cố định (không random lại mỗi frame);
+ * cánh / nhụy / nụ / lá là InstancedMesh dùng chung geometry và vật liệu, cành gộp thành một geometry.
+ * Gió: cả bó đung đưa rất khẽ quanh cổ bình (chỉ chế độ high, tắt khi giảm chuyển động; tab ẩn thì vòng vẽ dừng hẳn).
+ */
+const FlowerVase: React.FC<{ x: number; seed: number; lean: -1 | 1 }> = ({ x, seed, lean }) => {
+  const { res, high, reduced } = useHall();
   const { mat, geo } = res;
-  const flowersRef = useRef<InstancedMesh>(null);
+  const bouquet = useMemo(
+    () => buildBouquet(buildArrangement(seed, lean, high ? ARRANGEMENT_HIGH : ARRANGEMENT_LOW), high),
+    [seed, lean, high]
+  );
+  const petalsRef = useRef<InstancedMesh>(null);
+  const centersRef = useRef<InstancedMesh>(null);
+  const budsRef = useRef<InstancedMesh>(null);
+  const leavesRef = useRef<InstancedMesh>(null);
+  const swayRef = useRef<Group>(null);
 
   useLayoutEffect(() => {
-    const mesh = flowersRef.current;
-    if (!mesh) return;
-    const dummy = new Object3D();
-    const yellow = mat.flowerYellow.color;
-    const white = mat.flowerWhite.color;
-    FLOWER_LAYOUT.forEach((flower, i) => {
-      dummy.position.set(flower.x, flower.y, flower.z);
-      dummy.scale.set(0.05, 0.028, 0.05);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      mesh.setColorAt(i, flower.white ? white : yellow);
+    const pairs: Array<[InstancedMesh | null, InstanceBatch]> = [
+      [petalsRef.current, bouquet.petals],
+      [centersRef.current, bouquet.centers],
+      [budsRef.current, bouquet.buds],
+      [leavesRef.current, bouquet.leaves],
+    ];
+    pairs.forEach(([mesh, batch]) => {
+      if (mesh) applyBatch(mesh, batch);
     });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [mat]);
+  }, [bouquet]);
+
+  // Giải phóng phần RIÊNG của bình này (cành + bộ đệm instance); geometry / vật liệu dùng chung do res.dispose lo.
+  useEffect(() => {
+    const meshes = [petalsRef.current, centersRef.current, budsRef.current, leavesRef.current];
+    return () => {
+      bouquet.stems.dispose();
+      meshes.forEach((mesh) => mesh?.dispose());
+    };
+  }, [bouquet]);
+
+  // Không tạo object trong useFrame: chỉ ghi hai góc xoay rất nhỏ (~0,6° và ~0,4°).
+  useFrame(({ clock }) => {
+    const group = swayRef.current;
+    if (!group || !high || reduced) return;
+    const t = clock.elapsedTime;
+    group.rotation.z = Math.sin(t * 0.55 + seed) * 0.011;
+    group.rotation.x = Math.sin(t * 0.41 + seed * 1.7) * 0.007;
+  });
 
   return (
     <group position={[x, TOP_Y.mid, MID.z]}>
-      <mesh geometry={geo.vase} material={mat.porcelain} castShadow={high} />
-      <Sph p={[0, 0.5, 0]} s={[0.17, 0.1, 0.17]} m={mat.foliage} />
-      <group position={[0, 0.5, 0]}>
-        <instancedMesh ref={flowersRef} args={[geo.sph, mat.flowerWhite, FLOWER_LAYOUT.length]} />
+      <mesh geometry={geo.vase} material={mat.vase} castShadow={high} />
+      {/* Xoay quanh cổ bình (y = 0.4) */}
+      <group position={[0, 0.4, 0]} ref={swayRef}>
+        <group position={[0, -0.4, 0]}>
+          <mesh geometry={bouquet.stems} material={mat.stemGreen} />
+          <instancedMesh ref={leavesRef} args={[geo.leaf, mat.leaf, bouquet.leaves.count]} frustumCulled={false} />
+          <instancedMesh ref={petalsRef} args={[geo.petal, mat.petal, bouquet.petals.count]} frustumCulled={false} />
+          <instancedMesh ref={centersRef} args={[geo.center, mat.petal, bouquet.centers.count]} frustumCulled={false} />
+          <instancedMesh ref={budsRef} args={[geo.bud, mat.petal, bouquet.buds.count]} frustumCulled={false} />
+        </group>
       </group>
     </group>
   );
@@ -2044,8 +2107,8 @@ const Offerings = React.memo(function Offerings({ showCranes }: { showCranes: bo
   return (
     <group>
       <FruitTray />
-      <FlowerVase x={-2.0} />
-      <FlowerVase x={2.0} />
+      <FlowerVase x={-2.0} seed={7} lean={-1} />
+      <FlowerVase x={2.0} seed={19} lean={1} />
       <Candle x={-1.1} phase={0} withLight />
       <Candle x={1.1} phase={1.9} withLight={high} />
       <CupsAndWine />
