@@ -25,13 +25,13 @@
   display: inline-block;
   font-size: 11px;
   font-weight: 700;
-  color: #475569;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  padding: 3px 8px;
-  border-radius: 4px;
-  margin-bottom: 6px;
-  letter-spacing: 0.04em;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
 }
 
 .fund-hero h1 {
@@ -51,20 +51,24 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #0f172a;
+  background: #2563eb;
   color: #ffffff;
-  border: 1px solid #0f172a;
+  border: 1px solid #2563eb;
   border-radius: 8px;
   padding: 10px 18px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
   white-space: nowrap;
 }
 
 .fund-primary:hover {
-  background: #334155;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
 }
 
 /* 1. ADMIN VIEW: KPIs */
@@ -172,6 +176,13 @@
   font-size: 13px;
   color: #334155;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fund-search input:focus,
+.fund-toolbar select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .fund-table-wrap {
@@ -241,8 +252,9 @@
 }
 
 .fund-status-badge.confirmed {
-  background: #f1f5f9;
-  color: #334155;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
 }
 
 .fund-status-badge.pending {
@@ -270,10 +282,13 @@
   font-weight: 500;
   color: #334155;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .fund-actions button:hover {
-  background: #f1f5f9;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
 }
 
 .fund-btn-approve {
@@ -405,6 +420,9 @@
   max-width: 240px;
   width: 100%;
   height: auto;
+  object-fit: contain;
+  background: #ffffff;
+  display: block;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -484,19 +502,23 @@
 
 .donate-submit-btn {
   margin-top: 8px;
-  background: #0f172a;
+  background: #2563eb;
   color: #ffffff;
-  border: 1px solid #0f172a;
+  border: 1px solid #2563eb;
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
 
 .donate-submit-btn:hover {
-  background: #334155;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
 }
 
 .member-donate-success-alert {
@@ -534,67 +556,376 @@
   white-space: nowrap;
 }
 
-/* Honors Card */
-.member-donate-honors-card {
+@media (max-width: 900px) {
+  .member-donate-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   ENHANCED STYLES FOR SPRINT 5: REAL FUNDS & BANK VERIFICATION
+   ========================================================================== */
+
+/* Navigation Tabs */
+.fund-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.fund-tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.fund-tab-item:hover {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.fund-tab-item.active {
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.fund-tab-badge {
+  display: inline-block;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.fund-tab-item.active .fund-tab-badge {
+  background: #ffffff;
+  color: #2563eb;
+}
+
+/* Copy button */
+.btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-copy:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.btn-copy.copied {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+/* Progress bar */
+.fund-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.fund-progress-track {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.fund-progress-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.fund-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Amount presets */
+.amount-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.amount-preset-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.amount-preset-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.amount-preset-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+/* Evidence Thumbnail & Preview */
+.evidence-thumbnail {
+  max-width: 64px;
+  max-height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.evidence-thumbnail:hover {
+  transform: scale(1.08);
+  border-color: #2563eb;
+}
+
+.evidence-preview-modal-img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Badges */
+.status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-badge.status-PENDING {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.status-badge.status-AWAITING_VERIFICATION {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.status-badge.status-SUCCESS {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.status-badge.status-REJECTED {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.status-badge.status-CANCELLED {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.status-badge.status-ACTIVE {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.status-badge.status-CLOSED,
+.status-badge.status-PAUSED {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-donate-disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: not-allowed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fund Cards Grid */
+.fund-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.fund-item-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 24px;
+  padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.member-donate-honors-card .card-header {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f1f5f9;
+.fund-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.member-donate-honors-card .card-header h3 {
+.fund-item-header h3 {
   font-size: 16px;
   font-weight: 700;
   color: #0f172a;
   margin: 0 0 4px 0;
 }
 
-.member-donate-honors-card .card-header p {
+.fund-item-purpose {
   font-size: 13px;
-  color: #64748b;
-  margin: 0;
-}
-
-.honors-table-wrap {
-  overflow-x: auto;
-}
-
-.honors-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  text-align: left;
-}
-
-.honors-table th {
-  background: #f8fafc;
   color: #475569;
-  font-weight: 600;
-  padding: 10px 14px;
-  border-bottom: 1px solid #e2e8f0;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.fund-item-desc {
   font-size: 12px;
+  color: #64748b;
+  margin: 4px 0 0 0;
 }
 
-.honors-table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid #f1f5f9;
+.fund-item-stats {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.fund-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fund-item-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-donate-now {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.btn-donate-now:hover {
+  background: #1d4ed8;
+}
+
+.btn-edit-fund {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
   color: #334155;
+  transition: all 0.15s ease;
 }
 
-.honor-amount {
-  font-weight: 700;
-  color: #15803d;
+.btn-edit-fund:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
 }
 
-@media (max-width: 900px) {
-  .member-donate-grid {
-    grid-template-columns: 1fr;
-  }
+.btn-delete-fund {
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-delete-fund:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* Upload zone */
+.qr-upload-box {
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: all 0.15s ease;
+}
+
+.qr-upload-box:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.qr-upload-box input {
+  display: none;
 }

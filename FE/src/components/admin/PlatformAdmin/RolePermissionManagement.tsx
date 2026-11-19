@@ -175,7 +175,11 @@ export const RolePermissionManagement: React.FC = () => {
             </div>
 
             {loading ? (
-              <AdminStatePanel kind="loading" message="Đang tải cấu hình quyền..." />
+              <AdminStatePanel
+                kind="loading"
+                title="Đang tải ma trận phân quyền..."
+                message="Hệ thống đang cấu hình các nhóm quyền và vai trò quản trị..."
+              />
             ) : filteredModules.length === 0 ? (
               <AdminStatePanel kind="empty" title="Không tìm thấy module" message="Thử từ khóa khác hoặc chọn tất cả nhóm module." action={<button type="button" className="s6a-button secondary" onClick={() => { setModuleSearch(''); setCategoryFilter('all'); }}>Xóa bộ lọc</button>} />
             ) : (

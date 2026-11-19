@@ -17,6 +17,8 @@ from app.models.family.entities import (
     FamilyAdminAssignment,
     IdempotencyKey,
     ProvisioningJob,
+    Notification,
+    UserNotification,
 )
 from app.models.genealogy.entities import (
     Branch,
@@ -24,6 +26,10 @@ from app.models.genealogy.entities import (
     Person,
     PersonClosure,
     Relationship,
+    ClanLocation,
+    PersonBurial,
+    LocationProposal,
+    PersonPrivacySetting,
 )
 from app.models.user_access.entities import (
     AuditLog,
@@ -71,4 +77,6 @@ __all__ = [
     "User",
     "UserRole",
     "UserSession",
+    "Notification",
+    "UserNotification",
 ]

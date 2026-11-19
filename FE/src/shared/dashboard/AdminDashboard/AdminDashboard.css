@@ -55,7 +55,7 @@
   font-weight: 800;
   margin: 0 0 10px;
   line-height: 1.2;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -172,7 +172,7 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.1;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .admin-stat-card-unit {
@@ -293,7 +293,7 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.2;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .admin-stat-card-footer {
@@ -410,7 +410,7 @@
   font-weight: 800;
   color: #0f172a;
   margin: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .admin-service-stable-badge {

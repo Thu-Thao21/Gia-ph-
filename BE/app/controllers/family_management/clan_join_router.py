@@ -213,6 +213,32 @@ async def leave_clan_endpoint(
     return await use_cases.leave_clan(db=db, principal=principal, clan_id=clan_id)
 
 
+@router.delete(
+    "/clans/{clan_id}/members/{user_id}",
+    summary="Khai trừ thành viên ra khỏi dòng họ",
+    description="Trưởng tộc hoặc Quản trị viên khai trừ tài khoản người dùng ra khỏi dòng họ.",
+)
+@router.post(
+    "/clans/{clan_id}/members/{user_id}/revoke",
+    summary="Khai trừ thành viên ra khỏi dòng họ (POST alias)",
+)
+async def revoke_clan_member_endpoint(
+    clan_id: uuid.UUID,
+    user_id: uuid.UUID,
+    reason: Optional[str] = Query(None),
+    principal: Principal = Depends(get_principal),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trưởng tộc / Quản trị viên khai trừ thành viên ra khỏi dòng họ."""
+    return await use_cases.revoke_clan_member(
+        db=db,
+        principal=principal,
+        clan_id=clan_id,
+        target_user_id=user_id,
+        reason=reason,
+    )
+
+
 # ---------------------------------------------------------------------------
 # 6. Người duyệt: Danh sách, chi tiết và hành động duyệt yêu cầu của dòng họ
 # ---------------------------------------------------------------------------

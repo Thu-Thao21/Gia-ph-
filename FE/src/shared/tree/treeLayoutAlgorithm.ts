@@ -410,13 +410,23 @@ export function calculateTreeLayout(
       const children = parent.childrenUnits;
       const midY = fromY + Math.round(VERTICAL_ROW_GAP * 0.45);
 
-      const childrenDropPoints = children.map((c) => ({
-        x: c.bloodCardCenterX,
-        y: c.y,
-      }));
+      const childrenDropInfo = children.map((c) => {
+        const hasSpouse = Boolean(c.spouseCard);
+        const husbandX = c.bloodCardCenterX;
+        const wifeX = hasSpouse ? c.x + CARD_WIDTH + SPOUSE_GAP + CARD_WIDTH / 2 : husbandX;
+        const stemX = hasSpouse ? (husbandX + wifeX) / 2 : husbandX;
+        return {
+          unit: c,
+          hasSpouse,
+          husbandX,
+          wifeX,
+          stemX,
+          topY: c.y,
+        };
+      });
 
-      const minChildX = Math.min(...childrenDropPoints.map((p) => p.x));
-      const maxChildX = Math.max(...childrenDropPoints.map((p) => p.x));
+      const minChildX = Math.min(...childrenDropInfo.map((p) => p.stemX));
+      const maxChildX = Math.max(...childrenDropInfo.map((p) => p.stemX));
       const minLineX = Math.min(fromX, minChildX);
       const maxLineX = Math.max(fromX, maxChildX);
 
@@ -426,12 +436,30 @@ export function calculateTreeLayout(
       // 2. Horizontal bus bar spanning across all children and parent stem
       const busBarPath = `M ${minLineX} ${midY} H ${maxLineX}`;
 
-      // 3. Drop lines to each child card
-      const dropPaths = childrenDropPoints.map((ch) => `M ${ch.x} ${midY} V ${ch.y}`);
+      // 3. Drop lines & fork brackets for married couples vs single children
+      const dropPaths: string[] = [];
+      const dropJunctions: { x: number; y: number }[] = [];
 
-      // 4. Junction dots
+      childrenDropInfo.forEach((cp) => {
+        // Dot on the bus bar where this drop originates
+        dropJunctions.push({ x: cp.stemX, y: midY });
+
+        if (cp.hasSpouse) {
+          // Married couple: stem drops from bus bar to fork point, branches horizontally, and drops into both cards
+          const forkY = cp.topY - 20;
+          dropPaths.push(
+            `M ${cp.stemX} ${midY} V ${forkY} M ${cp.husbandX} ${cp.topY} V ${forkY} H ${cp.wifeX} V ${cp.topY}`
+          );
+          // Branching junction dot
+          dropJunctions.push({ x: cp.stemX, y: forkY });
+        } else {
+          // Single child: straight line from bus bar into card top
+          dropPaths.push(`M ${cp.stemX} ${midY} V ${cp.topY}`);
+        }
+      });
+
+      // 4. Trunk junction dot
       const trunkJunction = { x: fromX, y: midY };
-      const dropJunctions = childrenDropPoints.map((ch) => ({ x: ch.x, y: midY }));
 
       busGroups.push({
         id: `bus-${parent.id}`,

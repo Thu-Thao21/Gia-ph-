@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import uuid4
 
 from fastapi import HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,6 +90,12 @@ class GenealogyService:
             status=status_val,
         )
 
+    async def _auto_worship_tablet(self, person: Person, account: Account) -> None:
+        """Nguoi moi tao / vua chuyen thanh da mat -> tu lap bai vi (cung giao dich, loi chi ghi log)."""
+        from app.services.worship.hall_service import auto_add_tablet_for_person
+
+        await auto_add_tablet_for_person(self.db, person, account.id)
+
     async def _get_person_for_family(self, family_id: str, person_id: str) -> Person:
         person = await self.repo.get_person_by_id(person_id)
         # A person of ANOTHER family answers exactly like a missing one (Mốc M2, IDOR): the
@@ -151,6 +158,24 @@ class GenealogyService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family not found")
         await self._validate_branch(family_id, data.branch_id)
 
+        clean_name = (data.full_name or "").strip()
+        if not clean_name:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Họ và tên không được để trống")
+
+        # Chặn không cho phép nhập người trùng tên trong cùng một dòng họ
+        dup_res = await self.db.execute(
+            select(Person.id).where(
+                Person.family_id == family_id,
+                func.lower(func.trim(Person.full_name)) == func.lower(func.trim(clean_name)),
+                Person.status != "DELETED",
+            )
+        )
+        if dup_res.first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Thành viên '{clean_name}' đã tồn tại trong dòng họ này. Hệ thống không cho phép nhập trùng tên.",
+            )
+
         # Normalize gender to uppercase ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN') for Postgres check constraint
         raw_gender = (data.gender or "").strip().upper()
         if raw_gender in {"MALE", "NAM"}:
@@ -185,6 +210,7 @@ class GenealogyService:
         try:
             await self.repo.create_person(person)
             await self.repo.insert_closure_self(person.id, family_id)
+            await self._auto_worship_tablet(person, account)
             await self.db.commit()
             return self._to_person_response(person)
         except Exception:
@@ -201,6 +227,25 @@ class GenealogyService:
         await self.access.require_family_permission(account, family_id, "person.update")
         person = await self._get_person_for_family(family_id, person_id)
         update_data = data.model_dump(exclude_unset=True)
+        if "full_name" in update_data and update_data["full_name"] is not None:
+            clean_name = str(update_data["full_name"]).strip()
+            if not clean_name:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Họ và tên không được để trống")
+            if clean_name.lower() != (person.full_name or "").strip().lower():
+                dup_res = await self.db.execute(
+                    select(Person.id).where(
+                        Person.family_id == family_id,
+                        Person.id != person_id,
+                        func.lower(func.trim(Person.full_name)) == func.lower(func.trim(clean_name)),
+                        Person.status != "DELETED",
+                    )
+                )
+                if dup_res.first():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Thành viên '{clean_name}' đã tồn tại trong dòng họ này. Hệ thống không cho phép đổi sang tên bị trùng.",
+                    )
+            update_data["full_name"] = clean_name
         if "branch_id" in update_data:
             await self._validate_branch(family_id, update_data["branch_id"])
         if "gender" in update_data and update_data["gender"] is not None:
@@ -224,8 +269,13 @@ class GenealogyService:
         if not update_data:
             return self._to_person_response(person)
 
+        from app.services.worship.hall_service import is_deceased_person
+
+        was_deceased = is_deceased_person(person)  # truoc khi UPDATE: chi lap bai vi khi CHUYEN sang "da mat"
         try:
             updated = await self.repo.update_person(person_id, update_data)
+            if updated is not None and not was_deceased and is_deceased_person(updated):
+                await self._auto_worship_tablet(updated, account)
             await self.db.commit()
             return self._to_person_response(updated)
         except Exception:

@@ -1,0 +1,290 @@
+/* Excel Template Requirements Guide Component */
+.fa-excel-guide-container {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: all 0.25s ease;
+}
+
+.fa-excel-guide-container:hover {
+  border-color: #cbd5e1;
+}
+
+.fa-excel-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fa-excel-guide-header:hover {
+  background: #f1f5f9;
+}
+
+.fa-excel-guide-title-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fa-excel-guide-icon-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fa-excel-guide-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fa-excel-guide-pill-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  letter-spacing: 0.2px;
+}
+
+.fa-excel-guide-toggle-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fa-excel-guide-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.fa-excel-guide-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.fa-excel-guide-tab:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.fa-excel-guide-tab.active {
+  background: #ffffff;
+  color: #2563eb;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.fa-excel-guide-tab-body {
+  padding: 22px 20px;
+}
+
+/* Sheets List */
+.fa-guide-sheet-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 18px;
+  background: #ffffff;
+}
+
+.fa-guide-sheet-card:last-child {
+  margin-bottom: 0;
+}
+
+.fa-guide-sheet-card-header {
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fa-guide-sheet-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fa-guide-sheet-desc {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.fa-guide-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.fa-guide-spec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.fa-guide-spec-table th {
+  background: #fafafa;
+  color: #475569;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.fa-guide-spec-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.fa-guide-code-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.fa-guide-tag-required {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.fa-guide-tag-optional {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Rules Grid */
+.fa-guide-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.fa-guide-rule-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fa-guide-rule-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fa-guide-rule-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fa-guide-rule-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.fa-guide-rule-body {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.fa-guide-rule-note {
+  font-size: 12px;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  color: #1e40af;
+  margin-top: 4px;
+}
+
+/* Sample Preview */
+.fa-guide-sample-desc {
+  font-size: 13.5px;
+  color: #475569;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.fa-guide-sample-badge-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+

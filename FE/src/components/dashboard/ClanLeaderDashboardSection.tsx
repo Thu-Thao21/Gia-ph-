@@ -8,6 +8,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import './ClanLeaderDashboardSection.css';
 
@@ -70,6 +73,14 @@ export const ClanLeaderDashboardSection: React.FC<ClanLeaderDashboardSectionProp
     }).length;
   }, [membersList]);
 
+  const genderPieData = useMemo(() => {
+    if (totalMale === 0 && totalFemale === 0) return [];
+    return [
+      { name: 'Nam giới', value: totalMale, color: '#2563eb' },
+      { name: 'Nữ giới', value: totalFemale, color: '#ec4899' },
+    ].filter((item) => item.value > 0);
+  }, [totalMale, totalFemale]);
+
   const uniqueBranchesCount = useMemo(() => {
     const branches = new Set(
       membersList
@@ -90,7 +101,7 @@ export const ClanLeaderDashboardSection: React.FC<ClanLeaderDashboardSectionProp
             <span className="clan-heritage-badge">KHU VỰC QUẢN TRỊ TRƯỞNG TỘC</span>
             <h2 className="clan-heritage-name">{clanName || 'Không gian Dòng họ'}</h2>
             <p className="clan-heritage-desc">
-              Bảng theo dõi và thống kê thông tin nhân khẩu trực hệ dòng tộc.
+              Bảng theo dõi và thống kê thông tin nhân khẩu trực hệ dòng tộc thời gian thực.
             </p>
           </div>
         </div>
@@ -123,86 +134,169 @@ export const ClanLeaderDashboardSection: React.FC<ClanLeaderDashboardSectionProp
         </div>
       </div>
 
-      {/* Sơ đồ cột phân bổ nhân khẩu theo từng thế hệ */}
-      <div className="clan-chart-panel">
-        <div className="clan-chart-panel-header">
-          <div>
-            <h3 className="clan-chart-title">Phân Bổ Nhân Khẩu Theo Thế Hệ</h3>
-            <p className="clan-chart-subtitle">
-              Số lượng Nam và Nữ qua các đời trong gia phả dòng tộc.
-            </p>
-          </div>
-          {chartData.length > 0 && (
-            <div className="clan-chart-badges">
-              <span className="clan-badge-legend male">Nam: {totalMale}</span>
-              <span className="clan-badge-legend female">Nữ: {totalFemale}</span>
+      {/* Sơ đồ trực quan nhân khẩu dòng tộc */}
+      {chartData.length > 0 ? (
+        <div className="clan-charts-grid">
+          {/* Sơ đồ cột thế hệ */}
+          <div className="clan-chart-panel">
+            <div className="clan-chart-panel-header">
+              <div>
+                <h3 className="clan-chart-title">Phân Bổ Nhân Khẩu Theo Thế Hệ</h3>
+                <p className="clan-chart-subtitle">
+                  Số lượng Nam và Nữ qua các đời trong gia phả dòng tộc.
+                </p>
+              </div>
+              <div className="clan-chart-badges">
+                <span className="clan-badge-legend male">Nam: {totalMale}</span>
+                <span className="clan-badge-legend female">Nữ: {totalFemale}</span>
+              </div>
             </div>
-          )}
-        </div>
 
-        <div className="clan-chart-render-box">
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 15, right: 20, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="generationName"
-                  axisLine={{ stroke: '#e2e8f0' }}
-                  tickLine={false}
-                  tick={{ fill: '#475569', fontSize: 13 }}
-                  dy={6}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                  tick={{ fill: '#64748b', fontSize: 12 }}
-                  dx={-4}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-                    padding: '10px 14px',
-                  }}
-                  formatter={(value: any, name: any) => [
-                    `${value} người`,
-                    name === 'male' ? 'Nam' : 'Nữ',
-                  ]}
-                  labelStyle={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}
-                />
-                <Legend
-                  wrapperStyle={{ paddingTop: '12px', fontSize: '13px' }}
-                  formatter={(value) => (value === 'male' ? 'Nam' : 'Nữ')}
-                />
-                <Bar
-                  dataKey="male"
-                  name="male"
-                  fill="#1e40af"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                />
-                <Bar
-                  dataKey="female"
-                  name="female"
-                  fill="#9333ea"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="clan-chart-empty">
-              <p>Chưa có dữ liệu thành viên để lập sơ đồ thống kê.</p>
+            <div className="clan-chart-render-box">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 15, right: 15, left: -10, bottom: 5 }}
+                >
+                  <defs>
+                    <linearGradient id="maleBarGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="100%" stopColor="#1d4ed8" />
+                    </linearGradient>
+                    <linearGradient id="femaleBarGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f472b6" />
+                      <stop offset="100%" stopColor="#db2777" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="generationName"
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={false}
+                    tick={{ fill: '#475569', fontSize: 13 }}
+                    dy={6}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                    tick={{ fill: '#64748b', fontSize: 12 }}
+                    dx={-4}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                      padding: '10px 14px',
+                    }}
+                    formatter={(value: any, name: any) => [
+                      `${value} người`,
+                      name === 'male' ? 'Nam' : 'Nữ',
+                    ]}
+                    labelStyle={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}
+                  />
+                  <Legend
+                    wrapperStyle={{ paddingTop: '12px', fontSize: '13px' }}
+                    formatter={(value) => (value === 'male' ? 'Nam' : 'Nữ')}
+                  />
+                  <Bar
+                    dataKey="male"
+                    name="male"
+                    fill="url(#maleBarGrad)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={38}
+                  />
+                  <Bar
+                    dataKey="female"
+                    name="female"
+                    fill="url(#femaleBarGrad)"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={38}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          )}
+          </div>
+
+          {/* Sơ đồ tròn tỷ lệ nhân khẩu */}
+          <div className="clan-chart-panel donut-panel">
+            <div className="clan-chart-panel-header">
+              <div>
+                <h3 className="clan-chart-title">Cơ Cấu Giới Tính Dòng Tộc</h3>
+                <p className="clan-chart-subtitle">
+                  Tỷ lệ phân bổ Nam và Nữ trong gia phả
+                </p>
+              </div>
+            </div>
+
+            <div className="clan-chart-render-box">
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={genderPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={95}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {genderPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                      padding: '8px 12px',
+                    }}
+                    formatter={(val: any, name: any) => [`${val} thành viên`, name]}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '13px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="clan-chart-panel empty-banner">
+          <div className="clan-empty-onboarding">
+            <div className="clan-empty-icon-wrap">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <h3 className="clan-empty-title">Không gian dòng họ đã sẵn sàng khởi tạo phả hệ</h3>
+            <p className="clan-empty-desc">
+              Cơ sở dữ liệu phả hệ của dòng họ hiện đang trống sạch. Bạn có thể bắt đầu xây dựng cây gia phả bằng cách nạp danh sách từ tệp Excel hoặc thêm thành viên trực tiếp.
+            </p>
+            <div className="clan-empty-actions">
+              <button
+                type="button"
+                className="clan-empty-btn primary"
+                onClick={() => onNavigateTab && onNavigateTab('family-import-export')}
+              >
+                Nhập phả hệ từ file Excel
+              </button>
+              <button
+                type="button"
+                className="clan-empty-btn secondary"
+                onClick={() => onNavigateTab && onNavigateTab('family-members')}
+              >
+                Thêm thành viên dòng họ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lối tắt quản trị Trưởng tộc tối giản */}
       <div className="clan-quick-actions-card">
@@ -229,6 +323,17 @@ export const ClanLeaderDashboardSection: React.FC<ClanLeaderDashboardSectionProp
             <div className="btn-text">
               <strong>Quản Lý Thành Viên</strong>
               <small>Danh sách và nhân khẩu</small>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="clan-action-btn"
+            onClick={() => onNavigateTab && onNavigateTab('family-locations')}
+          >
+            <div className="btn-text">
+              <strong>Bản Đồ & Địa Điểm</strong>
+              <small>Nhà thờ họ, từ đường & mộ phần</small>
             </div>
           </button>
 

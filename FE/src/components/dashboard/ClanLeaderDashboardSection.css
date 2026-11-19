@@ -12,9 +12,10 @@
 .clan-heritage-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  font-family: var(--font-body);
 }
 
 .clan-heritage-header {
@@ -65,9 +66,16 @@
 .clan-kpi-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 16px 18px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clan-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  border-color: #cbd5e1;
 }
 
 .clan-kpi-info {
@@ -86,6 +94,7 @@
   font-size: 18px;
   font-weight: 700;
   color: #0f172a;
+  font-family: var(--font-heading);
 }
 
 .clan-kpi-sub {
@@ -97,7 +106,7 @@
 .clan-chart-panel {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
@@ -151,6 +160,18 @@
   border: 1px solid #f3e8ff;
 }
 
+.clan-charts-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1.1fr;
+  gap: 16px;
+}
+
+@media (max-width: 992px) {
+  .clan-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .clan-chart-render-box {
   width: 100%;
 }
@@ -162,11 +183,102 @@
   font-size: 13px;
 }
 
+/* Onboarding empty state */
+.clan-chart-panel.empty-banner {
+  padding: 48px 32px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px dashed #cbd5e1;
+}
+
+.clan-empty-onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.clan-empty-icon-wrap {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.clan-empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+  font-family: var(--font-heading);
+}
+
+.clan-empty-desc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.clan-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.clan-empty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-body);
+}
+
+.clan-empty-btn.primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.clan-empty-btn.primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.clan-empty-btn.secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.clan-empty-btn.secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
 /* 4. Quick Actions */
 .clan-quick-actions-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 18px 22px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
@@ -180,6 +292,7 @@
   font-weight: 700;
   color: #0f172a;
   margin: 0;
+  font-family: var(--font-heading);
 }
 
 .clan-quick-actions-grid {
@@ -197,12 +310,15 @@
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-body);
 }
 
 .clan-action-btn:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: #ffffff;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
 .clan-action-btn .btn-text {

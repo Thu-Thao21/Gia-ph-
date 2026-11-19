@@ -1,3 +1,4 @@
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmDialog, FeatureEmptyState, FeatureIcon, FeatureModal, FeaturePagination, FeatureToast } from '../common/FeatureUI';
 import { archiveMockData, type ArchiveFileType, type ArchiveRecord } from '../../data/sprint5MockData';
@@ -22,6 +23,7 @@ const inferType = (fileName: string): ArchiveFileType => {
 export interface ClanDocumentsModuleProps { canManage?: boolean }
 
 export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canManage = true }) => {
+  const { account } = useAuth();
   const [records, setRecords] = useLocalPreviewState<ArchiveRecord[]>('documents', archiveMockData);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | ArchiveFileType>('all');
@@ -69,7 +71,7 @@ export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canMan
       const next = Math.min(100, current + 14);
       if (next >= 100) {
         window.clearInterval(timer);
-        const record: ArchiveRecord = { id: `TL-${String(Date.now()).slice(-5)}`, name: form.name.trim(), type: form.type, owner: 'Võ Văn Thắng', uploadDate: new Date().toLocaleDateString('vi-VN'), size: `${(file.size / 1024 / 1024).toFixed(1)} MB`, tags: form.tags.split(',').map((item) => item.trim()).filter(Boolean), description: form.description.trim() || 'Tư liệu gia tộc do thành viên đóng góp.' };
+        const record: ArchiveRecord = { id: `TL-${String(Date.now()).slice(-5)}`, name: form.name.trim(), type: form.type, owner: account?.display_name || 'Thành viên', uploadDate: new Date().toLocaleDateString('vi-VN'), size: `${(file.size / 1024 / 1024).toFixed(1)} MB`, tags: form.tags.split(',').map((item) => item.trim()).filter(Boolean), description: form.description.trim() || 'Tư liệu gia tộc do thành viên đóng góp.' };
         setRecords((items) => [record, ...items]); setUploadState('success'); setTimeout(() => { setShowUpload(false); setToast('Đã lưu metadata trong trình duyệt; tệp gốc chưa được tải lên máy chủ.'); }, 550);
       }
       return next;

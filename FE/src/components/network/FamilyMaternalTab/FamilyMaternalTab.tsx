@@ -2,9 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { fetchFamilyNetwork } from '../../../services/network.service';
 import type { FamilyNetwork } from '../../../types/network';
 import { FamilyClanCard } from '../FamilyClanCard';
+import { EmptyState } from '../../../shared/Feedback/EmptyState';
+import { LoadingState } from '../../../shared/Feedback/LoadingState';
 import '../Network.css';
 
-export const FamilyMaternalTab: React.FC = () => {
+export interface FamilyMaternalTabProps {
+  onNavigateToLinks?: () => void;
+}
+
+export const FamilyMaternalTab: React.FC<FamilyMaternalTabProps> = ({ onNavigateToLinks }) => {
   const [families, setFamilies] = useState<FamilyNetwork[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,15 +21,62 @@ export const FamilyMaternalTab: React.FC = () => {
     });
   }, []);
 
-  if (loading) return <div className="network-loading-prompt">Đang tải dữ liệu Dòng họ Ngoại...</div>;
+  if (loading) {
+    return (
+      <div className="network-layout">
+        <div className="network-card">
+          <LoadingState
+            message="Đang đồng bộ mạng lưới Dòng họ liên kết & Thông gia..."
+            subMessage="Hệ thống đang truy vấn các dòng họ ngoại tộc có mối quan hệ hôn nhân với gia tộc bạn."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="network-layout">
       <div className="network-card">
-        <h3 className="network-card-title">Dòng Họ Ngoại (Bên Mẹ)</h3>
-        <p className="network-card-subtitle">
-          Các dòng họ thuộc bên ngoại mẹ, gắn kết qua quan hệ hôn nhân với dòng họ Nội.
-        </p>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <div>
+            <h3 className="network-card-title">Dòng Họ Liên Kết & Thông Gia</h3>
+            <p className="network-card-subtitle">
+              Các dòng họ kết nối thông gia, ngoại tộc qua quan hệ hôn nhân với dòng họ của bạn.
+            </p>
+          </div>
+          {onNavigateToLinks && (
+            <button
+              type="button"
+              onClick={onNavigateToLinks}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
+              }}
+            >
+              Quản lý liên họ & Gửi yêu cầu
+            </button>
+          )}
+        </div>
+
         {families.length > 0 ? (
           <div className="network-clans-list">
             {families.map((f) => (
@@ -31,7 +84,32 @@ export const FamilyMaternalTab: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="network-empty">Chưa có dữ liệu dòng họ Ngoại nào trong cơ sở dữ liệu.</div>
+          <EmptyState
+            variant="requests"
+            title="Chưa ghi nhận dòng họ liên kết hoặc thông gia"
+            subMessage="Hệ thống chưa tìm thấy dữ liệu liên kết nào giữa dòng họ của bạn và các dòng họ đối tác trong cơ sở dữ liệu."
+            action={
+              onNavigateToLinks && (
+                <button
+                  type="button"
+                  onClick={onNavigateToLinks}
+                  style={{
+                    marginTop: 14,
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Gửi yêu cầu liên kết dòng họ
+                </button>
+              )
+            }
+          />
         )}
       </div>
     </div>

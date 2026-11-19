@@ -110,3 +110,16 @@
   background: #f1f5f9;
   margin: 4px 0;
 }
+
+
+.tree-context-menu-badge.linked {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.tree-context-menu-badge.unlinked {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}

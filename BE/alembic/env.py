@@ -4,7 +4,10 @@ import os
 import sys
 
 # Ensure the backend directory is in the path
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+backend_dir = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, backend_dir)
+from dotenv import load_dotenv
+load_dotenv(os.path.join(backend_dir, ".env"))
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

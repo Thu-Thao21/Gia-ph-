@@ -31,6 +31,7 @@ from app.dependencies.permissions import (
 )
 from app.models.family.repository import FamilyRepository
 from app.models.user_access.repository import UserAccessRepository
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.schemas.common import Page
@@ -432,6 +433,23 @@ async def assign_family_admin(
         role_granted,
         get_request_id(),
     )
+    try:
+        from app.services.activity_fund.notification_service import notification_service
+        from app.models.family.entities import Clan
+        clan_name_val = (await db.execute(select(Clan.name).where(Clan.clan_id == clan_id))).scalar_one_or_none() or "dòng họ"
+        await notification_service.notify_single_user(
+            db=db,
+            user_id=target_id,
+            title="Bổ nhiệm Quản trị viên dòng họ",
+            body=f"Chúc mừng bạn! Bạn vừa được bổ nhiệm làm Quản trị viên (Family Admin) của dòng họ {clan_name_val}.",
+            clan_id=clan_id,
+            notif_type="ROLE_ASSIGNMENT",
+            entity_type="ROLE",
+            sender_name=f"Trưởng tộc {clan_name_val}",
+        )
+    except Exception as e:
+        logger.warning("Không thể gửi thông báo bổ nhiệm admin: %s", e)
+
     return FamilyAdminAssignResponse(
         clan_id=clan_id,
         user_id=target_id,
@@ -501,3 +519,24 @@ async def revoke_family_admin(
         roles_revoked,
         get_request_id(),
     )
+    try:
+        from app.services.activity_fund.notification_service import notification_service
+        from app.models.family.entities import Clan
+        clan_name_val = (await db.execute(select(Clan.name).where(Clan.clan_id == clan_id))).scalar_one_or_none() or "dòng họ"
+        await notification_service.notify_single_user(
+            db=db,
+            user_id=user_id,
+            title="Thu hồi quyền Quản trị viên dòng họ",
+            body=f"Vai trò Quản trị viên của bạn tại dòng họ {clan_name_val} đã được thu hồi.",
+            clan_id=clan_id,
+            notif_type="ROLE_REVOCATION",
+            entity_type="ROLE",
+            sender_name=f"Trưởng tộc {clan_name_val}",
+        )
+    except Exception as e:
+        logger.warning("Không thể gửi thông báo thu hồi admin: %s", e)
+    return {
+        "status": "success",
+        "revoked_assignments": len(revoked_ids),
+        "roles_revoked": roles_revoked,
+    }

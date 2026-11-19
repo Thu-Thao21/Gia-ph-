@@ -1,0 +1,646 @@
+/* MyFamilyNetworkView.css - Ego-Centric Bilateral 4-Generation Canvas */
+
+.mfn-root-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 120px);
+  min-height: 720px;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-body);
+  user-select: none;
+}
+
+.mfn-root-container.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+}
+
+/* 1. Header Toolbar */
+.mfn-top-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  z-index: 20;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mfn-toolbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mfn-toolbar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mfn-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+  font-family: var(--font-heading);
+}
+
+.mfn-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mfn-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mfn-pill.blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.mfn-pill.purple {
+  background: #faf5ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.mfn-pill.green {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.mfn-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.mfn-subtitle strong {
+  color: #1e293b;
+}
+
+/* Toolbar Right Controls */
+.mfn-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Segment Button Group (All, Natal, Spouse) */
+.mfn-segment-toggle {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 9px;
+  gap: 2px;
+  border: 1px solid #e2e8f0;
+}
+
+.mfn-segment-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mfn-segment-btn:hover {
+  color: #0f172a;
+}
+
+.mfn-segment-btn.active {
+  background: #ffffff;
+  color: #2563eb;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Search Input */
+.mfn-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mfn-search-input {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  width: 170px;
+  transition: all 0.2s ease;
+}
+
+.mfn-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  width: 210px;
+}
+
+/* Zoom & Camera Buttons */
+.mfn-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f8fafc;
+  padding: 3px 4px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.mfn-ctrl-btn {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mfn-ctrl-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.mfn-ctrl-btn.ego-center {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.mfn-ctrl-btn.ego-center:hover {
+  background: #dbeafe;
+}
+
+.mfn-back-clan-btn {
+  height: 34px;
+  padding: 0 14px;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.mfn-back-clan-btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
+/* 2. Viewport & Canvas Stage */
+.mfn-viewport {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  background-color: #f8fafc;
+  background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+.mfn-viewport.dragging {
+  cursor: grabbing;
+}
+
+.mfn-canvas-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  transition: transform 0.05s ease-out;
+}
+
+/* Lineage Header Banners at Top */
+.mfn-lineage-header {
+  padding: 10px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  z-index: 5;
+}
+
+.mfn-lineage-header.natal {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #3b82f6;
+}
+
+.mfn-lineage-header.spouse {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  border: 2px solid #a855f7;
+}
+
+.mfn-lineage-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+.mfn-lineage-header.natal .mfn-lineage-title {
+  color: #2563eb;
+}
+
+.mfn-lineage-header.spouse .mfn-lineage-title {
+  color: #9333ea;
+}
+
+.mfn-lineage-name {
+  font-size: 15px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+/* 3. SVG Connectors Layer */
+.mfn-svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mfn-bridge-connector text,
+.mfn-marriage-connector text {
+  user-select: none;
+}
+
+/* 4. Person Cards */
+.mfn-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 8px 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+  z-index: 10;
+  border: 2px solid #cbd5e1;
+}
+
+.mfn-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  z-index: 15;
+}
+
+/* Gender Borders */
+.mfn-card.male {
+  border-color: #3b82f6;
+}
+
+.mfn-card.female {
+  border-color: #ec4899;
+}
+
+/* Special States */
+.mfn-card.is-ego {
+  border: 2.5px solid #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2), 0 8px 20px rgba(37, 99, 235, 0.18);
+  background: #ffffff;
+}
+
+.mfn-card.is-spouse {
+  border: 2.5px solid #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2), 0 8px 20px rgba(124, 58, 237, 0.18);
+  background: #ffffff;
+}
+
+.mfn-card.selected {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35), 0 10px 24px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-5px) scale(1.03);
+  z-index: 20;
+}
+
+.mfn-card.match {
+  animation: mfnGlow 1.5s infinite alternate;
+}
+
+@keyframes mfnGlow {
+  0% {
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 7px rgba(234, 88, 12, 0.6);
+  }
+}
+
+/* Card Internal Elements */
+.mfn-card-gen-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mfn-card.male .mfn-card-gen-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.mfn-card.female .mfn-card-gen-badge {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.mfn-card-avatar-wrap {
+  position: relative;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mfn-card-name {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+  margin-bottom: 3px;
+}
+
+.mfn-card-role-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.mfn-card-role-pill.bold {
+  font-weight: 800;
+}
+
+.mfn-card-role-pill.blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.mfn-card-role-pill.purple {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.mfn-card-clan-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mfn-card-clan-pill.natal-clan {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.mfn-card-clan-pill.spouse-clan {
+  background: #faf5ff;
+  color: #9333ea;
+}
+
+.mfn-card-account-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 1px 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mfn-card-year {
+  font-size: 9.5px;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+/* 5. Slide-Over Detail Drawer */
+.mfn-detail-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: -4px 0 24px rgba(15, 23, 42, 0.12);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  animation: mfnSlideIn 0.25s ease-out;
+  border-left: 1px solid #e2e8f0;
+}
+
+@keyframes mfnSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mfn-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.mfn-drawer-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mfn-drawer-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.mfn-drawer-gender-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.mfn-drawer-gender-tag.male {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.mfn-drawer-gender-tag.female {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.mfn-drawer-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.mfn-drawer-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.mfn-drawer-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mfn-drawer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mfn-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mfn-field-value {
+  font-size: 13.5px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.mfn-field-value.highlight {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+/* Loading & Empty States */
+.mfn-loading-state,
+.mfn-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+  gap: 16px;
+  color: #64748b;
+  text-align: center;
+  padding: 24px;
+}
+
+.mfn-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3.5px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: mfnSpin 0.8s linear infinite;
+}
+
+@keyframes mfnSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mfn-btn-primary {
+  padding: 9px 18px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mfn-btn-primary:hover {
+  background: #1d4ed8;
+}

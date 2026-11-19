@@ -9,6 +9,12 @@ import { ErgoTreeCanvas } from '../ErgoTreeCanvas';
 import { TreeContextMenu } from '../TreeContextMenu';
 import TreeActionModals, { type ModalType } from '../TreeActionModals/TreeActionModals';
 import { NotificationModal } from '../../common/NotificationModal';
+import { BurialQuickViewModal } from '../../../components/common/BurialQuickViewModal';
+import { DualLineageModal } from '../../../components/network/DualLineageModal';
+import { fetchMyFamilyNetwork, fetchFamilyNetwork } from '../../../services/network.service';
+import type { MyFamilyNetworkResponse } from '../../../types/network';
+import { MyFamilyNetworkView } from '../../../components/network/MyFamilyNetwork';
+import { LineageAccessRequestModal } from '../../../components/network/LineageAccessRequestModal';
 import '../Tree.css';
 import './TreeLayout.css';
 
@@ -16,12 +22,14 @@ export interface TreeLayoutProps {
   onSelectMemberProfile?: (memberId: string) => void;
   initialMode?: 'vertical' | 'horizontal' | 'focus';
   familyId?: string;
+  initialScope?: 'clan' | 'network';
 }
 
 export const TreeLayout: React.FC<TreeLayoutProps> = ({
   onSelectMemberProfile,
   initialMode = 'vertical',
   familyId,
+  initialScope,
 }) => {
   const { account } = useAuth();
   const { activeClanId, activeClanName, activeMembership, availableClans, selectClan } = useClanContext();
@@ -38,6 +46,54 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const isFamilyAdmin = clanRoles.includes('FAMILY_ADMIN');
   const canManageTree = isAdmin || isClanAdmin || isFamilyAdmin;
 
+  const [viewScope, setViewScope] = useState<'clan' | 'network'>(initialScope || 'clan');
+  const [myNetworkData, setMyNetworkData] = useState<MyFamilyNetworkResponse | null>(null);
+  const [expandedInLawPersonId, setExpandedInLawPersonId] = useState<string | null>(null);
+
+  const myPersonId = activeMembership?.person_id || (account as any)?.person_id || myNetworkData?.ego?.id;
+  const isBilateralMode = Boolean(
+    (viewScope === 'network' || expandedInLawPersonId) &&
+    myNetworkData?.hasCrossClanLink &&
+    myNetworkData?.nodes &&
+    myNetworkData.nodes.length > 0
+  );
+
+  useEffect(() => {
+    if (initialScope) {
+      setViewScope(initialScope);
+    }
+  }, [initialScope]);
+
+  useEffect(() => {
+    if (viewScope === 'network') {
+      const egoId = myPersonId || myNetworkData?.ego?.id;
+      if (egoId && myNetworkData?.hasCrossClanLink) {
+        setExpandedInLawPersonId(egoId);
+      } else {
+        setExpandedInLawPersonId(null);
+        setViewScope('clan');
+      }
+    } else {
+      setExpandedInLawPersonId(null);
+    }
+  }, [viewScope, myNetworkData, myPersonId]);
+
+  const handleToggleInLawExpand = (personId: string) => {
+    if (expandedInLawPersonId === personId || isBilateralMode) {
+      setExpandedInLawPersonId(null);
+      setViewScope('clan');
+    } else {
+      if (!myNetworkData?.hasCrossClanLink) {
+        setSuccessToastMessage('Tài khoản của bạn chưa có liên kết thông gia / hôn nhân liên họ với dòng họ khác.');
+        setTimeout(() => setSuccessToastMessage(null), 4000);
+        return;
+      }
+      setExpandedInLawPersonId(personId);
+      setViewScope('network');
+    }
+  };
+  const [networkLoading, setNetworkLoading] = useState<boolean>(false);
+
   const [families, setFamilies] = useState<(Family & { lineageType?: string | null })[]>([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>(effectiveFamilyId || '');
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -48,6 +104,28 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   );
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
+  const [dualLineagePersonId, setDualLineagePersonId] = useState<string | null>(null);
+
+  // Tải thông tin mạng lưới liên họ cá nhân (Ego Network)
+  useEffect(() => {
+    let isCancelled = false;
+    setNetworkLoading(true);
+    fetchMyFamilyNetwork(selectedFamilyId || undefined)
+      .then((res) => {
+        if (isCancelled) return;
+        setMyNetworkData(res);
+      })
+      .catch((err) => {
+        console.warn('[TreeLayout] fetchMyFamilyNetwork error:', err);
+      })
+      .finally(() => {
+        if (!isCancelled) setNetworkLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedFamilyId]);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<TreeContextMenuState>({
@@ -73,6 +151,20 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
     node: ErgoTreeNode | null;
   }>({ type: null, node: null });
   const [successToastMessage, setSuccessToastMessage] = useState<string | null>(null);
+  const [burialModalNode, setBurialModalNode] = useState<ErgoTreeNode | null>(null);
+  const [lineageModal, setLineageModal] = useState<{
+    isOpen: boolean;
+    ownerClanId: string;
+    ownerClanName: string;
+    anchorPersonId: string;
+    anchorPersonName: string;
+  }>({
+    isOpen: false,
+    ownerClanId: '',
+    ownerClanName: '',
+    anchorPersonId: '',
+    anchorPersonName: '',
+  });
 
   const [selectedBranch, setSelectedBranch] = useState<string | undefined>(undefined);
   const [selectedGeneration, setSelectedGeneration] = useState<number | undefined>(undefined);
@@ -89,7 +181,11 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   };
 
   useEffect(() => {
-    fetchFamilies().then((fams) => {
+    Promise.all([
+      fetchFamilies(),
+      fetchFamilyNetwork('all'),
+      fetchMyFamilyNetwork(effectiveFamilyId || undefined).catch(() => null),
+    ]).then(([fams, netFams, myNet]) => {
       let allowedFams: (Family & { lineageType?: string | null })[] = [];
       if (isAdmin) {
         allowedFams = fams;
@@ -99,7 +195,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         allowedFams = availableClans.map((c) => {
           const matched = fams.find((f) => String(f.id).toLowerCase() === String(c.clan_id).toLowerCase());
           let inferredLineage = c.lineage_type;
-          // Nếu người dùng có dòng họ ngoại, dòng họ còn lại (nếu chưa gán nhãn) là bên nội
           if (!inferredLineage && hasMaternal && availableClans.length > 1) {
             inferredLineage = 'PATERNAL';
           }
@@ -118,6 +213,41 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         allowedFams = fams;
       }
 
+      // Bổ sung dòng họ bên phối ngẫu / thông gia đã liên kết (IN_LAW)
+      if (myNet?.hasCrossClanLink && myNet.spouseClan) {
+        const spId = String(myNet.spouseClan.id).toLowerCase();
+        if (!allowedFams.some((f) => String(f.id).toLowerCase() === spId)) {
+          const matched = fams.find((f) => String(f.id).toLowerCase() === spId);
+          allowedFams.push({
+            id: myNet.spouseClan.id,
+            name: myNet.spouseClan.name,
+            code: matched?.code,
+            status: 'ACTIVE',
+            memberCount: matched?.memberCount ?? 0,
+            lineageType: 'IN_LAW',
+          });
+        }
+      }
+
+      if (Array.isArray(netFams)) {
+        netFams.forEach((nf) => {
+          if (nf.status === 'connected') {
+            const nfId = String(nf.id).toLowerCase();
+            if (!allowedFams.some((f) => String(f.id).toLowerCase() === nfId)) {
+              const matched = fams.find((f) => String(f.id).toLowerCase() === nfId);
+              allowedFams.push({
+                id: nf.id,
+                name: nf.name,
+                code: nf.code || matched?.code,
+                status: 'ACTIVE',
+                memberCount: nf.memberCount || (matched?.memberCount ?? 0),
+                lineageType: 'IN_LAW',
+              });
+            }
+          }
+        });
+      }
+
       setFamilies(allowedFams.length > 0 ? allowedFams : fams);
 
       const targetId = effectiveFamilyId || selectedFamilyId;
@@ -130,8 +260,10 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   }, [effectiveFamilyId, isAdmin, availableClans]);
 
   // Đồng bộ selectedFamilyId và reset state khi người dùng đổi cây trên TopBar
+  const prevEffectiveFamilyIdRef = React.useRef(effectiveFamilyId);
   useEffect(() => {
-    if (effectiveFamilyId && effectiveFamilyId !== selectedFamilyId) {
+    if (effectiveFamilyId && effectiveFamilyId !== prevEffectiveFamilyIdRef.current) {
+      prevEffectiveFamilyIdRef.current = effectiveFamilyId;
       setSelectedFamilyId(effectiveFamilyId);
       setFocusMemberId(undefined);
       setContextMenu({ isOpen: false, x: 0, y: 0, member: null });
@@ -145,7 +277,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   useEffect(() => {
     if (!selectedFamilyId) return;
-    const currentReqId = ++requestCounterRef.current;
+    let isCancelled = false;
 
     // Khi đổi sang gia tộc khác, xóa sạch cache thành viên của gia tộc cũ
     const isDifferentFamily = selectedFamilyId !== lastFetchedFamilyIdRef.current;
@@ -159,12 +291,18 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
       ? allMembersCacheRef.current
       : undefined;
 
-    setLoading(true);
+    // Chỉ hiện loading trắng khi đổi hẳn sang gia tộc khác hoặc chưa nạp cây ban đầu
+    if (isDifferentFamily || treeNodes.length === 0) {
+      setLoading(true);
+    }
 
-    buildErgoTreeFromDB(selectedFamilyId, focusMemberId, cached)
+// myPersonId is defined at component level
+    const myUserId = account?.id || (account as any)?.user_id;
+
+    buildErgoTreeFromDB(selectedFamilyId, focusMemberId, cached, myPersonId, myUserId)
       .then(({ rootNodes, allMembers: mems }) => {
         // Chống race condition: Chỉ áp dụng kết quả của request mới nhất
-        if (currentReqId === requestCounterRef.current) {
+        if (!isCancelled) {
           allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
@@ -172,33 +310,75 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         }
       })
       .catch((err) => {
-        if (currentReqId === requestCounterRef.current) {
+        if (!isCancelled) {
           console.error('[TreeLayout] Focus view tree loading error:', err);
           setLoading(false);
         }
       });
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedFamilyId, focusMemberId]);
 
   const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
     e.stopPropagation();
     console.log('[TreeLayout] handleCardClick on:', node.id, node.fullName);
 
-    const isCurrentlyFocused = Boolean(
-      node.isFocusPerson ||
-      (focusMemberId && (
-        focusMemberId === node.id ||
-        (node.spouses && node.spouses.some((s) => s.id === focusMemberId))
-      ))
+    // 1. Kiểm tra xem thẻ vừa bấm có phải là CHÍNH BẢN THÂN MÌNH (Current User / Ego) hay không
+    const isSelf = Boolean(
+      node.isCurrentUser ||
+      (myPersonId && (node.id === myPersonId || String(node.id).toLowerCase() === String(myPersonId).toLowerCase())) ||
+      (myNetworkData?.ego?.id && (node.id === myNetworkData.ego.id || String(node.id).toLowerCase() === String(myNetworkData.ego.id).toLowerCase())) ||
+      (account?.id && node.userId === account.id) ||
+      ((account as any)?.user_id && node.userId === (account as any).user_id)
     );
 
-    // Ấn lần đầu là chọn làm người trung tâm, ấn lần 2 thì thoát khỏi người trung tâm
-    if (isCurrentlyFocused) {
-      setFocusMemberId(undefined);
-      setZoomScale(1.0);
+    const hasCrossSpouse = Boolean(
+      node.spouses && node.spouses.some((s) => s.isCrossClan)
+    );
+
+    // QUY TẮC 1: Member khi ấn vào CHÍNH MÌNH (hoặc cặp đôi có liên kết liên họ của mình)
+    // - Ấn lần 1: Hiện ra mạng lưới thông gia liên họ
+    // - Ấn thêm cái nữa: Đóng mạng lưới, hiện ra lại cái cây của tộc mình như cũ
+    if (isSelf || (isBilateralMode && hasCrossSpouse)) {
+      if (isBilateralMode) {
+        setViewScope('clan');
+        setExpandedInLawPersonId(null);
+        setFocusMemberId(undefined);
+      } else {
+        if (myNetworkData?.hasCrossClanLink || hasCrossSpouse) {
+          setViewScope('network');
+          setExpandedInLawPersonId(node.id);
+          setFocusMemberId(undefined);
+        } else {
+          // Nếu tài khoản này chưa có liên kết thông gia, toggle xem 4 đời của chính mình
+          if (focusMemberId === node.id) {
+            setFocusMemberId(undefined);
+            setZoomScale(1.0);
+          } else {
+            setFocusMemberId(node.id);
+            setZoomScale(1.15);
+          }
+        }
+      }
     } else {
-      setZoomScale(1.15);
-      setFocusMemberId(node.id);
+      // QUY TẮC 2: Khi ấn vào NGƯỜI KHÁC trong cây
+      // - Ấn lần 1: Tự động chuyển sang chế độ lấy người đó làm trung tâm hiện 4 đời (Ego-centric)
+      // - Ấn thêm cái nữa vào chính người đó: Bỏ Ego-centric, hiện ra cả cây toàn gia tộc
+      if (viewScope !== 'clan') {
+        setViewScope('clan');
+        setExpandedInLawPersonId(null);
+      }
+
+      if (focusMemberId === node.id) {
+        setFocusMemberId(undefined);
+        setZoomScale(1.0);
+      } else {
+        setFocusMemberId(node.id);
+        setZoomScale(1.15);
+      }
     }
+
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
   };
 
@@ -246,11 +426,11 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
   const reloadTree = React.useCallback(() => {
     if (!selectedFamilyId) return;
-    const currentReqId = ++requestCounterRef.current;
+    let isCancelled = false;
     allMembersCacheRef.current = [];
     buildErgoTreeFromDB(selectedFamilyId, focusMemberId)
       .then(({ rootNodes, allMembers: mems }) => {
-        if (currentReqId === requestCounterRef.current) {
+        if (!isCancelled) {
           allMembersCacheRef.current = mems;
           setTreeNodes(rootNodes);
           setAllMembers(mems);
@@ -260,6 +440,9 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
       .catch((err) => {
         console.error('[TreeLayout] Reload error:', err);
       });
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedFamilyId, focusMemberId]);
 
   const handleEdit = (node: ErgoTreeNode) => {
@@ -352,6 +535,41 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
     return null;
   };
 
+  const myNatalClanId = account?.clan_id || account?.memberships?.[0]?.clan_id || activeClanId;
+  const isViewingInLaw = Boolean(
+    selectedFamilyId &&
+    myNatalClanId &&
+    String(selectedFamilyId).toLowerCase() !== String(myNatalClanId).toLowerCase()
+  );
+
+  const myClanObj = families.find((f) => String(f.id).toLowerCase() === String(myNatalClanId).toLowerCase());
+  const currentClanObj = families.find((f) => String(f.id).toLowerCase() === String(selectedFamilyId).toLowerCase());
+
+  const spouseRelationLabel = (myNetworkData?.ego?.gender === 'female' || (account as any)?.gender === 'female')
+    ? 'chồng'
+    : 'vợ';
+
+  const handleViewInLawTree = (clanId: string, personId: string) => {
+    setSelectedFamilyId(clanId);
+    allMembersCacheRef.current = [];
+    setFocusMemberId(personId);
+    setSelectedBranch(undefined);
+    setSelectedGeneration(undefined);
+    setLoading(true);
+  };
+
+  const handleReturnToMyClan = () => {
+    if (myNatalClanId) {
+      setSelectedFamilyId(myNatalClanId);
+      allMembersCacheRef.current = [];
+  // myPersonId is defined at component level
+      setFocusMemberId(myPersonId || undefined);
+      setSelectedBranch(undefined);
+      setSelectedGeneration(undefined);
+      setLoading(true);
+    }
+  };
+
   const displayedTreeNodes = focusMemberId
     ? treeNodes
     : (selectedBranch || selectedGeneration !== undefined)
@@ -372,43 +590,88 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               <span className="tree-stat-pill purple">{maxGen} Thế hệ</span>
               <span className="tree-stat-pill teal">{maleCount} Nam</span>
               <span className="tree-stat-pill pink">{femaleCount} Nữ</span>
+              {isViewingInLaw && (
+                <span className="tree-stat-pill purple" style={{ fontWeight: 600 }}>
+                  Nhánh 4 đời bên {spouseRelationLabel}
+                </span>
+              )}
             </div>
           </div>
-          <div className="tree-toolbar-subtitle-row" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="tree-toolbar-subtitle-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <p className="tree-toolbar-subtitle" style={{ margin: 0 }}>
-              {focusMemberId
-                ? 'Đang làm tâm điểm trên mạng lưới gia phả: Camera tự động phóng to và căn giữa màn hình.'
+              {expandedInLawPersonId && myNetworkData?.hasCrossClanLink
+                ? `Đang lấy bạn (${account?.display_name || 'Ego'}) làm trung tâm: Vẫn giữ nguyên toàn bộ nhánh nội tộc và mở rộng nhánh gia phả bên chồng (${myNetworkData.spouseClan?.name || 'Mai Thế Tộc'}) ngay tại node phối ngẫu trong cùng một canvas.`
+                : isViewingInLaw
+                ? `Đang khám phá cây gia phả bên ${spouseRelationLabel}: ${currentClanObj?.name || 'Gia tộc liên kết'} (Phạm vi 4 thế hệ chia sẻ).`
+                : focusMemberId
+                ? `Đang lấy ${allMembers.find((m) => m.id === focusMemberId)?.fullName || 'thành viên'} làm trung tâm: Hiển thị phả hệ 4 thế hệ.`
                 : selectedBranch || selectedGeneration !== undefined
                 ? 'Đang áp dụng bộ lọc chi nhánh và thế hệ gia phả.'
-                : 'Hiển thị sơ đồ trực hệ đa thế hệ kết nối gia tộc.'}
+                : 'Hiển thị sơ đồ trực hệ đa thế hệ. Nhấp vào bất kỳ ai trên cây để lấy làm trung tâm hiện 4 đời.'}
             </p>
+            {focusMemberId && (
+              <button
+                type="button"
+                className="tree-btn-reset-focus"
+                onClick={() => {
+                  setFocusMemberId(undefined);
+                  setZoomScale(1.0);
+                }}
+                title="Bấm để quay về xem toàn bộ cây gia phả"
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ✕ Thoát chế độ 4 đời (Xem toàn bộ cây)
+              </button>
+            )}
           </div>
         </div>
 
         <div className="tree-toolbar-right">
-          {/* Tree Direction Toggle: Vertical (Dọc) vs Horizontal (Ngang) */}
-          <div className="tree-dir-toggle-group">
+          {/* View Scope Toggle: Cây toàn dòng họ vs Lấy tôi làm trung tâm (Ego) */}
+          <div className="tree-view-scope-toggle">
             <button
-              className={`tree-dir-btn ${treeDirection === 'vertical' ? 'active' : ''}`}
-              onClick={() => setTreeDirection('vertical')}
-              title="Chuyển sơ đồ dọc (Từ trên xuống)"
+              type="button"
+              className={`tree-scope-btn ${!isBilateralMode ? 'active' : ''}`}
+              onClick={() => {
+                setViewScope('clan');
+                setExpandedInLawPersonId(null);
+                setFocusMemberId(undefined);
+              }}
+              title="Xem sơ đồ cây gia phả toàn dòng họ"
             >
-               Dọc
+              <span>Cây toàn dòng họ</span>
             </button>
-            <button
-              className={`tree-dir-btn ${treeDirection === 'horizontal' ? 'active' : ''}`}
-              onClick={() => setTreeDirection('horizontal')}
-              title="Chuyển sơ đồ ngang (Từ trái sang phải)"
-            >
-              Ngang
-            </button>
-          </div>
-
-          {/* Legend Badges */}
-          <div className="tree-legend-group">
-            <span className="tree-legend-item male">Nam</span>
-            <span className="tree-legend-item female">Nữ (Dâu)</span>
-            <span className="tree-legend-item focus">Đang chọn</span>
+            {myNetworkData?.hasCrossClanLink && (
+              <button
+                type="button"
+                className={`tree-scope-btn ${isBilateralMode ? 'active' : ''}`}
+                onClick={() => {
+                  const egoId = myPersonId || myNetworkData?.ego?.id;
+                  if (egoId) {
+                    setViewScope('network');
+                    setExpandedInLawPersonId(egoId);
+                    setFocusMemberId(egoId);
+                  }
+                }}
+                title="Xem sơ đồ gia phả liên họ 4 đời lấy bạn làm trung tâm (Ego)"
+              >
+                <span>Lấy tôi làm trung tâm (Ego)</span>
+                <span className="tree-scope-badge-dot" />
+              </button>
+            )}
           </div>
 
           {/* Family Dropdown */}
@@ -423,7 +686,10 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               setSelectedBranch(undefined);
               setSelectedGeneration(undefined);
               setLoading(true);
-              if (selectClan) {
+              const isDirectClan = availableClans.some(
+                (c) => String(c.clan_id).toLowerCase() === String(newFamId).toLowerCase()
+              );
+              if (isDirectClan && selectClan) {
                 selectClan(newFamId);
               }
             }}
@@ -449,6 +715,8 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
                 ? ' [Bên nội]'
                 : lineage === 'MATERNAL'
                 ? ' [Bên ngoại]'
+                : lineage === 'IN_LAW'
+                ? ' [Bên chồng / Thông gia]'
                 : '';
 
               return (
@@ -459,7 +727,31 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             })}
           </select>
 
-          {/* Branch Filter Dropdown (FR-BO-44) */}
+          {/* Tree Direction Toggle */}
+          <div className="tree-dir-toggle-group">
+            <button
+              className={`tree-dir-btn ${treeDirection === 'vertical' ? 'active' : ''}`}
+              onClick={() => setTreeDirection('vertical')}
+              title="Chuyển sơ đồ dọc (Từ trên xuống)"
+            >
+               Dọc
+            </button>
+            <button
+              className={`tree-dir-btn ${treeDirection === 'horizontal' ? 'active' : ''}`}
+              onClick={() => setTreeDirection('horizontal')}
+              title="Chuyển sơ đồ ngang (Từ trái sang phải)"
+            >
+              Ngang
+            </button>
+          </div>
+
+          {/* Legend Badges */}
+          <div className="tree-legend-group">
+            <span className="tree-legend-item male">Nam</span>
+            <span className="tree-legend-item female">Nữ (Dâu)</span>
+            <span className="tree-legend-item focus">Đang chọn</span>
+          </div>
+
           {branches.length > 0 && (
             <select
               className="tree-control-select"
@@ -475,7 +767,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             </select>
           )}
 
-          {/* Generation Filter Dropdown (FR-BO-44) */}
           <select
             className="tree-control-select"
             value={selectedGeneration !== undefined ? String(selectedGeneration) : ''}
@@ -491,7 +782,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             ))}
           </select>
 
-          {/* Focus Member Dropdown (FR-BO-41) */}
           <select
             className="tree-control-select focus-select"
             value={focusMemberId || ''}
@@ -505,15 +795,14 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               setFocusMemberId(val);
             }}
           >
-            <option value="">-- Người làm trung tâm (Focus) --</option>
+            <option value="">-- Xem toàn bộ cây gia phả --</option>
             {allMembers.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.fullName} (Đời {m.generation})
+                {m.fullName} (Đời {m.generation}) - Xem 4 đời
               </option>
             ))}
           </select>
 
-          {/* Zoom Buttons */}
           <div className="tree-zoom-btn-group">
             <button
               className="tree-control-btn"
@@ -552,12 +841,12 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         </div>
       </div>
 
-      {/* Canvas Area */}
-      {loading ? (
+      {/* Canvas Area - Always renders ErgoTreeCanvas (Giữ nguyên canvas không bị chớp màn hình) */}
+      {loading && treeNodes.length === 0 && !isBilateralMode ? (
         <div className="tree-canvas-prompt-loading">
           Đang tính toán sơ đồ trực hệ gia phả...
         </div>
-      ) : displayedTreeNodes.length === 0 ? (
+      ) : displayedTreeNodes.length === 0 && !isBilateralMode ? (
         <div className="tree-canvas-prompt-empty">
           {allMembers.length === 0 ? (
             <div>
@@ -576,7 +865,28 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
           onCardClick={handleCardClick}
           onContextMenu={handleContextMenu}
           zoomScale={zoomScale}
+          onZoomChange={setZoomScale}
           direction={treeDirection}
+          onViewInLawTree={handleViewInLawTree}
+          inLawNetwork={myNetworkData}
+          expandedInLawPersonId={expandedInLawPersonId}
+          onToggleInLawExpand={handleToggleInLawExpand}
+          isBilateralMode={isBilateralMode}
+          onRequestLineageAccess={(ownerClanId, ownerClanName, anchorPersonId, anchorPersonName) => {
+            setLineageModal({
+              isOpen: true,
+              ownerClanId,
+              ownerClanName,
+              anchorPersonId,
+              anchorPersonName,
+            });
+          }}
+          onBackToClanTree={() => {
+            setViewScope('clan');
+            setExpandedInLawPersonId(null);
+            setFocusMemberId(undefined);
+          }}
+          onViewBurial={(node) => setBurialModalNode(node)}
         />
       )}
 
@@ -606,6 +916,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
             onSelectFocus={handleSelectFocus}
             onViewBio={handleViewBio}
+            onViewBurial={(node) => setBurialModalNode(node)}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onAddChild={handleAddChild}
@@ -613,6 +924,8 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             onRelocate={handleRelocate}
             onTogglePrivacy={handleTogglePrivacy}
             onProposeEdit={handleProposeEdit}
+            onViewInLawTree={handleViewInLawTree}
+            onViewMyNetwork={() => setViewScope('network')}
             onActionToast={handleActionToast}
           />
         );
@@ -689,18 +1002,26 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               <div className="tree-action-modal-footer">
                 <button
                   type="button"
-                  className="tree-action-btn secondary"
+                  className="tree-action-btn-secondary"
                   onClick={() => setProposeModal({ isOpen: false, node: null, content: '' })}
                 >
                   Hủy
                 </button>
-                <button type="submit" className="tree-action-btn primary">
+                <button type="submit" className="tree-action-btn-primary">
                   Gửi đề xuất tới Ban quản trị
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* Sơ đồ Huyết thống Liên họ 2-3 đời Bên Nội & Bên Ngoại */}
+      {dualLineagePersonId && (
+        <DualLineageModal
+          personId={dualLineagePersonId}
+          onClose={() => setDualLineagePersonId(null)}
+        />
       )}
 
       {/* Notification Toast */}
@@ -747,6 +1068,35 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             ✕
           </button>
         </div>
+      )}
+      {burialModalNode && (
+        <BurialQuickViewModal
+          isOpen={Boolean(burialModalNode)}
+          onClose={() => setBurialModalNode(null)}
+          personId={burialModalNode.id}
+          personName={burialModalNode.fullName}
+          deathDate={burialModalNode.deathDate}
+          clanId={familyId}
+          onViewFullProfile={() => {
+            if (onSelectMemberProfile) onSelectMemberProfile(burialModalNode.id);
+          }}
+        />
+      )}
+      {lineageModal.isOpen && (
+        <LineageAccessRequestModal
+          isOpen={lineageModal.isOpen}
+          onClose={() => setLineageModal((prev) => ({ ...prev, isOpen: false }))}
+          ownerClanId={lineageModal.ownerClanId}
+          ownerClanName={lineageModal.ownerClanName}
+          anchorPersonId={lineageModal.anchorPersonId}
+          anchorPersonName={lineageModal.anchorPersonName}
+          onSuccess={() => {
+            setSuccessToastMessage('Yêu cầu xem gia phả liên họ đã được gửi tới Trưởng tộc phê duyệt.');
+            fetchMyFamilyNetwork(selectedFamilyId || undefined).then((res) => {
+              if (res) setMyNetworkData(res);
+            });
+          }}
+        />
       )}
     </div>
   );

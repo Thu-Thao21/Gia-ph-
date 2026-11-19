@@ -110,7 +110,7 @@
 }
 
 .sidebar-group-label {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
 }
 
 .sidebar-group-right {

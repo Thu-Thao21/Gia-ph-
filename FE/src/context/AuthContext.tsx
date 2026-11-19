@@ -9,6 +9,7 @@ import {
   loginWithPassword,
   logoutSession,
   restrictedProfile,
+  updateProfile as updateProfileRequest,
 } from '../services/auth.service';
 import type { MembershipSummary } from '../types/auth';
 
@@ -49,6 +50,8 @@ interface AuthContextType {
   refreshAccount: () => Promise<AccountProfile | null>;
   /** POST /auth/change-password; thành công thì mọi phiên cũ bị thu hồi và BE cấp một phiên mới. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<AccountProfile>;
+  /** PATCH /auth/profile hoặc /auth/me để cập nhật display_name, phone */
+  updateProfile: (payload: { displayName?: string; phone?: string }) => Promise<AccountProfile>;
   logout: () => Promise<void>;
 }
 
@@ -122,6 +125,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfile = async (payload: { displayName?: string; phone?: string }): Promise<AccountProfile> => {
+    const updated = await updateProfileRequest(payload);
+    setAccount(updated);
+    return updated;
+  };
+
   const logout = async () => {
     setLoading(true);
     try {
@@ -147,6 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         refreshAccount: fetchAccount,
         changePassword,
+        updateProfile,
         logout,
       }}
     >
