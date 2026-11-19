@@ -1,3 +1,5 @@
+import { LoadingState } from '../../../shared/Feedback/LoadingState';
+import { EmptyState } from '../../../shared/Feedback/EmptyState';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { fetchMemberDetail } from '../../../services/member.service';
@@ -15,11 +17,12 @@ import './ProfileLayout.css';
 export interface ProfileLayoutProps {
   memberId: string;
   onBack?: () => void;
+  onNavigateTab?: (tabId: string) => void;
 }
 
 export type ProfileTabKey = 'personal' | 'biography' | 'contact' | 'photos' | 'contributions' | 'status' | 'account';
 
-export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack }) => {
+export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack, onNavigateTab }) => {
   const { account } = useAuth();
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -65,21 +68,68 @@ export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack }
 
   if (loading) {
     return (
-      <div className="profile-loading-box">
-        Đang tải thông tin chi tiết hồ sơ thành viên từ cơ sở dữ liệu...
-      </div>
+      <LoadingState
+        message="Đang tải thông tin chi tiết hồ sơ thành viên..."
+        subMessage="Hệ thống đang truy xuất dữ liệu phả ký, thế hệ và lý lịch từ máy chủ gia tộc."
+      />
     );
   }
 
   if (!member) {
     return (
-      <div className="profile-not-found-box">
-        <p className="profile-not-found-text">Không tìm thấy dữ liệu hồ sơ thành viên.</p>
-        {onBack && (
-          <button className="profile-back-btn" onClick={onBack}>
-            ← Quay lại danh sách
-          </button>
-        )}
+      <div className="profile-empty-page-container">
+        <div className="profile-empty-card">
+          <div className="profile-empty-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Hồ sơ nhân khẩu
+          </div>
+
+          <EmptyState
+            variant="members"
+            title="Hồ sơ thành viên chưa có dữ liệu"
+            subMessage="Thông tin chi tiết về thành viên này chưa được ghi nhận trong sổ gia phả hoặc tài khoản chưa được liên kết với hồ sơ nhân khẩu cụ thể."
+            action={
+              <div className="profile-empty-actions">
+                {onBack && (
+                  <button type="button" className="profile-empty-btn-primary" onClick={onBack}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="19" y1="12" x2="5" y2="12"></line>
+                      <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    Quay lại danh sách
+                  </button>
+                )}
+                {onNavigateTab && (
+                  <button
+                    type="button"
+                    className="profile-empty-btn-secondary"
+                    onClick={() => onNavigateTab('dashboard')}
+                  >
+                    Về trang chủ
+                  </button>
+                )}
+              </div>
+            }
+          />
+
+          <div className="profile-empty-guide-box">
+            <div className="profile-empty-guide-item">
+              <span className="profile-empty-guide-dot" />
+              <span>
+                <strong>Dành cho Ban quản trị / Trưởng tộc:</strong> Bạn có thể bổ sung thông tin nhân khẩu mới hoặc liên kết tài khoản tại mục Danh sách thành viên.
+              </span>
+            </div>
+            <div className="profile-empty-guide-item">
+              <span className="profile-empty-guide-dot" />
+              <span>
+                <strong>Dành cho Thành viên:</strong> Vui lòng liên hệ Trưởng tộc hoặc Quản trị viên để được cập nhật và liên kết thông tin vào cây gia phả dòng họ.
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -96,14 +146,6 @@ export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack }
 
   return (
     <div className="profile-layout">
-      {onBack && (
-        <div>
-          <button className="profile-back-btn" onClick={onBack}>
-            ← Quay lại danh sách thành viên
-          </button>
-        </div>
-      )}
-
       {/* Header Banner */}
       <div className="profile-header-card">
         <div className="profile-header-top">
@@ -118,26 +160,17 @@ export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack }
           <div className="profile-header-info">
             <h1 className="profile-name">
               {member.fullName}
-              <span className="profile-generation-badge">Đời thứ {member.generation}</span>
+              <span className="profile-generation-badge">Đời {member.generation}</span>
               {isSelf && (
                 <span
-                  style={{
-                    fontSize: '11px',
-                    marginLeft: '8px',
-                    background: '#dbeafe',
-                    color: '#1d4ed8',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    fontWeight: 700,
-                  }}
-                >
+                  className="profile-self-badge">
                   Hồ sơ của bạn
                 </span>
               )}
             </h1>
 
             <div className="profile-subtext">
-              <span>{member.familyName || 'Dòng tộc Họ Võ'}</span>
+              <span>{member.familyName || account?.clan_name || 'Dòng họ'}</span>
               {member.branch && <span>• {member.branch}</span>}
               {member.subBranch && <span>• {member.subBranch}</span>}
             </div>
@@ -157,7 +190,7 @@ export const ProfileLayout: React.FC<ProfileLayoutProps> = ({ memberId, onBack }
             {/* Privacy Control Bar */}
             <div className="profile-privacy-control-box">
               <div className="profile-privacy-status-group">
-                <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>
+                <span className="profile-privacy-label">
                   Quyền riêng tư hồ sơ:
                 </span>
                 <span className={`profile-privacy-badge ${isPrivate ? 'private' : 'public'}`}>

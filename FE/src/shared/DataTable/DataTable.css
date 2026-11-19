@@ -40,3 +40,61 @@
 .custom-table tr:last-child td {
   border-bottom: none;
 }
+
+/* Mobile: mỗi hàng là một thẻ */
+.dt-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dt-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.dt-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #f1f5f9;
+  overflow-wrap: anywhere;
+}
+
+.dt-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.dt-card-label {
+  flex-shrink: 0;
+  max-width: 45%;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.dt-card-value {
+  min-width: 0;
+  text-align: right;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+
+.dt-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}

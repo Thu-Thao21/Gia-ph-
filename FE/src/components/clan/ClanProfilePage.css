@@ -1,32 +1,38 @@
-/* ClanProfilePage Styles - Minimalist, Dignified, Modern */
+/* ClanProfilePage Styles - Signature Blue Banner, Refined Compact Stats & Dignified Cards */
 
 .clan-profile-container {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 8px 16px 40px;
 }
 
+/* 1. SIGNATURE BLUE HERO BANNER */
 .clan-profile-hero {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  background: linear-gradient(125deg, #2449bd, #347cf4);
+  border-radius: 20px;
+  padding: 28px 32px;
+  color: #ffffff;
+  box-shadow: 0 16px 38px rgba(36, 73, 189, 0.16);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
-.clan-profile-hero::before {
+.clan-profile-hero::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+  right: -30px;
+  top: -30px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
 }
 
 .clan-hero-header {
@@ -34,15 +40,17 @@
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 18px;
+  z-index: 1;
 }
 
 .clan-hero-title-group h1 {
   font-size: 26px;
   font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 8px 0;
+  color: #ffffff;
+  margin: 0 0 10px 0;
   letter-spacing: -0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .clan-hero-badges {
@@ -54,87 +62,123 @@
 
 .clan-tag {
   font-size: 12px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 6px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .clan-tag.code {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .clan-tag.active {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
 }
 
 .clan-edit-btn {
-  padding: 8px 18px;
-  background: #1e3a8a;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 10px 20px;
+  background: #ffffff;
+  color: #1d4ed8;
+  border: 1px solid #ffffff;
+  border-radius: 12px;
+  font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  white-space: nowrap;
 }
 
 .clan-edit-btn:hover {
-  background: #1e40af;
-  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+  background: #f8fafc;
+  color: #1e40af;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
 }
 
+/* 2. REFINED 4-COLUMN STATS GRID (Cân đối 4 cột, gọn gàng, chữ đen rõ nét) */
 .clan-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 24px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  z-index: 1;
 }
 
 .clan-stat-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.clan-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
 }
 
 .clan-stat-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 750;
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .clan-stat-value {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 19px;
+  font-weight: 500;
   color: #0f172a;
+  line-height: 1.3;
 }
 
+/* 3. CONTENT SECTIONS GRID */
 .clan-grid-two-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
+  .clan-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .clan-grid-two-cols {
     grid-template-columns: 1fr;
+  }
+  .clan-profile-hero {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 580px) {
+  .clan-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .clan-hero-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .clan-edit-btn {
+    width: 100%;
+    text-align: center;
   }
 }
 
 .clan-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }

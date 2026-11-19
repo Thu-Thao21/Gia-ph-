@@ -185,7 +185,7 @@ export function toAccountProfile(me: MeResponse): AccountProfile {
     id: me.user_id,
     username: me.username ?? null,
     email: me.email,
-    phone_e164: null,
+    phone_e164: me.phone ?? null,
     display_name: me.display_name,
     phone_verified: false,
     status: me.status.toLowerCase(),
@@ -438,4 +438,21 @@ export async function resetPasswordWithOTP(
   throw new Error(
     'Hệ thống chưa hỗ trợ đặt lại mật khẩu bằng mã OTP. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
   );
+}
+
+export interface UpdateProfilePayload {
+  displayName?: string;
+  phone?: string;
+}
+
+/**
+ * Cập nhật thông tin hồ sơ tài khoản (display_name, phone).
+ * PATCH /auth/profile hoặc /auth/me
+ */
+export async function updateProfile(payload: UpdateProfilePayload): Promise<AccountProfile> {
+  const res = await apiClient.patch<MeResponse>('/auth/profile', {
+    display_name: payload.displayName,
+    phone: payload.phone,
+  });
+  return toAccountProfile(res.data);
 }

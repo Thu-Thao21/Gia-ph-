@@ -130,7 +130,7 @@ export const AdminFamilyLinksMgmt: React.FC = () => {
     try {
       await sendLinkRequest(sendTargetFamily, sendLinkType, sendNotes);
       await fetchLinkRequests();
-      setMsg('Đã gửi yêu cầu kết nối dòng họ thành công tới Neon DB!');
+      setMsg('Đã gửi yêu cầu kết nối dòng họ thành công!');
       setIsSendModalOpen(false);
       setSendNotes('');
     } catch (err: any) {
@@ -271,7 +271,19 @@ export const AdminFamilyLinksMgmt: React.FC = () => {
 
       {/* Luxury Table Section */}
       <div className="links-table-card">
-        {filteredRequests.length === 0 ? (
+        {loading ? (
+          <div className="s6a-loading-box" style={{ padding: '48px 24px', minHeight: '220px' }}>
+            <div className="s6a-spinner-rings">
+              <div className="s6a-spinner-outer" />
+              <div className="s6a-spinner-inner" />
+              <div className="s6a-spinner-dot" />
+            </div>
+            <div className="s6a-loading-text">
+              <strong>Đang kết nối mạng lưới quan hệ...</strong>
+              <p>Hệ thống đang truy xuất các liên kết liên họ và yêu cầu thông gia...</p>
+            </div>
+          </div>
+        ) : filteredRequests.length === 0 ? (
           <div className="links-table-empty">
             <h4>Không có yêu cầu liên kết nào</h4>
             <p>

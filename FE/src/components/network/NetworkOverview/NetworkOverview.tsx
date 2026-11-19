@@ -3,6 +3,7 @@ import { fetchFamilyNetwork, fetchInLawMarriages } from '../../../services/netwo
 import type { FamilyNetwork } from '../../../types/network';
 import '../Network.css';
 import './NetworkOverview.css';
+import { NetworkTopologyDiagram } from '../NetworkTopologyDiagram';
 
 export interface NetworkOverviewProps {
   onSelectTab?: (tab: string) => void;
@@ -12,6 +13,7 @@ export const NetworkOverview: React.FC<NetworkOverviewProps> = ({ onSelectTab })
   const [allFamilies, setAllFamilies] = useState<FamilyNetwork[]>([]);
   const [inLawCount, setInLawCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'diagram' | 'grid'>('diagram');
 
   useEffect(() => {
     Promise.all([fetchFamilyNetwork('all'), fetchInLawMarriages()]).then(([families, marriages]) => {
@@ -63,8 +65,30 @@ export const NetworkOverview: React.FC<NetworkOverviewProps> = ({ onSelectTab })
       </div>
 
       <div className="network-card">
-        <h3 className="network-card-title">Tất Cả Dòng Họ Trong Mạng Lưới</h3>
-        <div className="network-family-grid">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <h3 className="network-card-title" style={{ margin: 0 }}>Cấu Trúc Mạng Lưới Dòng Tộc</h3>
+          <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <button
+              type="button"
+              className={`ntd-filter-btn ${viewMode === 'diagram' ? 'active' : ''}`}
+              onClick={() => setViewMode('diagram')}
+            >
+              Sơ đồ mạng lưới trực quan
+            </button>
+            <button
+              type="button"
+              className={`ntd-filter-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+            >
+              Danh sách dòng họ ({allFamilies.length})
+            </button>
+          </div>
+        </div>
+
+        {viewMode === 'diagram' ? (
+          <NetworkTopologyDiagram />
+        ) : (
+          <div className="network-family-grid">
           {allFamilies.map((f) => (
             <div key={f.id} className="network-family-card">
               <div className="network-family-name">{f.name}</div>
@@ -79,6 +103,7 @@ export const NetworkOverview: React.FC<NetworkOverviewProps> = ({ onSelectTab })
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

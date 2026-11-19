@@ -1,0 +1,265 @@
+/* ==========================================================================
+   mobile.css – CSS mobile dùng chung (responsive web + PWA)
+   Breakpoint: 480px (phone) · 768px (mobile, mốc chính) · 1024px (tablet)
+   Desktop KHÔNG bị ảnh hưởng: mọi rule nằm trong @media (max-width: 768px)
+   hoặc gắn với class .is-mobile do JS thêm vào.
+   ========================================================================== */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --mobile-tabbar-h: 60px;
+  --mobile-tabbar-total: calc(var(--mobile-tabbar-h) + var(--safe-bottom));
+}
+
+@media (max-width: 768px) {
+  /* ---------- 1. Khung Dashboard: ẩn sidebar, chừa chỗ cho tab bar ---------- */
+  .dashboard-page-container.is-mobile .dashboard-body-row > .sidebar-container {
+    display: none !important;
+  }
+
+  .dashboard-page-container.is-mobile .topbar-toggle-btn,
+  .dashboard-page-container.is-mobile .topbar-system-tag,
+  .dashboard-page-container.is-mobile .topbar-search-container {
+    display: none;
+  }
+
+  .dashboard-page-container.is-mobile .topbar-header {
+    padding-top: var(--safe-top);
+    height: calc(64px + var(--safe-top));
+    padding-left: max(12px, var(--safe-left));
+    padding-right: max(12px, var(--safe-right));
+  }
+
+  /* TopBar: [logo + tên] [bộ chọn dòng họ co giãn] [chuông] [avatar] – không được tràn ngang,
+     nếu tràn Chrome/Safari sẽ thu nhỏ cả trang làm lệch hai bên. */
+  .dashboard-page-container.is-mobile .topbar-header {
+    gap: 8px;
+  }
+
+  .dashboard-page-container.is-mobile .topbar-left-group {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .dashboard-page-container.is-mobile .topbar-brand-box {
+    gap: 8px;
+  }
+
+  .dashboard-page-container.is-mobile .topbar-right-group {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .dashboard-page-container.is-mobile .clan-selector-container {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+  }
+
+  .dashboard-page-container.is-mobile .clan-selector-trigger,
+  .dashboard-page-container.is-mobile .clan-selector-badge {
+    width: 100%;
+    min-width: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .dashboard-page-container.is-mobile .clan-selector-trigger-labels,
+  .dashboard-page-container.is-mobile .clan-name-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dashboard-page-container.is-mobile {
+    padding-bottom: var(--mobile-tabbar-total);
+    /* Lưới an toàn: phần tử nào tràn ngang cũng không làm trình duyệt thu nhỏ trang */
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  /* Ẩn hình nền trống đồng trên mobile */
+  body::after {
+    display: none;
+  }
+
+  .dashboard-page-container.is-mobile .dashboard-main-content {
+    padding: 14px 12px 24px;
+    min-height: calc(100vh - 64px - var(--mobile-tabbar-total));
+  }
+
+  .dashboard-page-container.is-mobile .dashboard-footer {
+    padding: 12px 16px;
+    font-size: 0.72rem;
+  }
+
+  /* ---------- 2. Lưới 1 cột ---------- */
+  .dashboard-widgets-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* ---------- 3. Input >= 16px để iOS không tự zoom ---------- */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* ---------- 4. Bảng thường: cuộn ngang trong khung nội dung ---------- */
+  .dashboard-main-content table:not(.dt-table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ---------- 5. Modal → bottom sheet ---------- */
+  [class*='modal-backdrop'],
+  [class*='modal-overlay'],
+  .dlm-backdrop,
+  .location-picker-overlay {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  [class*='modal-backdrop'] > :first-child,
+  [class*='modal-overlay'] > :first-child,
+  .dlm-backdrop > :first-child,
+  .location-picker-overlay > :first-child {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100vh - var(--safe-top) - 24px) !important;
+    margin: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 18px !important;
+    border-top-right-radius: 18px !important;
+    overflow-y: auto;
+    padding-bottom: calc(var(--safe-bottom) + 12px);
+    box-sizing: border-box;
+  }
+
+  /* ---------- 6. Nút AI nổi: đặt phía trên tab bar ---------- */
+  .dashboard-page-container.is-mobile .floating-ai-fab-container {
+    right: 14px;
+    bottom: calc(var(--mobile-tabbar-total) + 14px);
+  }
+
+  .dashboard-page-container.is-mobile .floating-ai-window {
+    left: 8px;
+    right: 8px;
+    bottom: calc(var(--mobile-tabbar-total) + 8px);
+    height: calc(100vh - 64px - var(--safe-top) - var(--mobile-tabbar-total) - 16px);
+  }
+
+  .dashboard-page-container.is-mobile .floating-ai-tooltip {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   Trang public & đăng nhập (GĐ4)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Thẻ form: bớt padding để form chiếm trọn bề ngang */
+  .forgot-form-card,
+  .act-card,
+  .first-pwd-modal-card,
+  .track-header,
+  .status-detail-card,
+  .wiz-form-card {
+    padding: 20px 16px;
+  }
+
+  .auth-landing-banner {
+    padding: 24px 18px;
+  }
+
+  /* Tra cứu trạng thái đăng ký */
+  .track-search-form {
+    flex-wrap: wrap;
+  }
+
+  .track-search-form .track-input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .track-search-form .track-btn {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+
+  .req-meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Đăng ký dòng họ nhiều bước (BusinessRegisterWizard) */
+  .wiz-container {
+    gap: 20px;
+  }
+
+  .wiz-title {
+    font-size: 22px;
+  }
+
+  .wiz-subtitle {
+    margin-bottom: 8px;
+  }
+
+  .wiz-stepper-bar {
+    padding: 12px;
+  }
+
+  .wiz-stepper-bar .step-line {
+    margin: 0 6px;
+  }
+
+  /* Chỉ hiện chữ của bước đang làm; các bước khác chỉ còn số */
+  .wiz-stepper-bar .step-text {
+    display: none;
+  }
+
+  .wiz-stepper-bar .step-item.active:not(:has(~ .step-item.active)) .step-text {
+    display: inline;
+  }
+
+  .wiz-action-row {
+    flex-direction: column-reverse;
+  }
+
+  .wiz-action-row > button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .email-input-group,
+  .otp-input-row {
+    flex-wrap: wrap;
+  }
+
+  .email-input-group .field-input {
+    flex: 1 1 100%;
+  }
+
+  .email-input-group .otp-send-btn,
+  .otp-input-row .otp-verify-btn {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+
+  .otp-input-row .otp-input-code {
+    flex: 1 1 100%;
+    width: auto;
+    min-width: 0;
+  }
+}

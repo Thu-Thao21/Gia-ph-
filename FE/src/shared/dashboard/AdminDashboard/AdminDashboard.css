@@ -55,7 +55,7 @@
   font-weight: 800;
   margin: 0 0 10px;
   line-height: 1.2;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -136,7 +136,7 @@
 /* 6-Column Stat Cards Grid */
 .admin-stats-grid-6 {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 18px;
 }
 
@@ -172,7 +172,7 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.1;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .admin-stat-card-unit {
@@ -184,7 +184,7 @@
 /* Operational Groups */
 .admin-ops-groups-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 20px;
   margin-top: 20px;
 }
@@ -219,7 +219,7 @@
 
 .admin-services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 16px;
   margin-top: 16px;
 }
@@ -293,7 +293,7 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.2;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .admin-stat-card-footer {
@@ -357,7 +357,7 @@
 
 .admin-operations-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -385,7 +385,7 @@
 /* Widgets Grid lower section styling */
 .admin-widgets-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
   gap: 24px;
 }
 
@@ -410,7 +410,7 @@
   font-weight: 800;
   color: #0f172a;
   margin: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .admin-service-stable-badge {

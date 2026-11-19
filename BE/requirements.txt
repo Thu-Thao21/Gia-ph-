@@ -20,3 +20,5 @@ bcrypt==5.0.0
 firebase-admin==7.7.0
 # Firebase Auth REST calls (password reset confirm, Owner sign-up fallback).
 httpx==0.28.1
+# Worship hall portraits: 512px webp thumbnails (app/services/worship/hall_service.py).
+Pillow==12.3.0

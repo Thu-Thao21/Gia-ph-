@@ -1,9 +1,9 @@
 .upcoming-events-card {
   background-color: #ffffff;
-  border-radius: 28px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
   padding: 24px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
 }
 
 .upcoming-events-header {
@@ -15,10 +15,10 @@
 
 .upcoming-events-title {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
   margin: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .upcoming-events-subtitle {

@@ -80,7 +80,7 @@
   font-size: 19.5px;
   font-weight: 800;
   color: #1e293b;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   line-height: 1.1;
   letter-spacing: -0.02em;
   text-shadow: 0px 1px 2px rgba(15, 23, 42, 0.2), 0px 3px 6px rgba(15, 23, 42, 0.08);
@@ -197,7 +197,7 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.2;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
 }
 
 .topbar-user-role-badge {
@@ -218,8 +218,10 @@
 }
 
 .topbar-user-role-badge.member {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .topbar-profile-dropdown {
@@ -297,7 +299,7 @@
   font-weight: 800;
   color: #0f172a;
   font-size: 15px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .topbar-notif-mark-read {

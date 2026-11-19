@@ -177,7 +177,11 @@ export const AdminApprovalsMgmt: React.FC = () => {
         </div>
 
         {loading ? (
-          <AdminStatePanel kind="loading" message="Đang kết nối Backend để tải danh sách hồ sơ..." />
+          <AdminStatePanel
+            kind="loading"
+            title="Đang đồng bộ hồ sơ đăng ký..."
+            message="Hệ thống đang tải danh sách hồ sơ dòng họ cần phê duyệt từ máy chủ..."
+          />
         ) : !registrations.length ? (
           <AdminStatePanel
             kind="empty"

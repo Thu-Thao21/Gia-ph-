@@ -69,6 +69,7 @@ export interface MeResponse {
   display_name: string;
   email: string;
   username?: string | null;
+  phone?: string | null;
   status: BeUserStatus;
   memberships: MembershipSummary[];
   permissions: string[];

@@ -158,7 +158,11 @@ export const ModerationManagement: React.FC = () => {
         </div>
 
         {loading ? (
-          <AdminStatePanel kind="loading" message="Đang tải hàng đợi kiểm duyệt..." />
+          <AdminStatePanel
+            kind="loading"
+            title="Đang đồng bộ hàng đợi kiểm duyệt..."
+            message="Hệ thống đang quét và đối soát các nội dung báo cáo an toàn..."
+          />
         ) : visibleReports.length === 0 ? (
           <AdminStatePanel kind="empty" title="Không có báo cáo phù hợp" message="Hàng đợi hiện không có mục đáp ứng bộ lọc đã chọn." action={<button type="button" className="s6a-button secondary" onClick={resetFilters}>Xóa bộ lọc</button>} />
         ) : (

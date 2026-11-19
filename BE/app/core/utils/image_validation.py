@@ -50,10 +50,11 @@ class CheckedImage:
     stored_name: str  # generated: never derived from the uploaded file name
 
 
-def check_image(data: bytes) -> CheckedImage:
+def check_image(data: bytes, *, max_bytes: int = MAX_BYTES, max_side: int = MAX_SIDE) -> CheckedImage:
+    """Defaults keep the clan-logo limits; the worship hall passes its own (5 MB, 4000 px)."""
     if not data:
         raise ImageRejected("empty")
-    if len(data) > MAX_BYTES:
+    if len(data) > max_bytes:
         raise ImageRejected("too_large")
     head = data[:1024].lower()
     stripped = data.lstrip()[:256].lower()
@@ -69,7 +70,7 @@ def check_image(data: bytes) -> CheckedImage:
         raise ImageRejected("unknown_type")
     if any(tag in head for tag in _MARKUP):
         raise ImageRejected("markup")  # a polyglot: valid magic bytes, markup right behind them
-    if not (MIN_SIDE <= w <= MAX_SIDE and MIN_SIDE <= h <= MAX_SIDE):
+    if not (MIN_SIDE <= w <= max_side and MIN_SIDE <= h <= max_side):
         raise ImageRejected("bad_dimensions")
     return CheckedImage(mime, ext, w, h, f"{secrets.token_hex(16)}.{ext}")
 

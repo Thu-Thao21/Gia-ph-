@@ -110,3 +110,92 @@
   background: #f1f5f9;
   margin: 4px 0;
 }
+
+
+.tree-context-menu-badge.linked {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.tree-context-menu-badge.unlinked {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+
+/* ==========================================================================
+   Mobile: bottom sheet (GĐ3)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .tree-context-menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: rgba(15, 23, 42, 0.5);
+    animation: cmScrimFade 0.2s ease;
+  }
+
+  .tree-context-menu.is-sheet {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    min-width: 0;
+    max-height: 75vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+    padding: 6px 0 calc(8px + var(--safe-bottom, 0px));
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.2);
+    animation: cmSheetUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .tree-context-menu-handle {
+    width: 40px;
+    height: 5px;
+    margin: 4px auto 8px;
+    border-radius: 999px;
+    background: #cbd5e1;
+  }
+
+  .tree-context-menu.is-sheet .tree-context-menu-header {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding: 4px 20px 10px;
+  }
+
+  .tree-context-menu.is-sheet .tree-context-menu-title {
+    flex-basis: 100%;
+    max-width: none;
+    font-size: 16px;
+  }
+
+  .tree-context-menu.is-sheet .tree-context-menu-item {
+    min-height: 48px;
+    padding: 0 20px;
+    font-size: 15px;
+  }
+
+  .tree-context-menu.is-sheet .tree-context-menu-item:hover,
+  .tree-context-menu.is-sheet .tree-context-menu-item.danger:hover {
+    padding-left: 20px;
+  }
+
+  .tree-context-menu.is-sheet .tree-context-menu-item:active {
+    background: #f1f5f9;
+  }
+}
+
+@keyframes cmSheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes cmScrimFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

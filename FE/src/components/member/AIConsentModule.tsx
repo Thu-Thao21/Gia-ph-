@@ -1,5 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import './SprintFeatures.css';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useClanContext } from '../../context/ClanContext';
+import {
+  fetchMemberAIConsents,
+  updateMemberAIConsents,
+  revokeAllMemberAIConsents,
+  type MemberAIConsents,
+} from '../../services/ai.service';
+import './AIConsentModule.css';
+import { LoadingState } from '../../shared/Feedback/LoadingState';
 
 type ConsentId =
   | 'personalData'
@@ -13,6 +21,8 @@ interface ConsentSettings {
   masterEnabled: boolean;
   choices: Record<ConsentId, boolean>;
   updatedAt: string | null;
+  clanAiEnabled: boolean;
+  personName: string | null;
 }
 
 interface ConsentDefinition {
@@ -22,25 +32,23 @@ interface ConsentDefinition {
   tag: string;
 }
 
-const STORAGE_KEY = 'mfg-ai-consent';
-
 const DATA_CONSENTS: ConsentDefinition[] = [
   {
     id: 'personalData',
     title: 'Dữ liệu cá nhân',
-    description: 'Tên, tiểu sử và các trường hồ sơ bạn chủ động chọn cho một tác vụ AI.',
+    description: 'Tên, tiểu sử và các trường thông tin cơ bản bạn chọn cho tác vụ AI.',
     tag: 'DỮ LIỆU',
   },
   {
     id: 'images',
-    title: 'Hình ảnh',
+    title: 'Hình ảnh & Chân dung',
     description: 'Ảnh chân dung và ảnh tư liệu chỉ được dùng khi bạn bật quyền này.',
     tag: 'HÌNH ẢNH',
   },
   {
     id: 'genealogyData',
     title: 'Dữ liệu gia phả',
-    description: 'Quan hệ, đời thứ và nhánh họ phục vụ phân tích trong phạm vi quyền truy cập.',
+    description: 'Quan hệ họ hàng, thế thứ và nhánh họ phục vụ phân tích trong phạm vi cho phép.',
     tag: 'GIA PHẢ',
   },
 ];
@@ -48,25 +56,23 @@ const DATA_CONSENTS: ConsentDefinition[] = [
 const FEATURE_CONSENTS: ConsentDefinition[] = [
   {
     id: 'relationshipAnalysis',
-    title: 'Phân tích quan hệ và xưng hô',
-    description: 'Giải thích vai vế dựa trên các liên kết đã được xác nhận.',
+    title: 'Phân tích quan hệ & xưng hô',
+    description: 'Giải thích vai vế dựa trên các liên kết đã được xác nhận trong dòng họ.',
     tag: 'TÍNH NĂNG',
   },
   {
     id: 'dataSuggestions',
     title: 'Gợi ý dữ liệu còn thiếu',
-    description: 'Đề xuất trường hồ sơ hoặc liên kết cần người dùng kiểm tra.',
+    description: 'Đề xuất trường hồ sơ hoặc liên kết thân nhân cần kiểm tra.',
     tag: 'TÍNH NĂNG',
   },
   {
     id: 'biographyDrafts',
     title: 'Hỗ trợ viết tiểu sử',
-    description: 'Tạo bản nháp từ đúng những dữ liệu bạn đã cho phép.',
+    description: 'Tạo bản nháp tiểu sử từ đúng những dữ liệu bạn đã cho phép.',
     tag: 'TÍNH NĂNG',
   },
 ];
-
-const ALL_CONSENTS = [...DATA_CONSENTS, ...FEATURE_CONSENTS];
 
 const DEFAULT_SETTINGS: ConsentSettings = {
   masterEnabled: false,
@@ -79,44 +85,12 @@ const DEFAULT_SETTINGS: ConsentSettings = {
     biographyDrafts: false,
   },
   updatedAt: null,
+  clanAiEnabled: false,
+  personName: null,
 };
 
 const cloneSettings = (settings: ConsentSettings): ConsentSettings =>
   JSON.parse(JSON.stringify(settings)) as ConsentSettings;
-
-const loadSettings = (): ConsentSettings => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return cloneSettings(DEFAULT_SETTINGS);
-    const parsed = JSON.parse(raw) as Record<string, unknown> | null;
-    if (!parsed || typeof parsed !== 'object') return cloneSettings(DEFAULT_SETTINGS);
-
-    const next = cloneSettings(DEFAULT_SETTINGS);
-    const choices = parsed.choices as Partial<Record<ConsentId, unknown>> | undefined;
-
-    ALL_CONSENTS.forEach(({ id }) => {
-      if (typeof choices?.[id] === 'boolean') next.choices[id] = choices[id] as boolean;
-    });
-
-    // Migrate the former three-purpose local format without losing a user's choices.
-    if (!choices) {
-      next.choices.relationshipAnalysis = Boolean(parsed.relationship);
-      next.choices.dataSuggestions = Boolean(parsed.suggestion);
-      next.choices.biographyDrafts = Boolean(parsed.biography);
-      next.choices.personalData = next.choices.biographyDrafts;
-      next.choices.genealogyData = next.choices.relationshipAnalysis || next.choices.dataSuggestions;
-    }
-
-    const hasEnabledChoice = Object.values(next.choices).some(Boolean);
-    next.masterEnabled = typeof parsed.masterEnabled === 'boolean'
-      ? parsed.masterEnabled
-      : hasEnabledChoice;
-    next.updatedAt = typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null;
-    return next;
-  } catch {
-    return cloneSettings(DEFAULT_SETTINGS);
-  }
-};
 
 const formatUpdatedAt = (value: string | null) => {
   if (!value) return 'Chưa có lần cập nhật';
@@ -129,24 +103,69 @@ const formatUpdatedAt = (value: string | null) => {
 };
 
 export const AIConsentModule: React.FC = () => {
-  const initialSettings = useMemo(loadSettings, []);
-  const [savedSettings, setSavedSettings] = useState<ConsentSettings>(() => cloneSettings(initialSettings));
-  const [draft, setDraft] = useState<ConsentSettings>(() => cloneSettings(initialSettings));
+  const { activeClanId, activeClanName } = useClanContext();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [savedSettings, setSavedSettings] = useState<ConsentSettings>(() => cloneSettings(DEFAULT_SETTINGS));
+  const [draft, setDraft] = useState<ConsentSettings>(() => cloneSettings(DEFAULT_SETTINGS));
   const [confirmAction, setConfirmAction] = useState<'save' | 'revoke' | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Load consents from Backend
+  useEffect(() => {
+    if (!activeClanId) {
+      setLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setLoading(true);
+    setNotice(null);
+
+    fetchMemberAIConsents(activeClanId)
+      .then((data: MemberAIConsents) => {
+        if (isCancelled) return;
+        const loaded: ConsentSettings = {
+          masterEnabled: Boolean(data.master_consent),
+          choices: {
+            personalData: Boolean(data.choices.personalData),
+            images: Boolean(data.choices.images),
+            genealogyData: Boolean(data.choices.genealogyData),
+            relationshipAnalysis: Boolean(data.choices.relationshipAnalysis),
+            dataSuggestions: Boolean(data.choices.dataSuggestions),
+            biographyDrafts: Boolean(data.choices.biographyDrafts),
+          },
+          updatedAt: data.updated_at || null,
+          clanAiEnabled: Boolean(data.clan_ai_enabled),
+          personName: data.person_name || null,
+        };
+        setSavedSettings(cloneSettings(loaded));
+        setDraft(cloneSettings(loaded));
+      })
+      .catch((err) => {
+        if (isCancelled) return;
+        setNotice({
+          type: 'error',
+          text: err.message || 'Không thể tải quyền riêng tư & AI từ máy chủ.',
+        });
+      })
+      .finally(() => {
+        if (!isCancelled) setLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeClanId]);
+
   const isDirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(savedSettings),
+    () =>
+      JSON.stringify(draft.choices) !== JSON.stringify(savedSettings.choices) ||
+      draft.masterEnabled !== savedSettings.masterEnabled,
     [draft, savedSettings]
   );
 
   const enabledFeatureCount = FEATURE_CONSENTS.filter(({ id }) => draft.choices[id]).length;
-  const missingDataCount = DATA_CONSENTS.filter(({ id }) => !draft.choices[id]).length;
-  const consentState: 'enabled' | 'disabled' | 'warning' = !draft.masterEnabled
-    ? 'disabled'
-    : missingDataCount > 0 || enabledFeatureCount === 0
-      ? 'warning'
-      : 'enabled';
 
   const updateChoice = (id: ConsentId, value: boolean) => {
     setDraft((current) => ({
@@ -156,233 +175,334 @@ export const AIConsentModule: React.FC = () => {
     setNotice(null);
   };
 
-  const persist = (settings: ConsentSettings, message: string) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      setSavedSettings(cloneSettings(settings));
-      setDraft(cloneSettings(settings));
-      setNotice({ type: 'success', text: message });
-    } catch {
-      setNotice({
-        type: 'error',
-        text: 'Không thể lưu lựa chọn AI trên trình duyệt. Vui lòng thử lại.',
-      });
-    }
-  };
+  const handleConfirm = async () => {
+    if (!activeClanId) return;
+    setSubmitting(true);
 
-  const handleConfirm = () => {
     if (confirmAction === 'save') {
-      persist(
-        { ...cloneSettings(draft), updatedAt: new Date().toISOString() },
-        'Đã lưu lựa chọn đồng ý sử dụng AI.'
-      );
+      try {
+        const res = await updateMemberAIConsents(activeClanId, {
+          master_consent: draft.masterEnabled,
+          choices: draft.choices,
+        });
+
+        const next: ConsentSettings = {
+          masterEnabled: Boolean(res.master_consent),
+          choices: {
+            personalData: Boolean(res.choices.personalData),
+            images: Boolean(res.choices.images),
+            genealogyData: Boolean(res.choices.genealogyData),
+            relationshipAnalysis: Boolean(res.choices.relationshipAnalysis),
+            dataSuggestions: Boolean(res.choices.dataSuggestions),
+            biographyDrafts: Boolean(res.choices.biographyDrafts),
+          },
+          updatedAt: res.updated_at || new Date().toISOString(),
+          clanAiEnabled: Boolean(res.clan_ai_enabled),
+          personName: res.person_name || draft.personName,
+        };
+
+        setSavedSettings(cloneSettings(next));
+        setDraft(cloneSettings(next));
+        setNotice({ type: 'success', text: 'Đã lưu cấu hình quyền riêng tư & AI thành công.' });
+      } catch (err: any) {
+        setNotice({
+          type: 'error',
+          text: err.message || 'Lỗi khi lưu cài đặt quyền AI.',
+        });
+      }
     }
 
     if (confirmAction === 'revoke') {
-      persist(
-        { ...cloneSettings(DEFAULT_SETTINGS), updatedAt: new Date().toISOString() },
-        'Đã thu hồi toàn bộ sự đồng ý sử dụng AI.'
-      );
+      try {
+        await revokeAllMemberAIConsents(activeClanId);
+        const next: ConsentSettings = {
+          ...cloneSettings(DEFAULT_SETTINGS),
+          updatedAt: new Date().toISOString(),
+          clanAiEnabled: savedSettings.clanAiEnabled,
+          personName: savedSettings.personName,
+        };
+
+        setSavedSettings(cloneSettings(next));
+        setDraft(cloneSettings(next));
+        setNotice({
+          type: 'success',
+          text: 'Đã thu hồi toàn bộ sự đồng ý sử dụng dữ liệu với AI. Dữ liệu của bạn được bảo mật tuyệt đối.',
+        });
+      } catch (err: any) {
+        setNotice({
+          type: 'error',
+          text: err.message || 'Lỗi khi thu hồi quyền AI.',
+        });
+      }
     }
 
+    setSubmitting(false);
     setConfirmAction(null);
   };
 
+  if (loading) {
+    return (
+      <div className="ai-consent-container">
+        <LoadingState
+          message="Đang tải thiết lập Quyền riêng tư & AI..."
+          subMessage="Hệ thống đang đồng bộ cấu hình bảo mật dữ liệu và quyền truy cập AI của bạn từ máy chủ gia tộc."
+        />
+      </div>
+    );
+  }
+
   return (
-    <section className="sprint-feature-page ai-consent-page" aria-labelledby="ai-consent-title">
-      <header className="sprint-feature-hero">
-        <div>
-          <span>QUYỀN RIÊNG TƯ & AI</span>
-          <h1 id="ai-consent-title">Đồng ý sử dụng AI</h1>
-          <p>Bạn quyết định loại dữ liệu và từng tính năng AI được phép sử dụng.</p>
+    <div className="ai-consent-container">
+      {/* 1. BLUE SIGNATURE HERO HEADER (Đồng bộ với các trang khác) */}
+      <header className="ai-hero-header">
+        <div className="ai-hero-content">
+          <span className="ai-hero-eyebrow">QUYỀN RIÊNG TƯ & AI</span>
+          <h1 className="ai-hero-title">Quyền riêng tư & AI</h1>
+          <p className="ai-hero-desc">
+            Quản lý phạm vi dữ liệu cá nhân và các tính năng AI bạn cho phép sử dụng trong dòng họ.
+          </p>
+          <div className="ai-hero-meta-row">
+            <span className="ai-hero-glass-tag">
+              Dòng họ: <strong>{activeClanName || 'Chưa chọn'}</strong>
+            </span>
+            <span className="ai-hero-glass-tag">
+              {savedSettings.personName ? `Hồ sơ: ${savedSettings.personName}` : 'Tài khoản cá nhân'}
+            </span>
+          </div>
         </div>
-        <div className="ai-consent-summary">
-          <span className={`ai-state-badge ${consentState}`}>
-            {consentState === 'enabled' && 'Đã bật đầy đủ'}
-            {consentState === 'warning' && 'Đang bật có giới hạn'}
-            {consentState === 'disabled' && 'Đã tắt'}
+        <div className="ai-hero-right">
+          <span className={`ai-hero-status-pill ${draft.masterEnabled ? 'active' : 'inactive'}`}>
+            {draft.masterEnabled ? 'AI đang Bật' : 'AI đang Tắt'}
           </span>
-          <small>Cập nhật: {formatUpdatedAt(savedSettings.updatedAt)}</small>
+          <span className="ai-hero-date">
+            Cập nhật: {formatUpdatedAt(savedSettings.updatedAt)}
+          </span>
         </div>
       </header>
 
+      {/* THÔNG BÁO TÁC VỤ */}
       {notice && (
-        <div className={`sprint-alert ${notice.type}`} role={notice.type === 'error' ? 'alert' : 'status'}>
-          <span aria-hidden="true">{notice.type === 'success' ? '✓' : '!'}</span>
+        <div className={`ai-alert alert-${notice.type}`} role="status">
           <span>{notice.text}</span>
-          <button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo">×</button>
-        </div>
-      )}
-
-      <div className="ai-master-card sprint-card">
-        <div className="ai-master-copy">
-          <span className="ai-master-icon" aria-hidden="true">AI</span>
-          <div>
-            <h2>Cho phép các tính năng AI</h2>
-            <p>
-              Khi tắt, toàn bộ xử lý AI bị vô hiệu hóa. Các lựa chọn chi tiết được giữ lại cho đến khi bạn lưu hoặc thu hồi.
-            </p>
-          </div>
-        </div>
-        <label className="sprint-switch">
-          <input
-            type="checkbox"
-            checked={draft.masterEnabled}
-            onChange={(event) => {
-              setDraft((current) => ({ ...current, masterEnabled: event.target.checked }));
-              setNotice(null);
-            }}
-            aria-label="Cho phép sử dụng AI"
-          />
-          <span aria-hidden="true" />
-        </label>
-      </div>
-
-      {consentState === 'disabled' && (
-        <div className="sprint-alert neutral" role="status">
-          <span aria-hidden="true">○</span>
-          <span>AI đang tắt. Trợ lý AI và các đề xuất tự động sẽ ở trạng thái không khả dụng.</span>
-        </div>
-      )}
-
-      {consentState === 'warning' && (
-        <div className="sprint-alert warning" role="status">
-          <span aria-hidden="true">!</span>
-          <span>
-            Một số quyền dữ liệu đang tắt hoặc chưa chọn tính năng. AI chỉ hoạt động trong phạm vi bạn cho phép.
-          </span>
-        </div>
-      )}
-
-      <div className="ai-consent-grid">
-        <ConsentPanel
-          title="Dữ liệu được phép xử lý"
-          description="Mỗi nhóm dữ liệu được kiểm soát độc lập."
-          items={DATA_CONSENTS}
-          settings={draft}
-          onChange={updateChoice}
-        />
-        <ConsentPanel
-          title="Tính năng AI được phép"
-          description="Kết quả AI luôn là gợi ý và không tự sửa gia phả."
-          items={FEATURE_CONSENTS}
-          settings={draft}
-          onChange={updateChoice}
-        />
-      </div>
-
-      <div className="sprint-card ai-explanation-card">
-        <div>
-          <span className="ai-info-mark" aria-hidden="true">i</span>
-          <div>
-            <h2>AI sử dụng dữ liệu như thế nào?</h2>
-            <p>
-              Dữ liệu chỉ được dùng để tạo kết quả cho tác vụ bạn yêu cầu. Bản demo này lưu lựa chọn trên thiết bị,
-              không gửi dữ liệu tới máy chủ và không tự thay đổi hồ sơ hay quan hệ gia phả.
-            </p>
-          </div>
-        </div>
-        <ul>
-          <li>Bạn có thể thay đổi hoặc thu hồi sự đồng ý bất kỳ lúc nào.</li>
-          <li>Hình ảnh không được xử lý nếu quyền Hình ảnh đang tắt.</li>
-          <li>Các quyết định quan trọng luôn cần người dùng hoặc quản trị viên xác nhận.</li>
-        </ul>
-      </div>
-
-      <div className="sprint-action-bar">
-        <div>
-          <strong>{isDirty ? 'Bạn có thay đổi chưa lưu.' : 'Lựa chọn hiện tại đã được lưu.'}</strong>
-          <small>{enabledFeatureCount}/3 tính năng đang được chọn</small>
-        </div>
-        <div className="sprint-actions">
           <button
             type="button"
-            className="sprint-secondary"
-            disabled={!isDirty}
+            className="ai-alert-close"
+            onClick={() => setNotice(null)}
+            aria-label="Đóng thông báo"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* SECTION 1: MASTER TOGGLE */}
+      <div className="ai-card">
+        <div className="ai-card-header">
+          <div className="ai-card-title-group">
+            <h3>1. Kích hoạt quyền riêng tư AI cho dữ liệu cá nhân</h3>
+            <p>Quyết định cho phép hệ thống sử dụng dữ liệu của bạn trong các tính năng hỗ trợ thông minh.</p>
+          </div>
+          <label className="ai-switch-control">
+            <span className="ai-switch-label">{draft.masterEnabled ? 'Đang Bật' : 'Đang Tắt'}</span>
+            <input
+              type="checkbox"
+              checked={draft.masterEnabled}
+              onChange={(e) => {
+                setDraft((current) => ({ ...current, masterEnabled: e.target.checked }));
+                setNotice(null);
+              }}
+              aria-label="Cho phép AI xử lý dữ liệu của tôi"
+            />
+            <span className="ai-switch-track" />
+          </label>
+        </div>
+
+        {/* Thông báo ngữ cảnh trạng thái trong Card 1 */}
+        {!savedSettings.clanAiEnabled ? (
+          <div className="ai-notice-box notice-warning">
+            <span>
+              <strong>Trưởng tộc chưa kích hoạt tính năng AI cho dòng họ này.</strong> Dù bạn có cấp quyền bên dưới,
+              hệ thống vẫn chặn mọi truy vấn AI từ dòng họ này để đảm bảo tuân thủ thiết lập chung.
+            </span>
+          </div>
+        ) : !draft.masterEnabled ? (
+          <div className="ai-notice-box notice-neutral">
+            <span>
+              <strong>AI cá nhân đang TẮT.</strong> Toàn bộ dữ liệu cá nhân của bạn được bảo mật tuyệt đối,
+              không bao giờ được gửi đến Gemini AI ngay cả khi thành viên khác đang dùng trợ lý.
+            </span>
+          </div>
+        ) : (
+          <div className="ai-notice-box notice-info">
+            <span>
+              <strong>AI cá nhân đang BẬT.</strong> Hệ thống chỉ sử dụng đúng các phạm vi dữ liệu và tính năng bạn đã đồng ý bên dưới.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: DỮ LIỆU ĐƯỢC PHÉP XỬ LÝ */}
+      <div className="ai-card">
+        <h3>2. Phạm vi dữ liệu được phép xử lý</h3>
+        <p className="card-desc">Chỉ những nhóm dữ liệu được chọn mới có thể đưa vào phân tích hỗ trợ.</p>
+
+        <div className="ai-options-grid">
+          {DATA_CONSENTS.map((item) => {
+            const isChecked = draft.choices[item.id];
+            return (
+              <label
+                key={item.id}
+                className={`ai-option-item ${!draft.masterEnabled ? 'disabled' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  disabled={!draft.masterEnabled}
+                  onChange={(e) => updateChoice(item.id, e.target.checked)}
+                />
+                <div className="ai-option-text">
+                  <span className="ai-option-badge">{item.tag}</span>
+                  <span className="ai-option-title">{item.title}</span>
+                  <span className="ai-option-desc">{item.description}</span>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SECTION 3: TÍNH NĂNG AI ĐƯỢC PHÉP */}
+      <div className="ai-card">
+        <h3>3. Các tính năng AI được phép hoạt động</h3>
+        <p className="card-desc">Kết quả AI luôn là gợi ý hỗ trợ và không tự ý sửa đổi cơ sở dữ liệu gia phả.</p>
+
+        <div className="ai-options-grid">
+          {FEATURE_CONSENTS.map((item) => {
+            const isChecked = draft.choices[item.id];
+            return (
+              <label
+                key={item.id}
+                className={`ai-option-item ${!draft.masterEnabled ? 'disabled' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  disabled={!draft.masterEnabled}
+                  onChange={(e) => updateChoice(item.id, e.target.checked)}
+                />
+                <div className="ai-option-text">
+                  <span className="ai-option-badge">{item.tag}</span>
+                  <span className="ai-option-title">{item.title}</span>
+                  <span className="ai-option-desc">{item.description}</span>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SECTION 4: NGUYÊN TẮC BẢO VỆ DỮ LIỆU */}
+      <div className="ai-card">
+        <h3>4. Cam kết bảo vệ quyền riêng tư & Nguyên tắc AI</h3>
+        <p className="card-desc">Thiết lập minh bạch theo nguyên tắc Privacy-by-Design.</p>
+
+        <div className="ai-commitments-grid">
+          <div className="ai-commitment-item">
+            <strong>Quyền kiểm soát tức thì</strong>
+            <p>Bạn có toàn quyền thay đổi hoặc thu hồi toàn bộ sự đồng ý bất kỳ lúc nào với hiệu lực tức thì.</p>
+          </div>
+          <div className="ai-commitment-item">
+            <strong>Cách ly hình ảnh & chân dung</strong>
+            <p>Ảnh chân dung và tư liệu không bao giờ được gửi nếu quyền Hình ảnh & Chân dung đang tắt.</p>
+          </div>
+          <div className="ai-commitment-item">
+            <strong>An toàn phả hệ & Nhật ký kiểm toán</strong>
+            <p>AI không tự sửa dữ liệu dòng tộc. Mọi thao tác cấp hoặc thu hồi quyền đều được lưu nhật ký (Audit Log).</p>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 5: THANH THAO TÁC LIỀN TRANG (KHÔNG NỔI ĐÈ LÊN CHATBOT) */}
+      <div className="ai-actions-bar">
+        <div className="ai-actions-status">
+          {isDirty && <span className="ai-dirty-badge">Có thay đổi chưa lưu</span>}
+          <span className="ai-status-summary-text">
+            {enabledFeatureCount}/3 tính năng AI đang chọn • Cập nhật lần cuối: {formatUpdatedAt(savedSettings.updatedAt)}
+          </span>
+        </div>
+        <div className="ai-actions-buttons">
+          <button
+            type="button"
+            className="btn-ai-revert"
+            disabled={!isDirty || submitting}
             onClick={() => setDraft(cloneSettings(savedSettings))}
           >
             Hoàn tác
           </button>
-          <button type="button" className="sprint-danger" onClick={() => setConfirmAction('revoke')}>
+          <button
+            type="button"
+            className="btn-ai-revoke"
+            disabled={submitting}
+            onClick={() => setConfirmAction('revoke')}
+          >
             Thu hồi toàn bộ
           </button>
           <button
             type="button"
-            className="sprint-primary"
-            disabled={!isDirty}
+            className="btn-ai-save"
+            disabled={!isDirty || submitting}
             onClick={() => setConfirmAction('save')}
           >
-            Lưu lựa chọn
+            {submitting ? 'Đang lưu...' : 'Lưu lựa chọn'}
           </button>
         </div>
       </div>
 
+      {/* MODAL XÁC NHẬN */}
       {confirmAction && (
-        <div className="sprint-modal-overlay" role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setConfirmAction(null);
-        }}>
-          <div className="sprint-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="ai-confirm-title">
-            <span className={`sprint-confirm-icon ${confirmAction === 'revoke' ? 'danger' : ''}`} aria-hidden="true">
-              {confirmAction === 'revoke' ? '!' : '✓'}
-            </span>
-            <h2 id="ai-confirm-title">
-              {confirmAction === 'revoke' ? 'Thu hồi toàn bộ sự đồng ý?' : 'Xác nhận thay đổi quyền AI?'}
-            </h2>
+        <div
+          className="ai-modal-overlay"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setConfirmAction(null);
+          }}
+        >
+          <div className="ai-modal-dialog" role="dialog" aria-modal="true">
+            <div className="ai-modal-header">
+              <h3>
+                {confirmAction === 'revoke' ? 'Thu hồi toàn bộ quyền AI?' : 'Xác nhận lưu thay đổi quyền AI?'}
+              </h3>
+            </div>
             <p>
               {confirmAction === 'revoke'
-                ? 'Tất cả loại dữ liệu và tính năng AI sẽ bị tắt trên thiết bị này.'
+                ? 'Tất cả loại dữ liệu và tính năng AI của bạn sẽ bị tắt ngay lập tức trên máy chủ. Mọi yêu cầu gửi dữ liệu cá nhân của bạn ra Gemini sẽ bị chặn.'
                 : draft.masterEnabled
-                  ? 'AI sẽ chỉ sử dụng các loại dữ liệu và tính năng bạn đang chọn.'
-                  : 'AI sẽ bị vô hiệu hóa sau khi lưu thay đổi này.'}
+                  ? 'AI sẽ chỉ được phép sử dụng các loại dữ liệu và tính năng bạn đã chọn.'
+                  : 'AI sẽ bị vô hiệu hóa hoàn toàn đối với dữ liệu của bạn sau khi lưu.'}
             </p>
-            <div className="sprint-modal-actions">
-              <button type="button" className="sprint-secondary" onClick={() => setConfirmAction(null)}>Hủy</button>
+            <div className="ai-modal-footer">
               <button
                 type="button"
-                className={confirmAction === 'revoke' ? 'sprint-danger' : 'sprint-primary'}
+                className="btn-ai-revert"
+                disabled={submitting}
+                onClick={() => setConfirmAction(null)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className={confirmAction === 'revoke' ? 'btn-ai-revoke' : 'btn-ai-save'}
+                disabled={submitting}
                 onClick={handleConfirm}
               >
-                {confirmAction === 'revoke' ? 'Xác nhận thu hồi' : 'Xác nhận lưu'}
+                {submitting ? 'Đang xử lý...' : confirmAction === 'revoke' ? 'Xác nhận thu hồi' : 'Xác nhận lưu'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 };
-
-const ConsentPanel: React.FC<{
-  title: string;
-  description: string;
-  items: ConsentDefinition[];
-  settings: ConsentSettings;
-  onChange: (id: ConsentId, value: boolean) => void;
-}> = ({ title, description, items, settings, onChange }) => (
-  <article className={`sprint-card ai-consent-panel ${settings.masterEnabled ? '' : 'disabled'}`}>
-    <div className="ai-panel-heading">
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </div>
-    <div className="ai-choice-list">
-      {items.map((item) => (
-        <label className="ai-choice-row" key={item.id}>
-          <span className="ai-choice-copy">
-            <small>{item.tag}</small>
-            <strong>{item.title}</strong>
-            <span>{item.description}</span>
-          </span>
-          <input
-            type="checkbox"
-            checked={settings.choices[item.id]}
-            disabled={!settings.masterEnabled}
-            onChange={(event) => onChange(item.id, event.target.checked)}
-            aria-label={item.title}
-          />
-        </label>
-      ))}
-    </div>
-  </article>
-);
 
 export default AIConsentModule;

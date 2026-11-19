@@ -106,6 +106,18 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
       />
 
 
+      {/* Protected Clan Admin Dashboard Routes */}
+      <Route
+        path="/clan-admin/*"
+        element={
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={['member', 'family_head', 'family_admin']}>
+              <Dashboard userName={userName} onLogout={handleLogout} />
+            </RoleGuard>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Protected Admin Dashboard Routes */}
       <Route
         path="/admin/*"

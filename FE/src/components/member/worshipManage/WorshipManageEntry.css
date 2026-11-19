@@ -1,0 +1,21 @@
+/* Nút "Quản lý bàn thờ" (tải ngay cùng trang; phần còn lại của panel tải khi mở). */
+
+.wm-open-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  margin-top: 6px;
+  padding: 0 18px;
+  color: #214bb7;
+  font: inherit;
+  font-weight: 750;
+  background: #eef3ff;
+  border: 1px solid #c9d8fb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.wm-open-button:hover { background: #e2eaff; box-shadow: 0 6px 16px rgba(47, 104, 232, 0.14); }
+.wm-open-button:focus-visible { outline: 3px solid rgba(47, 104, 232, 0.25); outline-offset: 2px; }

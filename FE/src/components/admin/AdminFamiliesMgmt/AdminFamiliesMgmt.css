@@ -56,7 +56,7 @@
   justify-content: space-between;
   gap: 28px;
   padding: 30px 34px;
-  border-radius: 24px;
+  border-radius: 16px;
   color: #ffffff;
   background:
     radial-gradient(circle at 84% 16%, rgba(255, 255, 255, 0.18), transparent 30%),
@@ -64,6 +64,7 @@
   box-shadow: 0 16px 34px rgba(37, 99, 235, 0.17);
   overflow: hidden;
   position: relative;
+  font-family: var(--font-body);
 }
 
 .family-hero-banner::after {
@@ -201,7 +202,7 @@
 .family-search-field {
   flex: 1;
   max-width: 480px;
-  height: 42px;
+  height: 38px;
   display: flex;
   align-items: center;
   position: relative;
@@ -211,9 +212,10 @@
   width: 100%;
   height: 100%;
   padding: 0 34px 0 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   font-size: 13.5px;
+  font-family: var(--font-body);
   outline: none;
   background: #ffffff;
   color: #0f172a;
@@ -489,30 +491,40 @@
   transform: translateY(0);
 }
 
-.fam-btn-view {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-  font-weight: 700;
+.fam-btn-view,
+.fam-btn-tree,
+.fam-btn-detail {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
 }
 
-.fam-btn-view:hover {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+.fam-btn-view:hover,
+.fam-btn-tree:hover,
+.fam-btn-detail:hover {
+  background: #ffffff;
+  border-color: #94a3b8;
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
 }
 
 .fam-btn-edit {
   background: #ffffff;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
 }
 
 .fam-btn-edit:hover {
-  background: #f8fafc;
+  background: #ffffff;
   border-color: #94a3b8;
-  color: #0f172a;
+  color: #000000;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
 }
 
 .fam-btn-delete {
@@ -890,13 +902,14 @@
 
 .form-input-admin {
   width: 100%;
-  height: 42px;
+  height: 38px;
   padding: 0 13px;
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 8px;
   outline: 0;
   background: #ffffff;
   color: #0f172a;
+  font-family: var(--font-body);
   font-size: 13.5px;
   font-weight: 500;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -934,19 +947,22 @@ textarea.form-input-admin {
 }
 
 .admin-btn-ghost {
-  min-height: 40px;
+  height: 38px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 18px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #475569;
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-body);
   cursor: pointer;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .admin-btn-ghost:hover {
@@ -956,19 +972,22 @@ textarea.form-input-admin {
 }
 
 .admin-btn-danger {
-  min-height: 40px;
+  height: 38px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 16px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #fca5a5;
   background: #ffffff;
   color: #dc2626;
   font-size: 12.5px;
   font-weight: 600;
+  font-family: var(--font-body);
   cursor: pointer;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .admin-btn-danger:hover {

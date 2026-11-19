@@ -31,7 +31,7 @@
   font-weight: 800;
   color: #0f172a;
   margin: 0 0 16px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -53,7 +53,7 @@
 
 .network-family-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -77,7 +77,7 @@
   font-weight: 800;
   color: #0f172a;
   margin: 0 0 6px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .network-family-founder {
@@ -148,9 +148,28 @@
   min-width: 120px;
 }
 
-.network-marriage-avatar-icon {
-  font-size: 28px;
-  margin-bottom: 4px;
+.network-marriage-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.network-marriage-avatar.male {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1.5px solid #bfdbfe;
+}
+
+.network-marriage-avatar.female {
+  background-color: #fdf2f8;
+  color: #db2777;
+  border: 1.5px solid #fbcfe8;
 }
 
 .network-marriage-name {
@@ -173,9 +192,15 @@
   flex: 1;
 }
 
-.network-marriage-heart {
-  font-size: 24px;
-  flex-shrink: 0;
+.network-marriage-link-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .network-marriage-date {
@@ -217,7 +242,7 @@
 .network-stat-number {
   font-size: 28px;
   font-weight: 900;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .network-stat-label {
@@ -238,8 +263,8 @@
 .network-clan-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
   overflow: hidden;
   transition: all 0.2s ease;
 }
@@ -275,7 +300,7 @@
   font-weight: 800;
   color: #0f172a;
   margin: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .network-clan-code {
@@ -322,7 +347,7 @@
 
 .network-clan-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 10px 20px;
   margin: 12px 0;
   padding: 12px 16px;

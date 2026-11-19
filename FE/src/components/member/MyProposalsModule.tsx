@@ -1,3 +1,4 @@
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FeatureEmptyState, FeatureIcon, FeatureModal, FeaturePagination, FeatureToast } from '../common/FeatureUI';
 import { proposalMockData, type ProposalRecord, type ProposalStatus } from '../../data/sprint5MockData';
@@ -17,6 +18,7 @@ const PAGE_SIZE = 4;
 const statusLabel: Record<ProposalStatus, string> = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
 
 export const MyProposalsModule: React.FC = () => {
+  const { account } = useAuth();
   const [proposals, setProposals] = useState<ProposalRecord[]>(proposalMockData);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | ProposalStatus>('all');
@@ -55,7 +57,7 @@ export const MyProposalsModule: React.FC = () => {
     if (Object.keys(nextErrors).length) return;
     const record: ProposalRecord = {
       id: `DX-${String(Date.now()).slice(-6)}`,
-      proposerName: 'Võ Văn Thắng', proposerInitial: 'T', targetName: form.targetName, type: form.type,
+      proposerName: account?.display_name || 'Thành viên', proposerInitial: (account?.display_name || 'Thành viên').split(' ').pop()?.[0]?.toUpperCase() || 'T', targetName: form.targetName, type: form.type,
       relationship: form.relationship, currentValue: form.currentValue.trim() || 'Chưa có dữ liệu', proposedValue: form.proposedValue.trim(),
       reason: form.reason.trim(), status: 'pending', createdAt: new Date().toLocaleString('vi-VN', { hour12: false }),
     };

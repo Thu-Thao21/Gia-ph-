@@ -6,12 +6,13 @@
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(226, 232, 240, 0.85);
   box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
-  height: 72px;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
   gap: 16px;
+  font-family: var(--font-body);
 }
 
 .topbar-left-group {
@@ -22,9 +23,9 @@
 }
 
 .topbar-toggle-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
   color: #334155;
@@ -33,8 +34,8 @@
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .topbar-brand-box {
@@ -46,11 +47,11 @@
 }
 
 .topbar-logo-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   object-fit: cover;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .topbar-system-tag {
@@ -65,7 +66,7 @@
   font-size: 18px;
   font-weight: 800;
   color: #0f172a;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   line-height: 1.1;
 }
 
@@ -79,15 +80,17 @@
 
 .topbar-search-input {
   width: 100%;
-  padding: 11px 18px 11px 44px;
-  border-radius: 16px;
+  height: 38px;
+  padding: 8px 16px 8px 40px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   background-color: #f8fafc;
   font-size: 13.5px;
   color: #0f172a;
+  font-family: var(--font-body);
   outline: none;
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
 
@@ -174,10 +177,10 @@
 
 .topbar-user-name {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
   line-height: 1.2;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
 }
 
 .topbar-user-role-badge {
@@ -198,8 +201,10 @@
 }
 
 .topbar-user-role-badge.member {
-  background-color: #eff6ff;
-  color: #2563eb;
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .topbar-profile-dropdown {
@@ -275,16 +280,21 @@
 
 .topbar-notif-dropdown-title {
   font-weight: 800;
-  color: #0f172a;
+  color: #000000;
   font-size: 15px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: inherit;
 }
 
 .topbar-notif-mark-read {
   font-size: 12px;
-  color: #2563eb;
+  color: #000000;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: underline;
+}
+
+.topbar-notif-mark-read:hover {
+  color: #334155;
 }
 
 .topbar-notif-list {
@@ -294,9 +304,9 @@
 }
 
 .topbar-notif-empty {
-  padding: 20px 0;
+  padding: 24px 0;
   text-align: center;
-  color: #94a3b8;
+  color: #475569;
   font-size: 13px;
 }
 
@@ -304,49 +314,44 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  border: 1px solid #e2e8f0;
   user-select: none;
   background-color: #ffffff;
 }
 
 .topbar-notif-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .topbar-notif-item.unread {
-  background: linear-gradient(135deg, #f0f7ff 0%, #f8fbff 100%);
-  border: 1px solid #bfdbfe;
-  border-left: 4px solid #2563eb;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #000000;
 }
 
 .topbar-notif-item.unread:hover {
-  background: #e5edff;
+  background: #f8fafc;
 }
 
 .topbar-notif-item.read {
-  background-color: #f8fafc;
-  border: 1px solid #f1f5f9;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  opacity: 0.85;
 }
 
 .topbar-notif-item.read:hover {
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
+  opacity: 1;
 }
 
 .topbar-notif-item-icon-box {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  display: none !important;
 }
 
 .topbar-notif-item-content-col {
@@ -362,26 +367,25 @@
 }
 
 .topbar-notif-item-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: 14px;
+  font-weight: 750;
+  color: #000000;
   line-height: 1.35;
 }
 
 .topbar-notif-item-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background-color: #2563eb;
+  background-color: #000000;
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 .topbar-notif-item-desc {
-  font-size: 12px;
-  color: #475569;
-  margin-top: 4px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  color: #000000;
+  margin-top: 5px;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -392,19 +396,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 7px;
+  margin-top: 8px;
 }
 
 .topbar-notif-item-time {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 11.5px;
+  color: #475569;
   font-weight: 500;
 }
 
 .topbar-notif-item-click-hint {
-  font-size: 11px;
-  color: #2563eb;
-  font-weight: 700;
+  font-size: 12px;
+  color: #000000 !important;
+  font-weight: 750;
   transition: transform 0.15s ease;
 }
 
@@ -594,7 +598,7 @@
   min-width: 0;
 }
 
-.topbar-notif-modal-icon-box {
+.topbar-notif-modal-icon-box { display: none !important; 
   width: 44px;
   height: 44px;
   border-radius: 14px;
@@ -657,7 +661,7 @@
   color: #0f172a;
   margin: 0 0 6px 0;
   line-height: 1.35;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .topbar-notif-modal-time-row {

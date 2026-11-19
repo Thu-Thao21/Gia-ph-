@@ -339,7 +339,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onS
             name="password"
             value={formData.password}
             onChange={handleChange}
-            placeholder="Ít nhất 8 ký tự, có chữ hoa, chữ thường và số"
+            placeholder="Ít nhất 8 ký tự, gồm hoa, thường, số"
             autoComplete="new-password"
             required
             className="register-form-input"

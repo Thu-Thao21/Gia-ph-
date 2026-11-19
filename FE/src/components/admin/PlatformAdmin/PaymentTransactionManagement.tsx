@@ -148,7 +148,11 @@ export const PaymentTransactionManagement: React.FC = () => {
         {dateFrom && dateTo && dateFrom > dateTo ? (
           <AdminStatePanel kind="error" title="Khoảng ngày không hợp lệ" message="Ngày bắt đầu phải trước hoặc trùng ngày kết thúc." action={<button type="button" className="s6a-button secondary" onClick={() => setDateTo('')}>Xóa ngày kết thúc</button>} />
         ) : loading ? (
-          <AdminStatePanel kind="loading" message="Đang tổng hợp giao dịch và dữ liệu đối soát..." />
+          <AdminStatePanel
+            kind="loading"
+            title="Đang đối soát lịch sử thanh toán..."
+            message="Hệ thống đang truy xuất thông tin hóa đơn và trạng thái giao dịch..."
+          />
         ) : visibleTransactions.length === 0 ? (
           <AdminStatePanel kind="empty" title="Không có giao dịch phù hợp" message="Thử nới lỏng điều kiện tìm kiếm hoặc khoảng ngày." action={<button type="button" className="s6a-button secondary" onClick={resetFilters}>Xóa bộ lọc</button>} />
         ) : (

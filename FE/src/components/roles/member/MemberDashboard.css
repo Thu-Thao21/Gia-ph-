@@ -28,6 +28,7 @@
   color: #1e40af;
   font-size: 1.1rem;
   font-weight: 700;
+  font-family: var(--font-heading);
 }
 
 .member-dash-head-badge {
@@ -56,10 +57,19 @@
   padding: 10px 14px;
   background: #ffffff;
   border: 1px solid #93c5fd;
-  border-radius: 10px;
+  border-radius: 8px;
   color: #1d4ed8;
   font-weight: 600;
   font-size: 0.85rem;
+  font-family: var(--font-body);
   cursor: pointer;
   text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.member-dash-head-btn:hover {
+  background: #f0f7ff;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }

@@ -982,3 +982,42 @@ class ClanIdentityEntry(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
     released_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    notification_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    clan_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clans.clan_id", ondelete="CASCADE"), nullable=True
+    )
+    type: Mapped[str] = mapped_column(String(50), nullable=False, default="ANNOUNCEMENT")
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    sender_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    sender_role: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    target_audience: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="all")
+    priority: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default="normal")
+    channels: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class UserNotification(Base):
+    __tablename__ = "user_notifications"
+
+    notification_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notifications.notification_id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True
+    )
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, server_default=text("now()")
+    )

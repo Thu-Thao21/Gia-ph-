@@ -1,3 +1,4 @@
+import { LoadingState } from '../../../shared/Feedback/LoadingState';
  import React, { useState, useEffect, useCallback } from 'react';
 import {
   fetchAdminUsers,
@@ -305,7 +306,7 @@ export const AdminAccountMgmt: React.FC = () => {
       {/* Table Card */}
       <div className="admin-acc-card">
         {loading ? (
-          <div className="admin-acc-empty">Đang tải danh sách tài khoản...</div>
+          <LoadingState message="Đang đồng bộ danh sách tài khoản & phân quyền..." subMessage="Hệ thống đang truy xuất thông tin người dùng từ máy chủ, xin vui lòng chờ trong giây lát..." />
         ) : filteredAccounts.length === 0 ? (
           <div className="admin-acc-empty">Không tìm thấy tài khoản phù hợp.</div>
         ) : (
@@ -551,7 +552,7 @@ export const AdminAccountMgmt: React.FC = () => {
                   <div className="clan-section">
                     <div className="section-title">Gia phả / Dòng họ trực thuộc</div>
                     {detailLoading ? (
-                      <div className="clan-loading">Đang tải dữ liệu...</div>
+                      <LoadingState compact message="Đang tải dữ liệu dòng họ trực thuộc..." />
                     ) : accDetail?.memberships && accDetail.memberships.length > 0 ? (
                       <div className="clan-list">
                         {accDetail.memberships.map((m) => (

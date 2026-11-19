@@ -136,44 +136,128 @@
 }
 
 .public-footer {
-  background: #0f172a;
+  background: linear-gradient(180deg, #0b1120 0%, #060a14 100%);
   color: #94a3b8;
-  padding: 48px 24px 24px;
-  margin-top: 48px;
+  padding: 56px 24px 28px;
+  margin-top: 56px;
+  border-top: 1px solid rgba(59, 130, 246, 0.25);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 10;
 }
 
 .public-footer-inner {
   max-width: 1280px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 40px;
+  grid-template-columns: 1.6fr 1.1fr 1.1fr 1.1fr;
+  gap: 36px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  .public-footer-inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
+
+@media (max-width: 640px) {
   .public-footer-inner {
     grid-template-columns: 1fr;
+    gap: 28px;
   }
+}
+
+/* Brand Column */
+.brand-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.footer-logo-img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  border: 1.5px solid rgba(147, 197, 253, 0.3);
 }
 
 .footer-brand-title {
   color: #ffffff;
-  font-size: 20px;
-  font-weight: 800;
-  margin: 0 0 12px 0;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -0.3px;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.footer-brand-tagline {
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
 }
 
 .footer-brand-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #94a3b8;
+  margin: 0 0 18px 0;
 }
 
-.footer-col-title {
+.footer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+}
+
+.footer-contact-item svg {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.footer-contact-item strong {
   color: #f1f5f9;
+  font-weight: 600;
+}
+
+/* Other Columns */
+.footer-col-title {
+  color: #ffffff;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 750;
   margin: 0 0 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  letter-spacing: -0.2px;
+}
+
+.col-title-bar {
+  display: block;
+  width: 28px;
+  height: 2.5px;
+  background: linear-gradient(90deg, #38bdf8, #2563eb);
+  border-radius: 2px;
 }
 
 .footer-links {
@@ -182,25 +266,104 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  font-size: 14px;
+  gap: 11px;
+  font-size: 13.5px;
 }
 
 .footer-links li {
   cursor: pointer;
-  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  transition: all 0.22s ease;
+  line-height: 1.4;
 }
 
 .footer-links li:hover {
+  color: #38bdf8;
+  transform: translateX(4px);
+}
+
+.link-arrow {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  transition: color 0.2s ease;
+}
+
+.footer-links li:hover .link-arrow {
+  color: #38bdf8;
+}
+
+.footer-pill-tag {
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+
+/* Footer Bottom Bar */
+.public-footer-bottom {
+  max-width: 1280px;
+  margin: 44px auto 0;
+  padding-top: 24px;
+  border-top: 1px solid rgba(51, 65, 85, 0.6);
+  text-align: center;
+}
+
+.footer-bottom-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.copyright-text {
+  font-size: 13.5px;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.copyright-text strong {
   color: #ffffff;
 }
 
-.public-footer-bottom {
-  max-width: 1280px;
-  margin: 36px auto 0;
-  padding-top: 24px;
-  border-top: 1px solid #1e293b;
-  text-align: center;
-  font-size: 13px;
-  color: #64748b;
+.footer-security-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.badge-item svg {
+  color: #38bdf8;
+}
+
+@media (max-width: 768px) {
+  .footer-bottom-inner {
+    flex-direction: column;
+    text-align: center;
+  }
 }

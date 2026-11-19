@@ -56,6 +56,9 @@ class InterClanRequest(Base):
         nullable=True,
     )
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    connection_type: Mapped[str] = mapped_column(
+        String(30), server_default="IN_LAW", default="IN_LAW", nullable=False
+    )
     status: Mapped[str] = mapped_column(
         String(30), server_default="PENDING", default="PENDING", nullable=False
     )
@@ -96,6 +99,9 @@ class InterClanLink(Base):
         ForeignKey("clans.clan_id", ondelete="CASCADE"),
         nullable=False,
     )
+    connection_type: Mapped[str] = mapped_column(
+        String(30), server_default="IN_LAW", default="IN_LAW", nullable=False
+    )
     status: Mapped[str] = mapped_column(
         String(30), server_default="ACTIVE", default="ACTIVE", nullable=False
     )
@@ -105,6 +111,12 @@ class InterClanLink(Base):
     ended_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    terminated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    termination_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class InterClanSharedPolicy(Base):
@@ -145,4 +157,188 @@ class InterClanSharedPolicy(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class InterClanPersonMapping(Base):
+    __tablename__ = "inter_clan_person_mappings"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        "mapping_id",
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    link_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("inter_clan_links.link_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    clan_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    person_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.person_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    clan_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    person_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.person_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    relationship_type: Mapped[str] = mapped_column(
+        String(30), server_default="SPOUSE", default="SPOUSE", nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), server_default="PENDING", default="PENDING", nullable=False
+    )
+    requested_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    requested_clan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    verified_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    review_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class LineageAccessRequest(Base):
+    __tablename__ = "lineage_access_requests"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        "request_id",
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    owner_clan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    requester_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    anchor_person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.person_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    grantee_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    scope_type: Mapped[str] = mapped_column(
+        String(50), server_default="FOUR_GENERATIONS", default="FOUR_GENERATIONS", nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(30), server_default="PENDING", default="PENDING", nullable=False
+    )
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class LineageAccessGrant(Base):
+    __tablename__ = "lineage_access_grants"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        "grant_id",
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("lineage_access_requests.request_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    owner_clan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clans.clan_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    anchor_person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.person_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    grantee_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    scope_type: Mapped[str] = mapped_column(
+        String(50), server_default="FOUR_GENERATIONS", default="FOUR_GENERATIONS", nullable=False
+    )
+    permission: Mapped[str] = mapped_column(
+        String(30), server_default="VIEW_ONLY", default="VIEW_ONLY", nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(30), server_default="ACTIVE", default="ACTIVE", nullable=False
+    )
+    approved_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    approved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revocation_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

@@ -1,13 +1,75 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
 
 :root {
-  --font-heading: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  /* Typography - Be Vietnam Pro universal across entire system */
+  --font-heading: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Standard Border Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;   /* Standard Button & Input Radius */
+  --radius-lg: 12px;  /* Standard Card & Table Container Radius */
+  --radius-xl: 16px;  /* Modal & Elevated Panel Radius */
+  --radius-full: 9999px; /* Badges & Circular Avatars */
+
+  /* Brand Palette */
   --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-active: #1e40af;
+  --color-primary-light: #eff6ff;
+  --color-primary-border: #bfdbfe;
+
   --color-accent-purple: #7c3aed;
   --color-accent-pink: #ec4899;
   --color-bg-main: #f8fafc;
+
+  /* Semantic Feedback Palette */
+  --color-success: #16a34a;
+  --color-success-hover: #15803d;
+  --color-success-light: #f0fdf4;
+  --color-success-border: #bbf7d0;
+
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-danger-light: #fef2f2;
+  --color-danger-border: #fecaca;
+
+  --color-warning: #d97706;
+  --color-warning-hover: #b45309;
+  --color-warning-light: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  --color-info: #0284c7;
+  --color-info-hover: #0369a1;
+  --color-info-light: #f0f9ff;
+  --color-info-border: #bae6fd;
+
+  /* Neutral Slates */
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-300: #cbd5e1;
+  --color-slate-200: #e2e8f0;
+  --color-slate-100: #f1f5f9;
+  --color-slate-50: #f8fafc;
+  --color-white: #ffffff;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -38,6 +100,43 @@ body {
   color: #0f172a;
   position: relative;
   z-index: 1;
+}
+
+/* Ambient Cultural Watermark Background across ALL pages */
+body::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  right: 2%;
+  transform: translateY(-50%);
+  width: min(680px, 46vw);
+  height: min(680px, 46vw);
+  background-image: url('/bg-watermark.png?v=2');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: 99;
+}
+
+@media (max-width: 980px) {
+  body::after {
+    top: 50%;
+    right: 50%;
+    transform: translate(50%, -50%);
+    width: min(460px, 80vw);
+    height: min(460px, 80vw);
+    opacity: 0.08;
+  }
+}
+
+@media print {
+  body::after {
+    opacity: 0.12;
+    width: 450px;
+    height: 450px;
+  }
 }
 
 #root {
@@ -139,4 +238,520 @@ textarea {
   .auth-landing {
     padding: 16px;
   }
+}
+
+/* ==========================================================================
+   Global Neutral Elevated Badges & Action Buttons (Sửa & Thành viên)
+   ========================================================================== */
+.role-member,
+.acc-role-member,
+.topbar-user-role-badge.member,
+.role-badge-pill:not(.leader):not(.fa),
+.clan-role-pill {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  font-weight: 600 !important;
+}
+
+.btn-tbl-edit,
+.btn-tbl-action.btn-tbl-edit,
+.s6a-link-button:not(.danger-text):not(.success-text) {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  font-weight: 600 !important;
+  transition: all 0.16s ease !important;
+}
+
+.btn-tbl-edit:hover,
+.btn-tbl-action.btn-tbl-edit:hover,
+.s6a-link-button:not(.danger-text):not(.success-text):hover:not(:disabled) {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-tbl-edit:active,
+.btn-tbl-action.btn-tbl-edit:active,
+.s6a-link-button:not(.danger-text):not(.success-text):active:not(:disabled) {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+/* Universal Neutral Elevated Action Buttons for Tables & Lists */
+.fam-btn-view,
+.fam-btn-tree,
+.fam-btn-detail,
+.fam-btn-edit,
+.links-btn-action.view {
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.fam-btn-view:hover,
+.fam-btn-tree:hover,
+.fam-btn-detail:hover,
+.fam-btn-edit:hover,
+.links-btn-action.view:hover {
+  color: #000000 !important;
+  background: #ffffff !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Universal Neutral Elevated Generation Badges & Gender Text */
+.gen-pill,
+.gen-pill.gen-1,
+.gen-pill.gen-2,
+.gen-pill.gen-3,
+.gen-pill.gen-4,
+.member-badge-generation,
+.fa-gen-chip,
+.rel-item-gen-pill,
+.rel-item-gen-pill.purple,
+.dlm-member-tag.male,
+.dlm-member-tag.female {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  transition: all 0.16s ease !important;
+}
+
+.gen-pill:hover,
+.member-badge-generation:hover,
+.fa-gen-chip:hover,
+.rel-item-gen-pill:hover {
+  background: #ffffff !important;
+  border-color: #94a3b8 !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.gender-text,
+.gender-text.male,
+.gender-text.female,
+.member-gender-text,
+.member-gender-pill,
+.member-gender-pill.male,
+.member-gender-pill.female {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+
+.member-btn-view,
+.member-view-profile-btn {
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.member-btn-view:hover,
+.member-view-profile-btn:hover {
+  background: #ffffff !important;
+  border-color: #94a3b8 !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Universal Neutral Elevated Notification Cards & Badges */
+.notif-feed-item.unread {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  border-left: 1px solid #d1d5db !important;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08) !important;
+}
+
+.notif-feed-item.unread:hover {
+  background: #ffffff !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.12) !important;
+  transform: translateY(-2px) !important;
+}
+
+.notif-feed-item.read {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-left: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+  opacity: 0.82 !important;
+}
+
+.notif-feed-item.read:hover {
+  background: #f1f5f9 !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.notif-feed-item .cat-tag,
+.notif-feed-item .cat-event,
+.notif-feed-item .cat-memorial,
+.notif-feed-item .cat-fund,
+.notif-feed-item .cat-proposal,
+.notif-feed-item .cat-system,
+.notif-feed-item .cat-security,
+.notif-feed-item .cat-ai {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+  font-weight: 600 !important;
+}
+
+.notif-feed-item.unread .status-dot {
+  background: #0f172a !important;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12) !important;
+}
+
+.notif-feed-item.read .status-dot {
+  background: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+/* ==========================================================================
+   MFGMS-AI Unified Design System: Standard Buttons
+   ========================================================================== */
+.btn-standard,
+.btn-primary,
+.btn-secondary,
+.btn-outline,
+.btn-danger,
+.btn-ghost,
+.btn-success,
+.clan-btn-primary,
+.admin-btn-primary,
+.clan-btn-secondary,
+.admin-btn-secondary,
+.clan-btn-danger,
+.admin-btn-danger,
+.fa-primary,
+.cnm-add-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 38px !important;
+  padding: 8px 16px !important;
+  border-radius: var(--radius-md) !important; /* 8px universal */
+  font-family: var(--font-body) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-primary,
+.clan-btn-primary,
+.admin-btn-primary,
+.fa-primary,
+.cnm-add-btn {
+  background-color: var(--color-primary) !important;
+  border: 1px solid var(--color-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2), 0 1px 2px rgba(37, 99, 235, 0.12) !important;
+}
+
+.btn-primary:hover:not(:disabled),
+.clan-btn-primary:hover:not(:disabled),
+.admin-btn-primary:hover:not(:disabled),
+.fa-primary:hover:not(:disabled),
+.cnm-add-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover) !important;
+  border-color: var(--color-primary-hover) !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3) !important;
+  transform: translateY(-1px) !important;
+  color: #ffffff !important;
+}
+
+.btn-secondary,
+.clan-btn-secondary,
+.admin-btn-secondary {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+.btn-secondary:hover:not(:disabled),
+.clan-btn-secondary:hover:not(:disabled),
+.admin-btn-secondary:hover:not(:disabled) {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-danger,
+.clan-btn-danger,
+.admin-btn-danger {
+  background-color: var(--color-danger) !important;
+  border: 1px solid var(--color-danger) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.2) !important;
+}
+
+.btn-danger:hover:not(:disabled),
+.clan-btn-danger:hover:not(:disabled),
+.admin-btn-danger:hover:not(:disabled) {
+  background-color: var(--color-danger-hover) !important;
+  border-color: var(--color-danger-hover) !important;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3) !important;
+  transform: translateY(-1px) !important;
+  color: #ffffff !important;
+}
+
+.btn-outline {
+  background-color: transparent !important;
+  border: 1px solid var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--color-primary-light) !important;
+  color: var(--color-primary-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-ghost {
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  color: #475569 !important;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.btn-success {
+  background-color: var(--color-success) !important;
+  border: 1px solid var(--color-success) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.2) !important;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--color-success-hover) !important;
+  border-color: var(--color-success-hover) !important;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3) !important;
+  transform: translateY(-1px) !important;
+  color: #ffffff !important;
+}
+
+/* Button Sizes */
+.btn-sm,
+.btn-tbl-action {
+  height: 32px !important;
+  padding: 4px 12px !important;
+  font-size: 12.5px !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.btn-lg {
+  height: 44px !important;
+  padding: 10px 20px !important;
+  font-size: 15px !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* Active & Disabled States */
+button:active:not(:disabled),
+.btn-primary:active:not(:disabled),
+.btn-secondary:active:not(:disabled),
+.btn-danger:active:not(:disabled),
+.clan-btn-primary:active:not(:disabled),
+.admin-btn-primary:active:not(:disabled) {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+button:disabled,
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled,
+.clan-btn-primary:disabled,
+.admin-btn-primary:disabled,
+.fa-primary:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* ==========================================================================
+   MFGMS-AI Unified Design System: Form Controls & Inputs
+   ========================================================================== */
+.form-input,
+.form-select,
+.clan-search-input,
+.admin-search-input,
+.clan-select-filter,
+.admin-select-filter,
+.form-input-admin {
+  height: 38px !important;
+  padding: 8px 14px !important;
+  border-radius: var(--radius-md) !important; /* 8px */
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  font-family: var(--font-body) !important;
+  font-size: 13.5px !important;
+  line-height: 1.4 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease !important;
+}
+
+.form-input:focus,
+.form-select:focus,
+.clan-search-input:focus,
+.admin-search-input:focus,
+.clan-select-filter:focus,
+.admin-select-filter:focus,
+.form-input-admin:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+  background-color: #ffffff !important;
+}
+
+.form-textarea {
+  min-height: 84px !important;
+  padding: 10px 14px !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  font-family: var(--font-body) !important;
+  font-size: 13.5px !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.form-textarea:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* ==========================================================================
+   MFGMS-AI Unified Design System: Unified Modals & Overlays
+   ========================================================================== */
+.clan-modal-backdrop,
+.admin-modal-backdrop,
+.modal-backdrop,
+.mfn-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.52) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+  padding: 16px !important;
+  animation: mfgModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.clan-modal-box,
+.admin-modal-box,
+.modal-box,
+.mfn-modal-box {
+  background: #ffffff !important;
+  border-radius: var(--radius-xl) !important; /* 16px */
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: var(--shadow-xl) !important;
+  overflow: hidden !important;
+  max-height: 90vh !important;
+  animation: mfgModalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  font-family: var(--font-body) !important;
+}
+
+@keyframes mfgModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mfgModalSlideUp {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ==========================================================================
+   MFGMS-AI Unified Design System: Tables & Cards
+   ========================================================================== */
+.clan-table-card,
+.admin-table-card,
+.data-table-container,
+.shared-table-container {
+  background: #ffffff !important;
+  border-radius: var(--radius-lg) !important; /* 12px */
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  overflow: hidden !important;
+}
+
+.clan-table th,
+.admin-table th,
+.custom-table th {
+  background: #f8fafc !important;
+  padding: 13px 20px !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #475569 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.clan-table td,
+.admin-table td,
+.custom-table td {
+  padding: 14px 20px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  vertical-align: middle !important;
+  color: #334155 !important;
+  font-size: 13.5px !important;
+  font-family: var(--font-body) !important;
+}
+
+.clan-table tr:hover,
+.admin-table tr:hover,
+.custom-table tr:hover {
+  background-color: #f8fafc !important;
 }

@@ -313,7 +313,11 @@ export const ServicePackageManagement: React.FC = () => {
         </div>
 
         {loading ? (
-          <AdminStatePanel kind="loading" message="Đang tải cấu hình gói dịch vụ..." />
+          <AdminStatePanel
+            kind="loading"
+            title="Đang đồng bộ gói dịch vụ..."
+            message="Hệ thống đang tải bảng giá và hạn mức tài nguyên dòng họ..."
+          />
         ) : visiblePackages.length === 0 ? (
           <AdminStatePanel
             kind="empty"

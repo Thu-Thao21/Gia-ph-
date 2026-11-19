@@ -9,7 +9,7 @@
   gap: 20px;
   max-width: 1400px;
   margin: 0 auto;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
   color: #0f172a;
   animation: notifFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -272,7 +272,7 @@
 }
 
 .tab-badge.unread {
-  background: #2563eb;
+  background: #0f172a;
   color: #ffffff;
 }
 
@@ -327,9 +327,10 @@
 }
 
 .filter-pill.active {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #0f172a;
+  border-color: #0f172a;
   color: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
 }
 
 .notif-toolbar-right {
@@ -409,45 +410,132 @@
   align-items: flex-start;
   gap: 16px;
   padding: 18px 22px;
-  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  background: #ffffff;
-  transition: all 0.18s ease;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   position: relative;
 }
 
-.notif-feed-item:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+/* Tin chưa đọc: Nổi lên (Elevated Card - Không viền xanh, bóng đổ nổi rõ, nền trắng) */
+.notif-feed-item.unread {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
 }
 
-.notif-feed-item.unread {
-  background: #fbfcfe;
-  border-left: 4px solid #2563eb;
+.notif-feed-item.unread:hover {
+  background: #ffffff;
+  border-color: #94a3b8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.12);
+}
+
+.notif-feed-item.unread .notif-item-headline {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 16px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.notif-feed-item.unread .notif-item-summary {
+  color: #334155;
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.notif-feed-item.unread .btn-item-action {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+}
+
+.notif-feed-item.unread .btn-item-action:hover {
+  background: #ffffff;
+  color: #000000;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
+/* Tin đã đọc: Chìm xuống (Sunken / Flat / Muted - Không bóng, nền xám nhạt, chữ êm dịu) */
+.notif-feed-item.read {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
+  opacity: 0.82;
+}
+
+.notif-feed-item.read:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  opacity: 1;
+  transform: none;
+  box-shadow: none;
+}
+
+.notif-feed-item.read .notif-item-headline {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 15.5px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.notif-feed-item.read .notif-item-summary {
+  color: #94a3b8;
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.notif-feed-item.read .btn-item-action {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.notif-feed-item.read .btn-item-action:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  transform: none;
+  box-shadow: none;
 }
 
 .notif-item-left-status {
-  padding-top: 3px;
+  padding-top: 5px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .status-dot {
   display: block;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  min-width: 8px;
+  max-width: 8px;
+  height: 8px;
+  min-height: 8px;
+  max-height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .status-dot.unread {
-  background: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  background: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
 }
 
 .status-dot.read {
   background: #cbd5e1;
+  box-shadow: none;
 }
 
 .notif-item-main {
@@ -455,7 +543,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .notif-item-header-row {
@@ -473,10 +561,21 @@
   flex-wrap: wrap;
 }
 
-/* Badge Categories chuẩn sắc nét, không bị co chữ */
-.cat-tag {
+/* Badge Categories & Tags: Bỏ toàn bộ màu sặc sỡ, chuẩn monochrome sang trọng */
+.cat-tag,
+.cat-event,
+.cat-memorial,
+.cat-fund,
+.cat-proposal,
+.cat-system,
+.cat-security,
+.cat-ai {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 3px 9px;
   border-radius: 6px;
   white-space: nowrap;
@@ -484,54 +583,13 @@
   line-height: 1.35;
 }
 
-.cat-event {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-}
-
-.cat-memorial {
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
-}
-
-.cat-fund {
-  background: #f3e8ff;
-  color: #7e22ce;
-  border: 1px solid #e9d5ff;
-}
-
-.cat-proposal {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
-
-.cat-system {
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-}
-
-.cat-security {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-}
-
-.cat-ai {
-  background: #f5f3ff;
-  color: #6d28d9;
-  border: 1px solid #ddd6fe;
-}
-
 .sender-tag {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: #475569;
-  background: #f8fafc;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   padding: 2.5px 8.5px;
   border-radius: 6px;
   white-space: nowrap;
@@ -539,11 +597,12 @@
 }
 
 .audience-tag {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  color: #0369a1;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   padding: 2.5px 8.5px;
   border-radius: 6px;
   white-space: nowrap;
@@ -553,9 +612,10 @@
 .urgent-tag {
   font-size: 11px;
   font-weight: 700;
-  color: #b91c1c;
-  background: #fee2e2;
-  border: 1px solid #fca5a5;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1px solid #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   padding: 2.5px 8.5px;
   border-radius: 6px;
   white-space: nowrap;
@@ -569,16 +629,11 @@
 }
 
 .notif-item-headline {
-  font-size: 15.5px;
-  font-weight: 700;
-  color: #0f172a;
   margin: 0;
   line-height: 1.4;
 }
 
 .notif-item-summary {
-  font-size: 13.5px;
-  color: #475569;
   margin: 0;
   line-height: 1.6;
 }
@@ -590,22 +645,12 @@
 }
 
 .btn-item-action {
-  background: #ffffff;
-  color: #64748b;
-  border: 1px solid #cbd5e1;
-  padding: 5px 12px;
+  padding: 5px 13px;
   border-radius: 7px;
   font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-}
-
-.btn-item-action:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-color: #94a3b8;
 }
 
 /* Empty State */
@@ -1470,5 +1515,69 @@
   .col-cat-head,
   .col-cat-cell {
     width: auto;
+  }
+}
+
+/* Mobile: mỗi danh mục là một thẻ, 3 kênh xếp thành 3 ô có nhãn */
+@media (max-width: 768px) {
+  .settings-table-wrapper {
+    overflow-x: visible;
+  }
+
+  .dashboard-main-content .settings-table-wrapper table.notif-matrix-table,
+  table.notif-matrix-table {
+    display: block;
+    overflow: visible;
+  }
+
+  .notif-matrix-table thead {
+    display: none;
+  }
+
+  .notif-matrix-table tbody {
+    display: block;
+  }
+
+  .notif-matrix-table tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .notif-matrix-table tr:last-child {
+    border-bottom: 0;
+  }
+
+  .notif-matrix-table th,
+  .notif-matrix-table td {
+    padding: 0;
+    border: 0;
+  }
+
+  .notif-matrix-table td.col-cat-cell {
+    grid-column: 1 / -1;
+    padding-bottom: 4px;
+  }
+
+  .notif-matrix-table td.col-channel-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 64px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+
+  .notif-matrix-table td.col-channel-cell::before {
+    content: attr(data-label);
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-align: center;
   }
 }

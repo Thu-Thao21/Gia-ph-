@@ -1,0 +1,158 @@
+/* Thẻ tóm tắt người trên cây – chỉ render trên mobile */
+
+.tree-summary-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(15, 23, 42, 0.35);
+  animation: treeSummaryFade 0.2s ease;
+}
+
+.tree-summary-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10002;
+  box-sizing: border-box;
+  padding: 6px 16px calc(14px + var(--safe-bottom, 0px));
+  background: #ffffff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.2);
+  font-family: var(--font-body);
+  animation: treeSummaryUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tree-summary-handle {
+  width: 40px;
+  height: 5px;
+  margin: 4px auto 12px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.tree-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tree-summary-avatar {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.tree-summary-avatar.female {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+.tree-summary-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tree-summary-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-summary-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-summary-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tree-summary-other {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.tree-summary-meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.tree-summary-close {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.tree-summary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tree-summary-btn {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #1e293b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tree-summary-btn.primary {
+  grid-column: 1 / -1;
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.tree-summary-btn:active {
+  filter: brightness(0.95);
+}
+
+@keyframes treeSummaryUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes treeSummaryFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

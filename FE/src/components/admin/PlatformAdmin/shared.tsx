@@ -87,12 +87,27 @@ export const AdminStatePanel: React.FC<{
   action?: React.ReactNode;
 }> = ({ kind, title, message, action }) => (
   <div className={`s6a-state-panel ${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
-    {kind === 'loading' && <span className="s6a-spinner" aria-hidden="true" />}
-    <div>
-      {title && <strong>{title}</strong>}
-      <p>{message}</p>
-    </div>
-    {action}
+    {kind === 'loading' ? (
+      <div className="s6a-loading-box">
+        <div className="s6a-spinner-rings">
+          <div className="s6a-spinner-outer" />
+          <div className="s6a-spinner-inner" />
+          <div className="s6a-spinner-dot" />
+        </div>
+        <div className="s6a-loading-text">
+          <strong>{title || 'Đang đồng bộ dữ liệu...'}</strong>
+          <p>{message || 'Hệ thống đang truy xuất dữ liệu an toàn, vui lòng chờ trong giây lát...'}</p>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div>
+          {title && <strong>{title}</strong>}
+          <p>{message}</p>
+        </div>
+        {action}
+      </>
+    )}
   </div>
 );
 

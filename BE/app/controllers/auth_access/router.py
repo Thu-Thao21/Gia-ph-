@@ -52,6 +52,7 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordResetRequestAccepted,
     MeResponse,
+    UpdateProfileRequest,
     SessionCreateResponse,
     SessionUser,
 )
@@ -232,6 +233,33 @@ async def me(
     family: FamilyRepository = Depends(get_family_repo),
 ) -> MeResponse:
     return await use_cases.get_me(users=users, family=family, principal=principal)
+
+
+@router.patch(
+    "/me",
+    response_model=MeResponse,
+    responses=error_responses(*AUTHENTICATED_RESTRICTED_OK, ErrorCode.VALIDATION_ERROR),
+)
+@router.patch(
+    "/profile",
+    response_model=MeResponse,
+    responses=error_responses(*AUTHENTICATED_RESTRICTED_OK, ErrorCode.VALIDATION_ERROR),
+)
+async def update_profile(
+    body: UpdateProfileRequest,
+    principal: Principal = Depends(get_principal_allow_restricted),
+    db: AsyncSession = Depends(get_db),
+    users: UserAccessRepository = Depends(get_user_access_repo),
+    family: FamilyRepository = Depends(get_family_repo),
+) -> MeResponse:
+    return await use_cases.update_profile(
+        db=db,
+        users=users,
+        family=family,
+        principal=principal,
+        display_name=body.display_name,
+        phone=body.phone,
+    )
 
 
 @router.post(
