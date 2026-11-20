@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import type { MemberDetail } from '../../../types/member';
 import type { PersonBurial } from '../../../types/location';
 import { useAuth } from '../../../hooks/useAuth';
-import { fetchPersonBurial, getGoogleMapsDirectionUrl, getGoogleMapsEmbedUrl } from '../../../services/location.service';
+import { fetchPersonBurial, getGoogleMapsDirectionUrl } from '../../../services/location.service';
+import { LocationPreviewMap } from '../../worldmap/LocationPreviewMap';
 import { BurialEditModal } from '../../common/BurialEditModal';
 import { LocationProposalModal } from '../../common/LocationProposalModal';
 import '../Profile.css';
@@ -184,12 +185,10 @@ export const StatusTab: React.FC<StatusTabProps> = ({ member }) => {
 
               {/* Embedded Google Maps Preview */}
               <div className="burial-map-preview-container">
-                <iframe
-                  title="Google Maps Preview"
-                  className="burial-map-iframe"
-                  loading="lazy"
-                  src={getGoogleMapsEmbedUrl(burial.latitude, burial.longitude)}
-                  allowFullScreen
+                <LocationPreviewMap
+                  latitude={burial.latitude}
+                  longitude={burial.longitude}
+                  label="Vị trí mộ phần trên bản đồ"
                 />
               </div>
 

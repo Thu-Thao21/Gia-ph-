@@ -1,0 +1,486 @@
+/*
+ * Thiết kế cho người dùng lớn tuổi (50-60+): chữ tối thiểu 16px, vùng bấm tối thiểu 44x44px, nhãn chữ rõ ràng
+ * thay vì chỉ biểu tượng, tương phản đạt WCAG AA. Xem WorldMapView.tsx để biết lý do từng quyết định.
+ */
+.wm-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e7e9f0;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+.wm-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 0 2px;
+}
+
+.wm-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.wm-stats {
+  font-size: 16px;
+  color: #334155;
+  font-weight: 600;
+}
+
+/* Thanh điều khiển: nút chữ rõ ràng (không chỉ biểu tượng), mỗi nút tối thiểu 44px cao để dễ bấm */
+.wm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.wm-toolbar button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wm-toolbar button:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.wm-toolbar button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.wm-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wm-stage {
+  position: relative;
+  width: 100%;
+  /* Mặc định (không truyền prop height): cao hẳn trên desktop để khung Việt Nam gọn, dễ nhìn cho người lớn
+   * tuổi — min(72vh, 700px) theo đúng yêu cầu thiết kế. Trên điện thoại hẹp (xem @media bên dưới) thấp hơn
+   * hẳn (460-520px) để không chiếm hết màn hình. Nếu nơi dùng truyền prop `height`, style nội tuyến đè lên. */
+  height: min(72vh, 700px);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #eef1f6;
+}
+
+.wm-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Toggle "Bản đồ" / "Vệ tinh" — góc trên-trái, dạng viên thuốc, vùng bấm đủ lớn */
+.wm-kind-toggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: inline-flex;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
+}
+
+.wm-kind-toggle button {
+  border: none;
+  background: transparent;
+  color: #334155;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wm-kind-toggle button:hover {
+  background: #f1f5f9;
+}
+
+.wm-kind-toggle button.is-active {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.wm-kind-toggle button:focus-visible {
+  outline: 3px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+/* Overlay chung: tải / rỗng / lỗi */
+.wm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: #334155;
+  font-size: 16px;
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.wm-overlay strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.wm-overlay-error strong {
+  color: #b91c1c;
+}
+
+.wm-retry-btn {
+  margin-top: 4px;
+  min-height: 44px;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #94a3b8;
+  border-radius: 9px;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wm-retry-btn:hover {
+  background: #f1f5f9;
+}
+
+/* Trạng thái đang tải: skeleton/shimmer thay cho chữ trơn */
+.wm-overlay-skeleton {
+  background: #eef1f6;
+  padding: 0;
+}
+
+.wm-skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, #e6eaf2 30%, #f4f6fa 50%, #e6eaf2 70%);
+  background-size: 220% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wm-skeleton {
+    animation: wm-shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes wm-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+
+/* Chú giải kiêm bộ lọc: mỗi loại 1 chip bấm được. "Mộ phần" luôn đứng đầu (xem CATEGORY_META), chỉ hiện loại
+ * có dữ liệu (ẩn hẳn — không làm mờ — loại 0 điểm, xem buildLegend). */
+.wm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0 2px;
+}
+
+.wm-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 999px;
+  padding: 9px 16px 9px 13px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.wm-legend-chip:hover {
+  background: #f1f5f9;
+}
+
+.wm-legend-chip:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.wm-legend-chip.is-off {
+  opacity: 0.5;
+}
+
+.wm-legend-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #94a3b8;
+  flex-shrink: 0;
+}
+
+.wm-legend-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Popup (nằm ngoài cây React nên dùng class toàn cục có tiền tố wm-) */
+.maplibregl-popup-content {
+  padding: 0 !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22) !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: #ffffff !important;
+  border-bottom-color: #ffffff !important;
+}
+
+.maplibregl-popup-close-button {
+  font-size: 24px !important;
+  width: 36px;
+  height: 36px;
+  line-height: 32px;
+  color: #475569 !important;
+  z-index: 1;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: #f1f5f9 !important;
+  border-radius: 50%;
+}
+
+.wm-popup {
+  width: 300px;
+  max-width: 82vw;
+  font-family: inherit;
+}
+
+.wm-popup-cover {
+  width: 100%;
+  /* Chiều cao cố định (không theo tỉ lệ khung hình) — MapLibre không cho popup che lên ngoài khung bản đồ
+     (.maplibregl-map có overflow: hidden mặc định), nên phải giữ popup đủ thấp để vừa trong khung dù bản đồ
+     không cao. object-fit: cover ở dưới lo phần cắt ảnh cho vừa khung này. */
+  height: 68px;
+  background: linear-gradient(135deg, #ede9fe, #f8fafc);
+  overflow: hidden;
+}
+
+.wm-popup-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.2s ease;
+}
+
+.wm-popup-body {
+  padding: 11px 16px 13px;
+}
+
+.wm-popup-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: #0f172a;
+  margin-bottom: 5px;
+  padding-right: 8px;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.wm-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+.wm-popup-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 16px;
+  color: #334155;
+  margin-bottom: 5px;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.wm-popup-pin {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: #64748b;
+}
+
+.wm-popup-date {
+  font-size: 16px;
+  color: #334155;
+  margin-bottom: 7px;
+}
+
+.wm-popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.wm-popup-dir {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  background: #16a34a;
+  color: #ffffff !important;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.wm-popup-dir:hover {
+  background: #15803d;
+}
+
+.wm-popup-copy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wm-popup-copy:hover {
+  background: #e2e8f0;
+}
+
+.wm-popup-copy.wm-popup-copy-done {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+/* Logo MapTiler (điều khoản MapTiler) — góc dưới-trái, attribution của MapLibre ở góc dưới-phải */
+.wm-maptiler-logo {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: block;
+  line-height: 0;
+}
+
+.wm-maptiler-logo img {
+  display: block;
+}
+
+.wm-basemap-note {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 14px;
+  color: #475569;
+}
+
+/* Điện thoại: bản đồ cao như desktop sẽ chiếm hết màn hình — hạ xuống 460-520px (vẫn rõ ràng, không chiếm hết
+ * chỗ cuộn trang). Áp dụng khi nơi dùng KHÔNG tự truyền prop height (style nội tuyến luôn đè CSS này). */
+@media (max-width: 640px) {
+  .wm-stage {
+    height: clamp(460px, 60vh, 520px);
+  }
+}
+
+/* Màn hình hẹp: điều khiển không che bản đồ (thanh điều khiển nằm hẳn ngoài khung bản đồ, không phải lớp phủ
+ * tuyệt đối), nút/chip vẫn giữ nguyên vùng bấm tối thiểu 44px — không thu nhỏ xuống dưới mức dễ bấm. */
+@media (max-width: 420px) {
+  .wm-root {
+    padding: 12px 10px;
+    border-radius: 14px;
+  }
+
+  .wm-toolbar button {
+    flex: 1 1 calc(50% - 4px);
+    padding: 10px 10px;
+    font-size: 14px;
+  }
+
+  .wm-kind-toggle {
+    top: 8px;
+    left: 8px;
+  }
+
+  .wm-kind-toggle button {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .wm-popup {
+    width: 250px;
+    max-width: 88vw;
+  }
+
+  .wm-legend {
+    gap: 8px;
+  }
+
+  .wm-legend-chip {
+    font-size: 15px;
+    padding: 8px 13px 8px 11px;
+  }
+}
+
+/* Tắt hoạt ảnh khi người dùng đã bật giảm chuyển động (ngoài shimmer đã xử lý riêng ở trên) */
+@media (prefers-reduced-motion: reduce) {
+  .wm-kind-toggle button,
+  .wm-legend-chip,
+  .wm-popup-cover img {
+    transition: none;
+  }
+}

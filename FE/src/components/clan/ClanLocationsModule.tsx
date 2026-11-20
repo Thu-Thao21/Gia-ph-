@@ -1,7 +1,5 @@
 ﻿import { LoadingState } from '../../shared/Feedback/LoadingState';
-import React, { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useClanContext } from '../../context/ClanContext';
 import type { ClanLocation, LocationProposal, LocationType } from '../../types/location';
@@ -9,10 +7,13 @@ import {
   fetchClanLocations,
   deleteClanLocation,
   fetchLocationProposals,
+  fetchClanBurials,
   reviewLocationProposal,
   getGoogleMapsDirectionUrl,
+  type ClanBurialMapEntry,
 } from '../../services/location.service';
 import { ClanLocationEditModal } from './ClanLocationEditModal';
+import { ClanWorldMapSection } from '../worldmap/ClanWorldMapSection';
 import './ClanLocationsModule.css';
 
 export interface ClanLocationsModuleProps {
@@ -29,37 +30,6 @@ const typeLabels: Record<LocationType, string> = {
   OTHER: 'Địa điểm khác',
 };
 
-function createMarkerIcon(isMain = false) {
-  return L.divIcon({
-    className: 'clan-marker-pin',
-    html: `
-      <div style="
-        width: 32px;
-        height: 32px;
-        background: ${isMain ? '#2563eb' : '#059669'};
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        border: 2px solid #ffffff;
-      ">
-        <div style="
-          width: 10px;
-          height: 10px;
-          background: #ffffff;
-          border-radius: 50%;
-          transform: rotate(45deg);
-        "></div>
-      </div>
-    `,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-  });
-}
-
 export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId, canManage: propCanManage }) => {
   const { account, primaryRole } = useAuth();
   const {
@@ -72,16 +42,13 @@ export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId
   const effectiveClanId = clanId || activeClanId || '3705a0e2-7eb4-4eaa-89ed-a92b4e7613e4';
 
   const [locations, setLocations] = useState<ClanLocation[]>([]);
+  const [burials, setBurials] = useState<ClanBurialMapEntry[]>([]);
   const [proposals, setProposals] = useState<LocationProposal[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'map' | 'proposals'>('map');
   const [editModalData, setEditModalData] = useState<ClanLocation | null | undefined>(undefined);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
 
   // Quyền quản trị địa điểm dòng họ:
   // 1. Nếu prop canManage được truyền từ cha (Dashboard / FamilyAdminModule)
@@ -127,11 +94,15 @@ export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId
     if (!effectiveClanId) return;
     setLoading(true);
     try {
-      const [locs, props] = await Promise.all([
+      // Mộ phần (fetchClanBurials) tự bắt lỗi riêng và trả [] khi thất bại (xem location.service.ts)
+      // nên một API lỗi không làm hỏng toàn bộ bản đồ hay chặn phần địa điểm hiển thị.
+      const [locs, brs, props] = await Promise.all([
         fetchClanLocations(effectiveClanId),
+        fetchClanBurials(effectiveClanId),
         fetchLocationProposals(effectiveClanId),
       ]);
       setLocations(locs);
+      setBurials(brs);
       setProposals(props);
     } catch (err) {
       console.error('Lỗi tải dữ liệu địa điểm:', err);
@@ -143,86 +114,6 @@ export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId
   useEffect(() => {
     loadData();
   }, [effectiveClanId]);
-
-  // Leaflet Map Initialization & Markers
-  useEffect(() => {
-    if (activeTab !== 'map' || !mapContainerRef.current) return;
-
-    const timer = setTimeout(() => {
-      if (!mapContainerRef.current) return;
-
-      if (!mapInstanceRef.current) {
-        const defaultCenter = locations.length > 0
-          ? [locations[0].latitude, locations[0].longitude] as [number, number]
-          : [15.8893, 108.2392] as [number, number];
-
-        const map = L.map(mapContainerRef.current, {
-          center: defaultCenter,
-          zoom: 13,
-        });
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(map);
-
-        mapInstanceRef.current = map;
-      }
-
-      // Clear existing markers
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-
-      const map = mapInstanceRef.current;
-      if (!map) return;
-
-      // Add markers for all locations
-      const latLngBounds: [number, number][] = [];
-
-      locations.forEach((loc) => {
-        if (!loc.latitude || !loc.longitude) return;
-
-        latLngBounds.push([loc.latitude, loc.longitude]);
-
-        const isMain = loc.locationType === 'ANCESTRAL_HALL';
-        const marker = L.marker([loc.latitude, loc.longitude], {
-          icon: createMarkerIcon(isMain),
-        }).addTo(map);
-
-        const popupContent = document.createElement('div');
-        popupContent.innerHTML = `
-          <div style="font-family: inherit; min-width: 180px;">
-            <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 4px;">${loc.name}</div>
-            <div style="font-size: 12px; color: #2563eb; font-weight: 600; margin-bottom: 6px;">${typeLabels[loc.locationType] || 'Địa điểm'}</div>
-            <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">${loc.address}</div>
-            <a href="${getGoogleMapsDirectionUrl(loc.latitude, loc.longitude)}" target="_blank" rel="noopener noreferrer" style="
-              display: inline-block;
-              background: #16a34a;
-              color: #ffffff;
-              padding: 5px 10px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 700;
-              text-decoration: none;
-            ">Chỉ đường bằng Google Maps</a>
-          </div>
-        `;
-
-        marker.bindPopup(popupContent);
-        markersRef.current.push(marker);
-      });
-
-      if (latLngBounds.length > 1) {
-        map.fitBounds(latLngBounds, { padding: [50, 50], maxZoom: 16 });
-      } else if (latLngBounds.length === 1) {
-        map.setView(latLngBounds[0], 15);
-      }
-
-      map.invalidateSize();
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [activeTab, locations]);
 
   const handleDeleteLocation = async (loc: ClanLocation) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa địa điểm '${loc.name}' khỏi bản đồ dòng tộc?`)) {
@@ -352,25 +243,9 @@ export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId
 
       {activeTab === 'map' ? (
         <>
-          {/* Interactive Map Card */}
-          <div className="clan-locations-map-card">
-            <div className="clan-locations-map-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
-                  <line x1="8" y1="2" x2="8" y2="18" />
-                  <line x1="16" y1="6" x2="16" y2="22" />
-                </svg>
-                <strong style={{ fontSize: '14.5px', color: '#1e293b' }}>
-                  Toàn cảnh Bản đồ số các địa điểm gia tộc
-                </strong>
-              </div>
-              <span style={{ fontSize: '12.5px', color: '#64748b' }}>
-                Nhấp vào từng ghim để xem thông tin và chỉ đường nhanh
-              </span>
-            </div>
-            <div ref={mapContainerRef} className="clan-locations-map-canvas" />
-          </div>
+          {/* Toàn cảnh Bản đồ số: MapLibre (ClanWorldMapSection) — thay cho bản đồ Leaflet cũ, chỉ
+              hiện một bản đồ duy nhất. Dữ liệu địa điểm + mộ phần lấy từ các danh sách đã tải ở trên. */}
+          <ClanWorldMapSection locations={locations} burials={burials} loading={loading} />
 
           {/* Locations Grid */}
           <div>

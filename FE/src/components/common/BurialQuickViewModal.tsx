@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { PersonBurial } from '../../types/location';
-import { fetchPersonBurial, getGoogleMapsDirectionUrl, getGoogleMapsEmbedUrl } from '../../services/location.service';
+import { fetchPersonBurial, getGoogleMapsDirectionUrl } from '../../services/location.service';
+import { LocationPreviewMap } from '../worldmap/LocationPreviewMap';
 import { useAuth } from '../../hooks/useAuth';
 import { BurialEditModal } from './BurialEditModal';
 import { LocationProposalModal } from './LocationProposalModal';
@@ -133,11 +134,10 @@ export const BurialQuickViewModal: React.FC<BurialQuickViewModalProps> = ({
 
                 {/* Map Preview */}
                 <div style={{ height: '220px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-                  <iframe
-                    title="Map Preview"
-                    src={getGoogleMapsEmbedUrl(burial.latitude, burial.longitude)}
-                    style={{ width: '100%', height: '100%', border: 'none' }}
-                    loading="lazy"
+                  <LocationPreviewMap
+                    latitude={burial.latitude}
+                    longitude={burial.longitude}
+                    label={`Vị trí mộ phần của ${personName}`}
                   />
                 </div>
 
