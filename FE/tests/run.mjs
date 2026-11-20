@@ -33,6 +33,16 @@ try {
     logLevel: 'warning',
     absWorkingDir: resolve(here, '..'),
     loader: { '.css': 'empty' },
+    // `import x from '...?url'` (loadMapLibre.ts) chỉ có nghĩa với Vite; ở đây thay bằng chuỗi giả để gói được.
+    plugins: [
+      {
+        name: 'stub-vite-url-imports',
+        setup(b) {
+          b.onResolve({ filter: /\?url$/ }, (args) => ({ path: args.path, namespace: 'vite-url-stub' }));
+          b.onLoad({ filter: /.*/, namespace: 'vite-url-stub' }, () => ({ contents: 'export default "stub-url";', loader: 'js' }));
+        },
+      },
+    ],
     define: { 'import.meta.env': JSON.stringify({ DEV: true, VITE_API_BASE_URL: 'http://test.invalid/api/v1' }) },
     banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
   });
