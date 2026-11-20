@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { PersonBurial, LocationPrivacyLevel } from '../../types/location';
 import { savePersonBurial } from '../../services/location.service';
 import { LocationPickerModal } from './LocationPickerModal';
+import { formatFormCoords, initialFormCoords, requireFormCoords } from './locationFormCoords';
 import './BurialEditModal.css';
 
 export interface BurialEditModalProps {
@@ -24,8 +25,9 @@ export const BurialEditModal: React.FC<BurialEditModalProps> = ({
   const [cemeteryName, setCemeteryName] = useState<string>(initialData?.cemeteryName || '');
   const [graveCode, setGraveCode] = useState<string>(initialData?.graveCode || '');
   const [address, setAddress] = useState<string>(initialData?.address || '');
-  const [latitude, setLatitude] = useState<number>(initialData?.latitude || 15.8893);
-  const [longitude, setLongitude] = useState<number>(initialData?.longitude || 108.2392);
+  // Chưa có tọa độ thì để null (không dùng tọa độ mặc định).
+  const [latitude, setLatitude] = useState<number | null>(() => initialFormCoords(initialData?.latitude, initialData?.longitude).lat);
+  const [longitude, setLongitude] = useState<number | null>(() => initialFormCoords(initialData?.latitude, initialData?.longitude).lng);
   const [burialDate, setBurialDate] = useState<string>(initialData?.burialDate || '');
   const [orientation, setOrientation] = useState<string>(initialData?.orientation || '');
   const [notes, setNotes] = useState<string>(initialData?.notes || '');
@@ -39,8 +41,9 @@ export const BurialEditModal: React.FC<BurialEditModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!latitude || !longitude) {
-      setErrorMsg('Vui lòng chọn tọa độ vị trí mộ phần trên bản đồ.');
+    const picked = requireFormCoords(latitude, longitude);
+    if (!picked) {
+      setErrorMsg('Vui lòng chọn vị trí trên bản đồ.');
       return;
     }
 
@@ -51,8 +54,8 @@ export const BurialEditModal: React.FC<BurialEditModalProps> = ({
         cemeteryName: cemeteryName.trim() || undefined,
         graveCode: graveCode.trim() || undefined,
         address: address.trim() || undefined,
-        latitude,
-        longitude,
+        latitude: picked.lat,
+        longitude: picked.lng,
         burialDate: burialDate || undefined,
         orientation: orientation.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -115,7 +118,7 @@ export const BurialEditModal: React.FC<BurialEditModalProps> = ({
             <div className="burial-map-picker-banner">
               <div className="burial-coords-info">
                 <span className="burial-coords-label">Tọa độ GPS đã chọn:</span>
-                <span className="burial-coords-val">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
+                <span className="burial-coords-val">{formatFormCoords(latitude, longitude)}</span>
               </div>
               <button
                 type="button"
