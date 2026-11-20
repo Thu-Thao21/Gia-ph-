@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+import uuid
+from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, delete, or_, select, text, update
+from sqlalchemy import and_, delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.genealogy.entities import Person, PersonClosure, Relationship
+from app.models.genealogy.entities import Person, PersonBurial, PersonClosure, Relationship
 
 
 class GenealogyRepository:
@@ -41,7 +42,7 @@ class GenealogyRepository:
             escaped = str(search).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             stmt = stmt.where(Person.full_name.ilike(f"%{escaped}%"))
         if gender:
-            stmt = stmt.where(Person.gender == gender)
+            stmt = stmt.where(Person.gender.ilike(gender))
         if branch_id:
             stmt = stmt.where(Person.branch_id == branch_id)
         if is_living is not None:
@@ -49,6 +50,59 @@ class GenealogyRepository:
         stmt = stmt.order_by(Person.generation, Person.full_name).limit(limit).offset(offset)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    def _burial_has_coordinates():
+        """latitude/longitude NOT NULL theo schema hiện tại, nhưng (0, 0) là giá trị dùng để báo
+        "chưa nhập tọa độ" ở nơi khác trong hệ thống (bản đồ FE coi (0,0) là không hợp lệ) — bản ghi
+        kiểu đó cũng bị loại khỏi bản đồ để nhất quán, không chỉ NULL."""
+        return and_(
+            PersonBurial.latitude.is_not(None),
+            PersonBurial.longitude.is_not(None),
+            or_(PersonBurial.latitude != 0, PersonBurial.longitude != 0),
+        )
+
+    async def count_clan_burials(self, clan_id: uuid.UUID, privacy_levels: List[str]) -> int:
+        """Tổng số mộ phần của dòng họ khớp bộ lọc riêng tư + có tọa độ (trước khi phân trang)."""
+        if not privacy_levels:
+            return 0
+        stmt = (
+            select(func.count(PersonBurial.burial_id))
+            .where(
+                PersonBurial.clan_id == clan_id,
+                PersonBurial.privacy_level.in_(privacy_levels),
+                self._burial_has_coordinates(),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return int(result.scalar_one())
+
+    async def list_clan_burials(
+        self,
+        clan_id: uuid.UUID,
+        privacy_levels: List[str],
+        limit: int = 200,
+        offset: int = 0,
+    ) -> List[Tuple[PersonBurial, str]]:
+        """Mộ phần có tọa độ của một dòng họ, lọc theo các mức privacyLevel được phép xem, kèm tên
+        người (JOIN bảng persons, một truy vấn duy nhất — không N+1). Sắp xếp ổn định để phân trang
+        không trùng/lặp trang giữa các lần gọi."""
+        if not privacy_levels:
+            return []
+        stmt = (
+            select(PersonBurial, Person.full_name)
+            .join(Person, Person.id == PersonBurial.person_id)
+            .where(
+                PersonBurial.clan_id == clan_id,
+                PersonBurial.privacy_level.in_(privacy_levels),
+                self._burial_has_coordinates(),
+            )
+            .order_by(PersonBurial.updated_at.desc(), PersonBurial.burial_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
 
     async def create_person(self, person: Person) -> Person:
         self.db.add(person)
@@ -153,7 +207,7 @@ class GenealogyRepository:
                 INSERT INTO person_closure (ancestor_id, descendant_id, depth)
                 SELECT person_id, person_id, 0
                 FROM persons
-                WHERE person_id = :person_id::uuid AND clan_id = :family_id::uuid
+                WHERE person_id = CAST(:person_id AS UUID) AND clan_id = CAST(:family_id AS UUID)
                 ON CONFLICT (ancestor_id, descendant_id) DO NOTHING
                 """
             ),
@@ -172,10 +226,10 @@ class GenealogyRepository:
                 CROSS JOIN person_closure c
                 JOIN persons ancestor ON ancestor.person_id = a.ancestor_id
                 JOIN persons descendant ON descendant.person_id = c.descendant_id
-                WHERE a.descendant_id = :parent_id::uuid
-                  AND c.ancestor_id = :child_id::uuid
-                  AND ancestor.clan_id = :family_id::uuid
-                  AND descendant.clan_id = :family_id::uuid
+                WHERE a.descendant_id = CAST(:parent_id AS UUID)
+                  AND c.ancestor_id = CAST(:child_id AS UUID)
+                  AND ancestor.clan_id = CAST(:family_id AS UUID)
+                  AND descendant.clan_id = CAST(:family_id AS UUID)
                 ON CONFLICT (ancestor_id, descendant_id) 
                 DO UPDATE SET depth = LEAST(person_closure.depth, EXCLUDED.depth)
                 """
@@ -194,13 +248,13 @@ class GenealogyRepository:
                     SELECT pc.ancestor_id
                     FROM person_closure pc
                     JOIN persons p ON p.person_id = pc.ancestor_id
-                    WHERE pc.descendant_id = :parent_id::uuid AND p.clan_id = :family_id::uuid
+                    WHERE pc.descendant_id = CAST(:parent_id AS UUID) AND p.clan_id = CAST(:family_id AS UUID)
                 )
                   AND descendant_id IN (
                     SELECT pc.descendant_id
                     FROM person_closure pc
                     JOIN persons p ON p.person_id = pc.descendant_id
-                    WHERE pc.ancestor_id = :child_id::uuid AND p.clan_id = :family_id::uuid
+                    WHERE pc.ancestor_id = CAST(:child_id AS UUID) AND p.clan_id = CAST(:family_id AS UUID)
                 )
                   AND depth > 0
                 """
