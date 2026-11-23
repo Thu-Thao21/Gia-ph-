@@ -95,6 +95,7 @@ export interface Family {
   id: string;
   name: string;
   code?: string;
+  clan_code?: string;
   description?: string;
   founderName?: string;
   originPlace?: string;

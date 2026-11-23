@@ -1786,7 +1786,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
                   </svg>
 
                   {/* Tiêu đề Cuốn thư Hoàng gia khi bật tùy chọn */}
-                  {chartConfig?.showClanHeader && (
+                  {chartConfig && (chartConfig.showClanHeader ?? Boolean(chartConfig.chartTitle)) && (
                     <div
                       className="tree-canvas-imperial-header"
                       style={{
@@ -1808,9 +1808,9 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
                       <div style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '2px', color: '#fef08a', textTransform: 'uppercase' }}>
                         {chartConfig.chartTitle || 'PHẢ ĐỒ ĐẠI TỘC'}
                       </div>
-                      {chartConfig.progenitorTitle && (
+                      {(chartConfig.founderTitle || chartConfig.progenitorTitle) && (
                         <div style={{ fontSize: '11px', fontWeight: 600, color: '#fef9c3', marginTop: '2px' }}>
-                          {chartConfig.progenitorTitle}
+                          {chartConfig.founderTitle || chartConfig.progenitorTitle}
                         </div>
                       )}
                     </div>

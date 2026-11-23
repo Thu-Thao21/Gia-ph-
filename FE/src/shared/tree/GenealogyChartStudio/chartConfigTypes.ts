@@ -49,6 +49,8 @@ export interface GenealogyChartConfig {
   coupletRight: string; // Câu đối vế phải
   chartTitle: string; // Tiêu đề phả đồ (ví dụ: PHẢ ĐỒ MAI THẾ TỘC)
   founderTitle: string; // Tên Thủy tổ / Khởi tổ
+  progenitorTitle?: string; // Tên Thủy tổ (alias)
+  showClanHeader?: boolean; // Hiển thị cuốn thư tiêu đề trên canvas
   clanBranchSubtitle: string; // Chi nhánh / Địa danh
   showSeal: boolean; // Triện son ngọc phả ("Gia Phả Bảo Ấn")
   fontFamily: 'serif' | 'sans';
