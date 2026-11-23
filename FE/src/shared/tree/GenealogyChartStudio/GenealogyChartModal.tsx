@@ -95,7 +95,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
     try {
       localStorage.setItem(userStorageKey, JSON.stringify(draftConfig));
       onApplyToTree(draftConfig);
-      showToast('✓ Đã áp dụng thành công diện mạo mới lên cây gia phả!');
+      showToast('Đã áp dụng thành công diện mạo mới lên cây gia phả!');
     } catch {
       showToast('Không thể lưu cấu hình vào bộ nhớ trình duyệt');
     }
@@ -106,7 +106,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
     try {
       localStorage.setItem(clanStorageKey, JSON.stringify(draftConfig));
       onApplyToTree(draftConfig);
-      showToast(`💾 Đã lưu làm cấu hình mặc định cho toàn bộ dòng họ ${clanName}!`);
+      showToast(`Đã lưu làm cấu hình mặc định cho toàn bộ dòng họ ${clanName}!`);
     } catch {
       showToast('Không thể lưu cấu hình dòng họ');
     }
@@ -191,7 +191,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
         {/* HEADER */}
         <div className="chart-modal-header">
           <div className="chart-modal-header-left">
-            <span className="modal-badge-icon">🎨</span>
             <div>
               <h2 className="chart-modal-title">
                 Tùy chỉnh Phả đồ & Xuất bản in — <span className="clan-title-highlight">{clanName}</span>
@@ -213,7 +212,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
             className={`chart-modal-tab-btn ${activeTab === 'style' ? 'active' : ''}`}
             onClick={() => setActiveTab('style')}
           >
-            <span className="tab-icon">🎨</span>
             <span>Màu sắc & Khung nền</span>
           </button>
           <button
@@ -221,7 +219,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
             className={`chart-modal-tab-btn ${activeTab === 'layout' ? 'active' : ''}`}
             onClick={() => setActiveTab('layout')}
           >
-            <span className="tab-icon">📐</span>
             <span>Bố cục & Nhánh</span>
           </button>
           <button
@@ -229,7 +226,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
             className={`chart-modal-tab-btn ${activeTab === 'export' ? 'active' : ''}`}
             onClick={() => setActiveTab('export')}
           >
-            <span className="tab-icon">🖨️</span>
             <span>Xuất bản in & Dữ liệu</span>
           </button>
         </div>
@@ -268,21 +264,21 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                     className={`choice-pill ${draftConfig.cardColorMode === 'generation' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, cardColorMode: 'generation' }))}
                   >
-                    👑 Phân theo thế hệ (14 đời 14 màu riêng biệt)
+                    Phân theo thế hệ (14 đời 14 màu riêng biệt)
                   </button>
                   <button
                     type="button"
                     className={`choice-pill ${draftConfig.cardColorMode === 'status' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, cardColorMode: 'status' }))}
                   >
-                    🌿 Phân theo còn sống / đã mất
+                    Phân theo còn sống / đã mất
                   </button>
                   <button
                     type="button"
                     className={`choice-pill ${draftConfig.cardColorMode === 'gender' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, cardColorMode: 'gender' }))}
                   >
-                    👫 Phân theo Nam / Nữ
+                    Phân theo Nam / Nữ
                   </button>
                 </div>
               </div>
@@ -411,14 +407,14 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                     className={`choice-pill ${draftConfig.direction === 'vertical' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, direction: 'vertical' }))}
                   >
-                    ⬇️ Từ trên xuống dưới (Dọc truyền thống)
+                    Từ trên xuống dưới (Dọc truyền thống)
                   </button>
                   <button
                     type="button"
                     className={`choice-pill ${draftConfig.direction === 'horizontal' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, direction: 'horizontal' }))}
                   >
-                    ➡️ Từ trái sang phải (Ngang)
+                    Từ trái sang phải (Ngang)
                   </button>
                 </div>
               </div>
@@ -587,14 +583,14 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                     className={`choice-pill ${draftConfig.paperOrientation === 'landscape' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, paperOrientation: 'landscape' }))}
                   >
-                    📄 Hướng Ngang (Landscape)
+                    Hướng Ngang (Landscape)
                   </button>
                   <button
                     type="button"
                     className={`choice-pill ${draftConfig.paperOrientation === 'portrait' ? 'active' : ''}`}
                     onClick={() => updateDraft((c) => ({ ...c, paperOrientation: 'portrait' }))}
                   >
-                    📃 Hướng Dọc (Portrait)
+                    Hướng Dọc (Portrait)
                   </button>
                 </div>
               </div>
@@ -604,7 +600,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                 <h4 className="chart-section-title">2. Xuất file chất lượng cao</h4>
                 <div className="modal-export-buttons-grid">
                   <button type="button" className="modal-export-btn btn-pdf" onClick={handlePrint}>
-                    <span className="export-icon">📄</span>
                     <div className="export-text">
                       <strong>In ấn / Xuất PDF chuẩn Vector</strong>
                       <span>Khổ {draftConfig.paperSize} ({draftConfig.paperOrientation === 'landscape' ? 'Ngang' : 'Dọc'})</span>
@@ -617,7 +612,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                     onClick={() => handleExportPNG(2)}
                     disabled={isExporting}
                   >
-                    <span className="export-icon">🖼️</span>
                     <div className="export-text">
                       <strong>Xuất ảnh PNG Siêu nét (2x - 300 DPI)</strong>
                       <span>Độ nét cao chuẩn in ảnh kỷ yếu dòng họ</span>
@@ -630,7 +624,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                     onClick={() => handleExportPNG(4)}
                     disabled={isExporting}
                   >
-                    <span className="export-icon">🌟</span>
                     <div className="export-text">
                       <strong>Xuất ảnh PNG Ultra HD (4x - 600 DPI)</strong>
                       <span>Độ nét tối đa cho bản in bạt lụa nhà thờ họ</span>
@@ -638,7 +631,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                   </button>
 
                   <button type="button" className="modal-export-btn btn-svg" onClick={handleExportSVG}>
-                    <span className="export-icon">📐</span>
                     <div className="export-text">
                       <strong>Xuất SVG Vector vô hạn</strong>
                       <span>Phóng to vô hạn không vỡ nét (AI / Corel)</span>
@@ -646,7 +638,6 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                   </button>
 
                   <button type="button" className="modal-export-btn btn-json" onClick={handleExportJSON}>
-                    <span className="export-icon">💾</span>
                     <div className="export-text">
                       <strong>Xuất JSON Dữ liệu gia phả</strong>
                       <span>Lưu trữ cấu trúc nút và quan hệ huyết thống</span>
@@ -667,7 +658,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                 checked={liveSyncOnTree}
                 onChange={(e) => setLiveSyncOnTree(e.target.checked)}
               />
-              <span>👁️ Xem trước trực tiếp trên cây gia phả</span>
+              <span>Xem trước trực tiếp trên cây gia phả</span>
             </label>
           </div>
 
@@ -679,7 +670,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
               onClick={handleResetDefaults}
               title="Đưa các tùy chọn về mẫu chuẩn mặc định"
             >
-              🔄 Khôi phục mặc định
+              Khôi phục mặc định
             </button>
 
             {/* Trưởng tộc lưu mặc định dòng họ */}
@@ -690,7 +681,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
                 onClick={handleSaveClanDefault}
                 title="Lưu cấu hình này làm mẫu mặc định cho toàn bộ dòng họ xem chung"
               >
-                💾 Lưu mặc định Dòng họ
+                Lưu mặc định Dòng họ
               </button>
             )}
 
@@ -701,7 +692,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
               onClick={handleApplyNow}
               title="Lưu cấu hình và áp dụng ngay lập tức lên cây gia phả"
             >
-              ✓ Áp dụng trên cây ngay
+              Áp dụng trên cây ngay
             </button>
 
             {/* Nút Đóng */}

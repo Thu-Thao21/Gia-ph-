@@ -738,7 +738,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             onClick={() => setIsStudioOpen(true)}
             title="Mở không gian Tùy chỉnh Phả đồ truyền thống, Đổi màu sắc, Khung nền và Xuất bản in chất lượng cao"
           >
-            <span className="btn-icon">📜</span>
             <span>Tùy chỉnh Phả đồ & Xuất in</span>
             <span className="studio-new-badge">Mới</span>
           </button>

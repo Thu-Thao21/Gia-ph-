@@ -201,7 +201,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
         <div className="studio-topbar-left">
           <div className="studio-badge-pill">MFGMS-AI STUDIO</div>
           <h1 className="studio-topbar-title">
-            📜 Tùy chỉnh Phả đồ & Xuất bản in — <span className="clan-highlight">{clanName}</span>
+            Tùy chỉnh Phả đồ & Xuất bản in — <span className="clan-highlight">{clanName}</span>
           </h1>
         </div>
 
@@ -213,7 +213,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
             onClick={handlePrint}
             title="Mở cửa sổ in ấn chuẩn hoặc Lưu dưới dạng PDF Vector chất lượng cao"
           >
-            🖨️ In ấn / Xuất PDF
+            In ấn / Xuất PDF
           </button>
 
           {/* Nút Áp dụng hiển thị */}
@@ -223,7 +223,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
             onClick={handleApply}
             title="Lưu các thay đổi và áp dụng vào chế độ xem cá nhân của bạn"
           >
-            ✓ Áp dụng hiển thị
+            Áp dụng hiển thị
           </button>
 
           {/* Nút Trưởng tộc Lưu làm mặc định Dòng họ */}
@@ -234,7 +234,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
               onClick={handleSaveClanDefault}
               title="Lưu mẫu bố cục & phong cách này làm mặc định cho tất cả thành viên dòng họ xem"
             >
-              💾 Lưu mặc định Dòng họ
+              Lưu mặc định Dòng họ
             </button>
           )}
 
@@ -245,7 +245,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
             onClick={handleResetDefaults}
             title="Đưa các tùy chọn về mẫu chuẩn ban đầu"
           >
-            🔄 Khôi phục mặc định
+            Khôi phục mặc định
           </button>
 
           {/* Nút Đóng & Hoàn nguyên */}
@@ -255,7 +255,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
             onClick={handleCancel}
             title="Đóng bảng thiết kế và hoàn nguyên các thay đổi chưa lưu"
           >
-            ✕ Thoát
+            Thoát
           </button>
         </div>
       </header>
@@ -271,7 +271,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
               className={`studio-tab-btn ${activeTab === 'layout' ? 'active' : ''}`}
               onClick={() => setActiveTab('layout')}
             >
-              <span className="tab-icon">📐</span>
               <span className="tab-label">Bố cục & Nhánh</span>
             </button>
             <button
@@ -279,7 +278,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
               className={`studio-tab-btn ${activeTab === 'style' ? 'active' : ''}`}
               onClick={() => setActiveTab('style')}
             >
-              <span className="tab-icon">🎨</span>
               <span className="tab-label">Màu sắc & Khung nền</span>
             </button>
             <button
@@ -287,7 +285,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
               className={`studio-tab-btn ${activeTab === 'export' ? 'active' : ''}`}
               onClick={() => setActiveTab('export')}
             >
-              <span className="tab-icon">🖨️</span>
               <span className="tab-label">Xuất in & Dữ liệu</span>
             </button>
           </nav>
@@ -303,14 +300,14 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     className={`choice-btn ${config.direction === 'vertical' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, direction: 'vertical' }))}
                   >
-                    ⬇️ Từ trên xuống (Dọc)
+                    Từ trên xuống (Dọc)
                   </button>
                   <button
                     type="button"
                     className={`choice-btn ${config.direction === 'horizontal' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, direction: 'horizontal' }))}
                   >
-                    ➡️ Trái sang phải (Ngang)
+                    Trái sang phải (Ngang)
                   </button>
                 </div>
               </section>
@@ -485,21 +482,21 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     className={`choice-btn ${config.cardColorMode === 'generation' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, cardColorMode: 'generation' }))}
                   >
-                    👑 Theo thế hệ (14 đời)
+                    Theo thế hệ (14 đời)
                   </button>
                   <button
                     type="button"
                     className={`choice-btn ${config.cardColorMode === 'status' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, cardColorMode: 'status' }))}
                   >
-                    🌿 Còn sống / Đã mất
+                    Còn sống / Đã mất
                   </button>
                   <button
                     type="button"
                     className={`choice-btn ${config.cardColorMode === 'gender' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, cardColorMode: 'gender' }))}
                   >
-                    👫 Nam / Nữ
+                    Nam / Nữ
                   </button>
                 </div>
               </section>
@@ -659,14 +656,14 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     className={`choice-btn ${config.paperOrientation === 'landscape' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, paperOrientation: 'landscape' }))}
                   >
-                    📄 Hướng Ngang (Landscape)
+                    Hướng Ngang (Landscape)
                   </button>
                   <button
                     type="button"
                     className={`choice-btn ${config.paperOrientation === 'portrait' ? 'active' : ''}`}
                     onClick={() => setConfig((c) => ({ ...c, paperOrientation: 'portrait' }))}
                   >
-                    📃 Hướng Dọc (Portrait)
+                    Hướng Dọc (Portrait)
                   </button>
                 </div>
               </section>
@@ -680,7 +677,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     onClick={handlePrint}
                     title="Mở cửa sổ in ấn hoặc Lưu dưới dạng PDF chuẩn vector"
                   >
-                    <span className="export-btn-icon">📄</span>
                     <div className="export-btn-text">
                       <strong>In ấn / Xuất PDF</strong>
                       <span>Khổ {config.paperSize} ({config.paperOrientation === 'landscape' ? 'Ngang' : 'Dọc'})</span>
@@ -694,7 +690,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     disabled={isExporting}
                     title="Xuất ảnh PNG 300 DPI chuẩn in ấn"
                   >
-                    <span className="export-btn-icon">🖼️</span>
                     <div className="export-btn-text">
                       <strong>Xuất PNG Siêu nét (2x)</strong>
                       <span>Độ nét cao 300 DPI rõ từng chữ</span>
@@ -708,7 +703,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     disabled={isExporting}
                     title="Xuất ảnh PNG Ultra HD 600 DPI để in bạt/vải khổ lớn"
                   >
-                    <span className="export-btn-icon">🌟</span>
                     <div className="export-btn-text">
                       <strong>Xuất PNG Ultra HD (4x)</strong>
                       <span>Độ nét tối đa cho bản in từ đường</span>
@@ -721,7 +715,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     onClick={handleExportSVG}
                     title="Xuất file SVG Vector chuẩn mở, sắc nét vô hạn"
                   >
-                    <span className="export-btn-icon">📐</span>
                     <div className="export-btn-text">
                       <strong>Xuất SVG Vector vô hạn</strong>
                       <span>Chỉnh sửa trên AI, Corel, Figma</span>
@@ -734,7 +727,6 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
                     onClick={handleExportJSON}
                     title="Xuất toàn bộ dữ liệu nút và quan hệ gia phả"
                   >
-                    <span className="export-btn-icon">💾</span>
                     <div className="export-btn-text">
                       <strong>Xuất JSON Dữ liệu gia phả</strong>
                       <span>Lưu trữ cấu trúc phả hệ chuẩn</span>
@@ -745,7 +737,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
 
               <section className="studio-control-group">
                 <div className="studio-info-tip">
-                  <strong>💡 Lời khuyên khi in ấn phả đồ dòng họ:</strong>
+                  <strong>Lời khuyên khi in ấn phả đồ dòng họ:</strong>
                   <p>
                     Để in treo tại nhà thờ họ hoặc họp họ quy mô lớn, quý tộc họ nên xuất định dạng{' '}
                     <strong>SVG Vector</strong> hoặc <strong>PNG 4x</strong> và chuyển cho xưởng in bạt lụa (Canvas / Silk)
@@ -762,7 +754,7 @@ export const GenealogyChartStudio: React.FC<GenealogyChartStudioProps> = ({
           {/* Thanh công cụ Zoom & Căn giữa canvas */}
           <div className="preview-toolbar-overlay">
             <span className="preview-guide-badge">
-              👁️ Bản xem trước trực tiếp • Khổ {config.paperSize} ({config.paperOrientation === 'landscape' ? 'Ngang' : 'Dọc'})
+              Bản xem trước trực tiếp • Khổ {config.paperSize} ({config.paperOrientation === 'landscape' ? 'Ngang' : 'Dọc'})
             </span>
             <div className="preview-zoom-group">
               <button
