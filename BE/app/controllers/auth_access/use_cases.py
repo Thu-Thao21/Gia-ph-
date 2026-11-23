@@ -331,6 +331,36 @@ async def build_membership_summaries(
             permissions.update(await family.list_fa_permission_codes(clan.clan_id, user_id))
 
         person_link = await family.get_person_link_by_user(clan.clan_id, user_id)
+        if not person_link or person_link.status != "ACTIVE" or person_link.revoked_at is not None:
+            # If user is the active Owner of this clan, auto-ensure Person profile and link!
+            if await is_active_owner(user_id, clan.clan_id, users, family):
+                try:
+                    from app.services.genealogy.clan_leader_profile_service import ensure_clan_leader_person_profile
+                    rep_name = None
+                    rep_phone = None
+                    if clan.registration_id:
+                        reg = await family.get_registration_by_id(clan.registration_id)
+                        if reg:
+                            rep_name = str(reg.representative_name).strip() if reg.representative_name else None
+                            rep_phone = str(reg.representative_phone).strip() if reg.representative_phone else None
+                    if not rep_name:
+                        user_obj = await users.get_user_by_id(user_id)
+                        rep_name = str(user_obj.display_name or "").strip() if user_obj else None
+                    if not rep_name or rep_name.startswith("Dòng Họ"):
+                        rep_name = "Trưởng tộc " + (clan.name or "")
+
+                    await ensure_clan_leader_person_profile(
+                        db=family._session,
+                        clan_id=clan.clan_id,
+                        user_id=user_id,
+                        full_name=rep_name,
+                        phone=rep_phone,
+                    )
+                    await family._session.commit()
+                    person_link = await family.get_person_link_by_user(clan.clan_id, user_id)
+                except Exception as e:
+                    logger.warning("Auto ensure_clan_leader_person_profile in get_memberships_for_user: %s", e)
+
         person_id = (
             person_link.person_id
             if person_link and person_link.status == "ACTIVE" and person_link.revoked_at is None
@@ -372,11 +402,35 @@ async def get_me(
         display_name=user.display_name,
         email=user.email,
         username=user.username,
+        phone=getattr(user, "phone", None),
         status=user.status,
         memberships=memberships,
         permissions=system_admin_actions() if is_system_admin else [],
         requires_password_change=principal.requires_password_change,
     )
+
+
+async def update_profile(
+    *,
+    db: UnitOfWork,
+    users: UserAccessRepository,
+    family: FamilyRepository,
+    principal: Principal,
+    display_name: str | None = None,
+    phone: str | None = None,
+) -> MeResponse:
+    user = await users.get_user_for_update(principal.user_id)
+    if user is None:
+        raise AppError(ErrorCode.SESSION_INVALID)
+
+    if display_name is not None and display_name.strip():
+        user.display_name = display_name.strip()
+
+    if phone is not None:
+        user.phone = phone.strip() or None
+
+    await db.commit()
+    return await get_me(users=users, family=family, principal=principal)
 
 
 # ----- POST /auth/logout -----

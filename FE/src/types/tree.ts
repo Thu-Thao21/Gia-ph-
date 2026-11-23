@@ -11,6 +11,13 @@ export interface SpouseNode {
   isAlive: boolean;
   occupation?: string;
   focusRole?: string;
+  userId?: string;
+  isCurrentUser?: boolean;
+  isCrossClan?: boolean;
+  clanName?: string;
+  clanId?: string;
+  inLawRole?: string;
+  linkId?: string;
 }
 
 export interface ErgoTreeNode {
@@ -29,6 +36,7 @@ export interface ErgoTreeNode {
   userId?: string;
   isPrivate?: boolean;
   isUnconnected?: boolean;
+  isCurrentUser?: boolean;
   fatherId?: string;
   motherId?: string;
   spouses: SpouseNode[];

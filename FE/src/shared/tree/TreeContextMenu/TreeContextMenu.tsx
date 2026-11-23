@@ -13,6 +13,7 @@ export interface TreeContextMenuProps {
   onClose: () => void;
   onSelectFocus: (node: ErgoTreeNode) => void;
   onViewBio: (node: ErgoTreeNode) => void;
+  onViewBurial?: (node: ErgoTreeNode) => void;
   onEdit?: (node: ErgoTreeNode) => void;
   onDelete?: (node: ErgoTreeNode) => void;
   onAddChild?: (node: ErgoTreeNode) => void;
@@ -20,6 +21,9 @@ export interface TreeContextMenuProps {
   onRelocate?: (node: ErgoTreeNode) => void;
   onTogglePrivacy?: (node: ErgoTreeNode) => void;
   onProposeEdit?: (node: ErgoTreeNode) => void;
+  onViewDualLineage?: (node: ErgoTreeNode) => void;
+  onViewInLawTree?: (clanId: string, personId: string) => void;
+  onViewMyNetwork?: () => void;
   onActionToast?: (actionName: string) => void;
 }
 
@@ -34,6 +38,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
   onClose,
   onSelectFocus,
   onViewBio,
+  onViewBurial,
   onEdit,
   onDelete,
   onAddChild,
@@ -41,6 +46,9 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
   onRelocate,
   onTogglePrivacy,
   onProposeEdit,
+  onViewDualLineage,
+  onViewInLawTree,
+  onViewMyNetwork,
   onActionToast,
 }) => {
   useEffect(() => {
@@ -72,6 +80,11 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           {node.fullName}
         </span>
         {isSelf && <span className="tree-context-menu-badge self">Bạn</span>}
+        {node.userId || node.isCurrentUser ? (
+          <span className="tree-context-menu-badge linked" title="Đã có tài khoản người dùng liên kết">Đã liên kết tài khoản</span>
+        ) : (
+          <span className="tree-context-menu-badge unlinked" title="Hồ sơ phả hệ">Hồ sơ phả hệ</span>
+        )}
         {!canManageTree && !isSelf && (
           <span className="tree-context-menu-badge read-only">Chỉ xem</span>
         )}
@@ -102,6 +115,58 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           >
             Xem tiểu sử
           </button>
+
+          {onViewMyNetwork && (
+            <button
+              className="tree-context-menu-item"
+              style={{ color: '#2563eb', fontWeight: 600 }}
+              onClick={() => {
+                onClose();
+                onViewMyNetwork();
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              Xem Mạng lưới của tôi (Ego)
+            </button>
+          )}
+
+          <button
+            className="tree-context-menu-item"
+            style={{ color: '#7c3aed', fontWeight: 600 }}
+            onClick={() => {
+              onClose();
+              if (onViewDualLineage) onViewDualLineage(node);
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            Xem 2-3 đời Bên Nội / Bên Ngoại
+          </button>
+
+          {(!node.isAlive || Boolean(node.deathDate)) && (
+            <button
+              className="tree-context-menu-item"
+              style={{ color: '#16a34a', fontWeight: 600 }}
+              onClick={() => {
+                onClose();
+                if (onViewBurial) onViewBurial(node);
+                else onViewBio(node);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+              </svg>
+              Xem mộ phần & Chỉ đường
+            </button>
+          )}
 
           {/* Privacy Toggle: Allowed for self */}
           {isSelf && (
@@ -139,7 +204,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
               else if (onActionToast) onActionToast('Nối phả hệ');
             }}
           >
-            {node.isUnconnected ? '🔗 Xác nhận quan hệ (Nối phả hệ)' : 'Di chuyển nhánh'}
+            {node.isUnconnected ? 'Xác nhận quan hệ (Nối phả hệ)' : 'Di chuyển nhánh'}
           </button>
 
           <button
@@ -180,7 +245,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
                     else if (onActionToast) onActionToast('Nối phả hệ');
                   }}
                 >
-                  🔗 Xác nhận quan hệ (Nối phả hệ)
+                  Xác nhận quan hệ (Nối phả hệ)
                 </button>
               )}
 
@@ -188,11 +253,11 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
                 className="tree-context-menu-item"
                 onClick={() => {
                   onClose();
-                  if (onEdit) onEdit(node);
-                  else if (onActionToast) onActionToast('Chỉnh sửa thông tin cá nhân');
+                  if (onProposeEdit) onProposeEdit(node);
+                  else if (onActionToast) onActionToast('Đề xuất chỉnh sửa thông tin');
                 }}
               >
-                Sửa thông tin của tôi
+                Đề xuất sửa thông tin của tôi
               </button>
 
               <button
@@ -216,6 +281,23 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
               >
                 Xem tiểu sử
               </button>
+
+              {(!node.isAlive || Boolean(node.deathDate)) && (
+                <button
+                  className="tree-context-menu-item"
+                  style={{ color: '#16a34a', fontWeight: 600 }}
+                  onClick={() => {
+                    onClose();
+                    if (onViewBurial) onViewBurial(node);
+                    else onViewBio(node);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                    <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                  </svg>
+                  Xem mộ phần & Chỉ đường
+                </button>
+              )}
             </>
           ) : (
             /* Member clicking on someone else */
@@ -229,6 +311,23 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
               >
                 Xem tiểu sử
               </button>
+
+              {(!node.isAlive || Boolean(node.deathDate)) && (
+                <button
+                  className="tree-context-menu-item"
+                  style={{ color: '#16a34a', fontWeight: 600 }}
+                  onClick={() => {
+                    onClose();
+                    if (onViewBurial) onViewBurial(node);
+                    else onViewBio(node);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                    <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                  </svg>
+                  Xem mộ phần & Chỉ đường
+                </button>
+              )}
 
               <button
                 className="tree-context-menu-item propose"
@@ -245,6 +344,52 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
       )}
 
       <div className="tree-context-menu-divider" />
+
+      {/* Xem 2-3 đời Bên Nội / Bên Ngoại (Huyết thống liên tộc) */}
+      <button
+        className="tree-context-menu-item"
+        style={{ color: '#7c3aed', fontWeight: 600 }}
+        onClick={() => {
+          onClose();
+          if (onViewDualLineage) onViewDualLineage(node);
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        Xem 2-3 đời Bên Nội / Bên Ngoại
+      </button>
+
+      {/* Xem cây gia phả bên thông gia / bên vợ / bên chồng */}
+      {(() => {
+        const crossSpouse = node.spouses?.find((s) => s.isCrossClan && s.clanId);
+        const targetClanId = crossSpouse?.clanId || (node as any).clanId;
+        const targetPersonId = crossSpouse?.id || node.id;
+        const isWife = (crossSpouse ? crossSpouse.gender === 'female' : node.gender === 'female');
+        if (targetClanId) {
+          return (
+            <button
+              className="tree-context-menu-item"
+              style={{ color: '#2563eb', fontWeight: 600 }}
+              onClick={() => {
+                onClose();
+                if (onViewInLawTree) onViewInLawTree(targetClanId, targetPersonId);
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                <path d="M15 3h6v6" />
+                <path d="M10 14L21 3" />
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              </svg>
+              Xem cây gia phả bên {isWife ? 'vợ' : 'chồng'} →
+            </button>
+          );
+        }
+        return null;
+      })()}
 
       {/* Focus Person Toggle (All actors can focus on a member) */}
       <button

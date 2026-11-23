@@ -107,6 +107,23 @@ class AccessService:
 
         membership = await self.repo.get_active_membership(account.id, family_id)
         if not membership:
+            # Cho phép xem cây hoặc danh sách thành viên nếu thuộc dòng họ liên kết thông gia (ACTIVE)
+            if permission in ("tree.view", "person.view"):
+                from sqlalchemy import text
+                stmt = text("""
+                    SELECT 1 FROM inter_clan_links l
+                    JOIN clan_memberships cm ON (cm.clan_id = l.clan_a_id OR cm.clan_id = l.clan_b_id)
+                    WHERE cm.user_id = :uid AND cm.status = 'ACTIVE' AND l.status = 'ACTIVE'
+                      AND (
+                          (l.clan_a_id = cm.clan_id AND l.clan_b_id = :fid)
+                          OR (l.clan_b_id = cm.clan_id AND l.clan_a_id = :fid)
+                      )
+                    LIMIT 1;
+                """)
+                res = await self.repo.db.execute(stmt, {"uid": account.id, "fid": family_id})
+                if res.scalar_one_or_none():
+                    return
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Active family membership is required",

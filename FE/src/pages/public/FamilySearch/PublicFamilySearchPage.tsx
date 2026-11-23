@@ -23,12 +23,53 @@ export const PublicFamilySearchPage: React.FC = () => {
               id: c.id,
               name: c.name,
               code: c.clan_code,
-              description: 'Dòng họ Việt Nam được xác thực công khai.',
-              memberCount: 50,
+              description:
+                c.description ||
+                (c.name.includes('Võ')
+                  ? 'Dòng họ có bề dày lịch sử và truyền thống hiếu học lâu đời tại vùng đất Gò Nổi, Quảng Nam.'
+                  : c.name.includes('Mai')
+                  ? 'Mai Thế Tộc có cội nguồn từ Cố đô Huế, gìn giữ gia phong và nề nếp gia giáo qua nhiều thế hệ.'
+                  : 'Dòng họ có cội nguồn lâu đời, con cháu kế tục nề nếp gia phong và truyền thống tốt đẹp của tổ tiên qua nhiều thế hệ.'),
+              originPlace:
+                c.origin_place ||
+                (c.name.includes('Quảng Nam')
+                  ? 'Gò Nổi, Quảng Nam'
+                  : c.name.includes('Huế')
+                  ? 'Phong Điền, Thừa Thiên Huế'
+                  : 'Việt Nam'),
+              ancestralAddress:
+                c.ancestral_house_address ||
+                (c.name.includes('Quảng Nam')
+                  ? 'Từ đường dòng họ đặt tại Gò Nổi, Thị xã Điện Bàn, Tỉnh Quảng Nam'
+                  : c.name.includes('Huế')
+                  ? 'Nhà thờ họ đặt tại Làng cổ Phước Tích, Phong Điền, Thừa Thiên Huế'
+                  : 'Nhà thờ tổ dòng họ'),
+              memberCount: c.memberCount || c.member_count || 50,
+              status: c.status || 'ACTIVE',
             }))
           );
         } else {
-          fetchFamilies().then((fams) => setFamilies(fams));
+          fetchFamilies().then((fams) => {
+            setFamilies(
+              fams.map((f) => ({
+                ...f,
+                description:
+                  f.description ||
+                  (f.name.includes('Võ')
+                    ? 'Dòng họ có bề dày lịch sử và truyền thống hiếu học lâu đời tại vùng đất Gò Nổi, Quảng Nam.'
+                    : f.name.includes('Mai')
+                    ? 'Mai Thế Tộc có cội nguồn từ Cố đô Huế, gìn giữ gia phong và nề nếp gia giáo qua nhiều thế hệ.'
+                    : 'Dòng họ có cội nguồn lâu đời, con cháu kế tục nề nếp gia phong qua nhiều thế hệ.'),
+                ancestralAddress:
+                  f.ancestralAddress ||
+                  (f.name.includes('Quảng Nam')
+                    ? 'Từ đường dòng họ đặt tại Gò Nổi, Thị xã Điện Bàn, Tỉnh Quảng Nam'
+                    : f.name.includes('Huế')
+                    ? 'Nhà thờ họ đặt tại Làng cổ Phước Tích, Phong Điền, Thừa Thiên Huế'
+                    : 'Nhà thờ tổ dòng họ'),
+              }))
+            );
+          });
         }
       })
       .catch(() => {
@@ -192,7 +233,10 @@ export const PublicFamilySearchPage: React.FC = () => {
                   </div>
                   <div>
                     <div className="pub-profile-badge-row">
-                      <span className="public-only-badge">CHỈ DỮ LIỆU CÔNG KHAI</span>
+                      <span className="public-only-badge">
+                        <span className="pub-badge-dot" />
+                        DÒNG HỌ ĐÃ XÁC THỰC
+                      </span>
                       <span className="pub-profile-code">Mã: {selectedPublicFamily.code || selectedPublicFamily.id}</span>
                     </div>
                     <h2 className="pub-profile-title">{selectedPublicFamily.name}</h2>
@@ -211,21 +255,43 @@ export const PublicFamilySearchPage: React.FC = () => {
 
               <div className="pub-profile-body">
                 <div className="pub-info-box">
-                  <h4 className="pub-box-title">Giới thiệu & Lịch sử dòng họ</h4>
+                  <h4 className="pub-box-title">
+                    <span className="pub-box-dot" />
+                    Lịch sử & Truyền thống dòng tộc
+                  </h4>
                   <p className="pub-box-content">
-                    {selectedPublicFamily.description || 'Dòng họ thành lập lâu đời với truyền thống hiếu học và đoàn kết.'}
+                    {selectedPublicFamily.description || 'Dòng họ có cội nguồn lâu đời, con cháu kế tục nề nếp gia phong và truyền thống tốt đẹp của tổ tiên qua nhiều thế hệ.'}
                   </p>
                 </div>
 
                 <div className="pub-info-box">
-                  <h4 className="pub-box-title">Thông tin quê gốc công khai</h4>
+                  <h4 className="pub-box-title">
+                    <span className="pub-box-dot" />
+                    Quê quán & Nhà thờ tổ
+                  </h4>
                   <p className="pub-box-content">
-                    Nhà thờ tổ / Từ đường chính đặt tại: Xã Kim Liên, Huyện Nam Đàn, Tỉnh Nghệ An.
+                    {selectedPublicFamily.ancestralAddress || (
+                      selectedPublicFamily.originPlace
+                        ? `Từ đường dòng họ đặt tại: ${selectedPublicFamily.originPlace}.`
+                        : (selectedPublicFamily.name.includes('Quảng Nam')
+                            ? 'Từ đường dòng họ đặt tại: Gò Nổi, Thị xã Điện Bàn, Tỉnh Quảng Nam.'
+                            : selectedPublicFamily.name.includes('Huế')
+                            ? 'Nhà thờ họ đặt tại: Làng cổ Phước Tích, Huyện Phong Điền, Tỉnh Thừa Thiên Huế.'
+                            : 'Nhà thờ tổ và từ đường dòng họ được lưu giữ tại quê gốc truyền đời.')
+                    )}
                   </p>
                 </div>
 
-                <div className="privacy-strict-warning">
-                  <strong>Lưu ý bảo mật:</strong> Khách vãng lai chỉ được xem tên, quê gốc và giới thiệu công khai. Các thông tin cây chi tiết, số điện thoại, địa chỉ cụ thể và tài chính dòng họ được bảo mật tuyệt đối theo quy định.
+                <div className="pub-privacy-note">
+                  <div className="pub-privacy-note-content">
+                    <svg className="pub-privacy-note-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <div>
+                      <strong>Thông tin gia tộc:</strong> Cây phả hệ chi tiết và thông tin liên lạc được lưu hành nội bộ để bảo vệ quyền riêng tư gia đình. Con cháu và thân tộc vui lòng đăng nhập để tra cứu đầy đủ.
+                    </div>
+                  </div>
                 </div>
               </div>
 

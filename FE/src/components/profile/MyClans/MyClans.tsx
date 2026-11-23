@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useClanContext } from '../../../context/ClanContext';
 import {
@@ -22,7 +22,7 @@ const RELATION_OPTIONS = [
 ];
 
 export const MyClans: React.FC = () => {
-  const { account, refreshAccount } = useAuth();
+  const { account, refreshAccount, loading: authLoading } = useAuth();
   const { activeClanId, selectClan, setActiveClanId } = useClanContext();
 
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export const MyClans: React.FC = () => {
 
   // Step 2: Form Data
   const [lineageType, setLineageType] = useState<'PATERNAL' | 'MATERNAL'>('PATERNAL');
-  const [fullName, setFullName] = useState(account?.name || '');
+  const [fullName, setFullName] = useState(account?.display_name || account?.username || '');
   const [birthDate, setBirthDate] = useState('');
   const [relativeName, setRelativeName] = useState('');
   const [relativeRelation, setRelativeRelation] = useState('Con');
@@ -130,8 +130,11 @@ export const MyClans: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (authLoading) return;
+    if (account) {
+      loadData();
+    }
+  }, [account?.id, authLoading, loadData]);
 
   // Handle Search in Step 1
   useEffect(() => {
@@ -155,7 +158,7 @@ export const MyClans: React.FC = () => {
     setSelectedClan(null);
     setSearchQuery('');
     setLineageType('PATERNAL');
-    setFullName(account?.name || '');
+    setFullName(account?.display_name || account?.username || '');
     setBirthDate('');
     setRelativeName('');
     setRelativeRelation('Con');
@@ -334,7 +337,7 @@ export const MyClans: React.FC = () => {
           <h1>Dòng tộc của tôi</h1>
           <p>Quản lý các cây gia phả bạn đã tham gia (nội/ngoại) và theo dõi các yêu cầu xin gia nhập dòng họ mới.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="my-clans-header-actions">
           <button type="button" className="btn-secondary" onClick={loadData} disabled={loading} title="Làm mới trạng thái">
             {loading ? 'Đang tải...' : 'Làm mới'}
           </button>
@@ -383,7 +386,7 @@ export const MyClans: React.FC = () => {
                       </div>
                       <div className="meta-row">
                         <span className="meta-label">Trạng thái:</span>
-                        <span style={{ color: clan.membership_status === 'ACTIVE' ? '#166534' : '#b45309', fontWeight: 600 }}>
+                        <span style={{ color: clan.membership_status === 'ACTIVE' ? '#166534' : '#2449bd', fontWeight: 600 }}>
                           {clan.membership_status === 'ACTIVE' ? 'Đang hoạt động' : clan.membership_status}
                         </span>
                       </div>
@@ -525,7 +528,7 @@ export const MyClans: React.FC = () => {
         <div className="modal-backdrop-clan">
           <div className="modal-dialog-clan wide">
             <div className="modal-header-clan">
-              <h3>Xin gia nhập dòng tộc thứ hai</h3>
+              <h3>{joinedClans.length === 0 ? 'Xin gia nhập dòng họ' : 'Xin gia nhập thêm dòng họ'}</h3>
               <button type="button" className="btn-close-modal" onClick={() => setShowJoinModal(false)}>
                 ×
               </button>
@@ -557,7 +560,7 @@ export const MyClans: React.FC = () => {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Ví dụ: Họ Võ, Họ Mai, CLAN-VO..."
+                      placeholder="Ví dụ: Dòng họ Nguyễn, Dòng họ Dương, CLAN-01..."
                       autoFocus
                     />
                   </div>
@@ -767,7 +770,7 @@ export const MyClans: React.FC = () => {
                     </dl>
                   </div>
 
-                  <div style={{ marginTop: '14px', fontSize: '13px', color: '#64748b', background: '#fffbeb', padding: '10px 14px', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                  <div style={{ marginTop: '14px', fontSize: '13px', background: '#eff6ff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #bfdbfe', color: '#1e40af' }}>
                     <strong>Lưu ý:</strong> Sau khi gửi, yêu cầu sẽ chuyển sang trạng thái <em>Chờ xác minh</em>. Người duyệt của dòng họ đích sẽ kiểm tra thông tin và liên kết hồ sơ Person trước khi chính thức chấp thuận.
                   </div>
                 </div>

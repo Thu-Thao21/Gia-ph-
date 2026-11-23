@@ -14,7 +14,8 @@
 /* Individual Framed Card for EACH Person */
 .tree-person-card {
   width: 140px;
-  height: 160px;
+  min-height: 172px;
+  height: auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -147,7 +148,7 @@
   justify-content: center;
   font-size: 20px;
   font-weight: 800;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
 }
 
 .tree-person-avatar-placeholder.male {
@@ -166,7 +167,7 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.25;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-heading);
   margin-bottom: 4px;
   word-break: break-word;
 }
@@ -207,7 +208,8 @@
   align-items: center;
   justify-content: center;
   width: 36px;
-  height: 160px;
+  min-height: 172px;
+  height: auto;
   position: relative;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -242,41 +244,66 @@
 /* Expand / Collapse Toggle Badge */
 .tree-node-toggle-btn {
   position: absolute;
-  bottom: -12px;
+  bottom: -15px;
   left: 50%;
   transform: translateX(-50%);
   background: #ffffff;
-  border: 1.5px solid #2563eb;
+  border: 2px solid #2563eb;
   color: #1d4ed8;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 800;
-  padding: 2px 10px;
+  padding: 4px 13px;
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25);
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   white-space: nowrap;
-  transition: all 0.2s ease;
-  z-index: 10;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  z-index: 99;
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* Vùng đệm click vô hình xung quanh nút để click là ăn ngay 100%, không bị lệch trượt */
+.tree-node-toggle-btn::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: -12px;
+  right: -12px;
+  border-radius: 999px;
+  cursor: pointer;
 }
 
 .tree-node-toggle-btn:hover {
-  background: #2563eb;
+  background: #1d4ed8;
+  border-color: #1e40af;
   color: #ffffff;
-  transform: translateX(-50%) scale(1.08);
+  transform: translateX(-50%); /* Cố định vị trí, không scale giật chuột */
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
 }
 
 .tree-node-toggle-btn.collapsed {
-  border-color: #64748b;
-  color: #475569;
-  background: #f8fafc;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  background: #2563eb;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.35);
 }
 
 .tree-node-toggle-btn.collapsed:hover {
-  background: #475569;
+  background: #1e40af;
+  border-color: #1e3a8a;
   color: #ffffff;
+  transform: translateX(-50%);
+  box-shadow: 0 5px 16px rgba(30, 64, 175, 0.5);
+}
+
+/* Khi rê chuột vào nút sổ con, giữ yên thẻ người bên trên không bị nảy translateY(-4px) */
+.tree-couple-container:has(.tree-node-toggle-btn:hover) .tree-person-card {
+  transform: none !important;
 }
 
 /* ======================================================== */
@@ -361,3 +388,176 @@
 
 
 
+
+
+/* Account linkage status badge */
+.tree-person-account-badge {
+  margin-top: 4px;
+  margin-bottom: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: all 0.2s ease;
+  max-width: 95%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Burial GPS Pin shortcut badge on tree card */
+.tree-person-burial-badge {
+  margin-top: 3px;
+  margin-bottom: 2px;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  line-height: 1.2;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.08);
+}
+
+.tree-person-burial-badge:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+}
+
+.tree-person-burial-badge svg {
+  flex-shrink: 0;
+}
+
+.tree-person-account-badge.is-linked {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.tree-person-account-badge.is-unlinked {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Current user card highlight */
+@keyframes currentUserBreath {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25), 0 8px 24px rgba(16, 185, 129, 0.15) !important;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.45), 0 12px 30px rgba(16, 185, 129, 0.28) !important;
+  }
+}
+
+.tree-person-card.is-current-user {
+  border: 2px solid #059669 !important;
+  animation: currentUserBreath 3s ease-in-out infinite;
+}
+
+.tree-person-card.is-current-user .tree-person-account-badge.is-linked {
+  background: #059669;
+  color: #ffffff;
+  border-color: #047857;
+  font-weight: 800;
+}
+
+/* In-Law Navigation Button on Spouse Card */
+.tree-view-inlaw-tree-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(99, 102, 241, 0.28);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 95%;
+  white-space: nowrap;
+}
+
+.tree-view-inlaw-tree-btn:hover {
+  background: linear-gradient(135deg, #4338ca, #6d28d9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
+}
+
+.tree-view-inlaw-tree-btn:active {
+  transform: translateY(0);
+}
+
+
+/* Toggle In-law Tree Expansion Button on Spouse Card */
+.tree-toggle-inlaw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+  margin-bottom: 2px;
+  padding: 3px 8px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #c4b5fd;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(124, 58, 237, 0.08);
+  max-width: 92%;
+  white-space: nowrap;
+}
+
+.tree-toggle-inlaw-btn:hover {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(124, 58, 237, 0.25);
+}
+
+.tree-toggle-inlaw-btn.active {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #6d28d9;
+}
+
+.tree-inlaw-clan-pill {
+  pointer-events: none;
+  z-index: 10;
+}
+
+.tree-inlaw-clan-tag {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  color: #6d28d9;
+  border: 2px solid #a855f7;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+  display: inline-block;
+}

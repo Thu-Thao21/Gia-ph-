@@ -78,12 +78,18 @@ class MeResponse(ResponseModel):
     display_name: str
     email: str
     username: str | None = None
+    phone: str | None = None
     status: UserStatus
     memberships: list[MembershipSummary]
     permissions: list[str] = Field(
         description="System-scope permission codes (roles with clan_id = NULL)."
     )
     requires_password_change: bool
+
+
+class UpdateProfileRequest(RequestModel):
+    display_name: str | None = None
+    phone: str | None = None
 
 
 # ----- POST /auth/logout -> 204, no body -----
