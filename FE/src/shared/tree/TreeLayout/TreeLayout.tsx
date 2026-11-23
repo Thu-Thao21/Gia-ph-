@@ -296,10 +296,15 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
       setFamilies(allowedFams.length > 0 ? allowedFams : fams);
 
       const targetId = effectiveFamilyId || selectedFamilyId;
-      if (targetId && allowedFams.some((f) => String(f.id).toLowerCase() === String(targetId).toLowerCase())) {
-        setSelectedFamilyId(targetId);
-      } else if (allowedFams.length > 0) {
-        setSelectedFamilyId(allowedFams[0].id);
+      const targetFam = allowedFams.find((f) => String(f.id).toLowerCase() === String(targetId).toLowerCase());
+      if (targetFam && (targetFam.memberCount ?? 0) > 0) {
+        setSelectedFamilyId(targetFam.id);
+      } else {
+        // Tự động ưu tiên chọn dòng họ có dữ liệu thành viên (> 0 người) trước, tránh mở nhầm dòng họ liên kết chưa có dữ liệu
+        const populatedFam = allowedFams.find((f) => (f.memberCount ?? 0) > 0) || allowedFams[0];
+        if (populatedFam) {
+          setSelectedFamilyId(populatedFam.id);
+        }
       }
     });
   }, [effectiveFamilyId, isAdmin, availableClans]);
