@@ -971,7 +971,11 @@ export const NotificationCenterModule: React.FC<NotificationCenterModuleProps> =
                       </div>
                     </td>
                     {(['inApp', 'email', 'push'] as DeliveryChannel[]).map((channel) => (
-                      <td key={channel} className="col-channel-cell">
+                      <td
+                        key={channel}
+                        className="col-channel-cell"
+                        data-label={channel === 'inApp' ? 'Ứng dụng' : channel === 'email' ? 'Email' : 'Đẩy (Push)'}
+                      >
                         <label className="checkbox-control">
                           <input
                             type="checkbox"

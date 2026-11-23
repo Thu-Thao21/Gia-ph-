@@ -81,7 +81,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             name="emailOrPhone"
             value={formData.emailOrPhone}
             onChange={handleChange}
-            placeholder="VD: nguyenvana@gmail.com hoặc tên đăng nhập"
+            placeholder="VD: nguyenvana@gmail.com"
             autoComplete="username"
             required
             className="login-form-input"

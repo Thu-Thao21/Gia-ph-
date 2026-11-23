@@ -664,7 +664,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           </div>
 
           <div className="fund-table-wrap">
-            <table className="fund-table">
+            <table className="fund-table fund-table--cards">
               <thead>
                 <tr>
                   <th>Mã đóng góp</th>
@@ -680,13 +680,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               <tbody>
                 {visibleDonations.map((d) => (
                   <tr key={d.id}>
-                    <td>
+                    <td data-label="Mã đóng góp">
                       <strong>{d.donation_code}</strong>
                     </td>
-                    <td>{d.fund_name || 'Quỹ dòng họ'}</td>
-                    <td>{d.donor_name}</td>
-                    <td className="fund-amount-val income">+{formatVnd(d.amount)}</td>
-                    <td>
+                    <td data-label="Quỹ đóng góp">{d.fund_name || 'Quỹ dòng họ'}</td>
+                    <td data-label="Người gửi">{d.donor_name}</td>
+                    <td data-label="Số tiền" className="fund-amount-val income">+{formatVnd(d.amount)}</td>
+                    <td data-label="Minh chứng">
                       {d.evidence_items && d.evidence_items.length > 0 ? (
                         <img
                           src={resolveMediaUrl(d.evidence_items[0].image_path)}
@@ -699,11 +699,11 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                         <span style={{ color: '#94a3b8', fontSize: '11px' }}>Chưa có</span>
                       )}
                     </td>
-                    <td>{new Date(d.created_at).toLocaleDateString('vi-VN')}</td>
-                    <td>
+                    <td data-label="Ngày tạo">{new Date(d.created_at).toLocaleDateString('vi-VN')}</td>
+                    <td data-label="Trạng thái">
                       <span className={`status-badge status-${d.status}`}>{statusLabels[d.status]}</span>
                     </td>
-                    <td>
+                    <td data-label="Thao tác">
                       <div className="fund-actions">
                         <button type="button" onClick={() => setSelectedDonation(d)}>
                           Chi tiết
@@ -760,7 +760,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           </div>
 
           <div className="fund-table-wrap">
-            <table className="fund-table">
+            <table className="fund-table fund-table--cards">
               <thead>
                 <tr>
                   <th>Mã đóng góp</th>
@@ -776,14 +776,14 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               <tbody>
                 {pendingDonations.map((d) => (
                   <tr key={d.id}>
-                    <td>
+                    <td data-label="Mã đóng góp">
                       <strong>{d.donation_code}</strong>
                     </td>
-                    <td>{d.fund_name}</td>
-                    <td>{d.donor_name}</td>
-                    <td className="fund-amount-val income">+{formatVnd(d.amount)}</td>
-                    <td>{d.bank_transaction_reference || <span style={{ color: '#94a3b8' }}>Không có</span>}</td>
-                    <td>
+                    <td data-label="Quỹ">{d.fund_name}</td>
+                    <td data-label="Người đóng góp">{d.donor_name}</td>
+                    <td data-label="Số tiền" className="fund-amount-val income">+{formatVnd(d.amount)}</td>
+                    <td data-label="Mã tham chiếu NH">{d.bank_transaction_reference || <span style={{ color: '#94a3b8' }}>Không có</span>}</td>
+                    <td data-label="Ảnh minh chứng">
                       {d.evidence_items && d.evidence_items.length > 0 ? (
                         <img
                           src={resolveMediaUrl(d.evidence_items[0].image_path)}
@@ -796,8 +796,8 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                         <span style={{ color: '#ef4444', fontSize: '12px' }}>Chờ ảnh</span>
                       )}
                     </td>
-                    <td>{d.submitted_at ? new Date(d.submitted_at).toLocaleString('vi-VN') : 'Mới tạo'}</td>
-                    <td>
+                    <td data-label="Thời gian gửi">{d.submitted_at ? new Date(d.submitted_at).toLocaleString('vi-VN') : 'Mới tạo'}</td>
+                    <td data-label="Hành động">
                       <div className="fund-actions">
                         <button type="button" onClick={() => setSelectedDonation(d)}>
                           Chi tiết
@@ -1324,7 +1324,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           </div>
 
           <div className="fund-table-wrap">
-            <table className="fund-table">
+            <table className="fund-table fund-table--cards">
               <thead>
                 <tr>
                   <th>Mã đóng góp</th>
@@ -1342,13 +1342,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                   .filter((d) => ['AWAITING_VERIFICATION', 'SUCCESS', 'REJECTED'].includes(d.status))
                   .map((d) => (
                     <tr key={d.id}>
-                      <td>
+                      <td data-label="Mã đóng góp">
                         <strong>{d.donation_code}</strong>
                       </td>
-                      <td>{d.fund_name}</td>
-                      <td className="fund-amount-val income">+{formatVnd(d.amount)}</td>
-                      <td>{new Date(d.submitted_at || d.created_at).toLocaleDateString('vi-VN')}</td>
-                      <td>
+                      <td data-label="Quỹ">{d.fund_name}</td>
+                      <td data-label="Số tiền" className="fund-amount-val income">+{formatVnd(d.amount)}</td>
+                      <td data-label="Ngày gửi">{new Date(d.submitted_at || d.created_at).toLocaleDateString('vi-VN')}</td>
+                      <td data-label="Biên lai">
                         {d.evidence_items && d.evidence_items.length > 0 ? (
                           <img
                             src={resolveMediaUrl(d.evidence_items[0].image_path)}
@@ -1361,10 +1361,10 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                           <span style={{ color: '#94a3b8' }}>Chưa có</span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Trạng thái">
                         <span className={`status-badge status-${d.status}`}>{statusLabels[d.status]}</span>
                       </td>
-                      <td>
+                      <td data-label="Ghi chú">
                         {d.status === 'REJECTED' && (
                           <span style={{ color: '#dc2626', fontSize: '12px' }}>
                             Lý do: {d.rejection_reason || 'Không khớp'}
@@ -1381,7 +1381,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                           </span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Thao tác">
                         <div className="fund-actions">
                           <button type="button" onClick={() => setSelectedDonation(d)}>
                             Chi tiết

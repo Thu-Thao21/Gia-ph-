@@ -175,3 +175,120 @@
     height: auto;
   }
 }
+
+/* ==========================================================================
+   Mobile (<= 768px): banner thương hiệu gọn ở trên, form ngay bên dưới,
+   không tràn ngang, vừa mọi cỡ màn hình điện thoại.
+   ========================================================================== */
+@media (max-width: 768px) {
+  .auth-landing-container {
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: visible;
+    align-items: flex-start;
+    padding: calc(16px + var(--safe-top, 0px)) max(16px, var(--safe-right, 0px))
+      calc(24px + var(--safe-bottom, 0px)) max(16px, var(--safe-left, 0px));
+  }
+
+  /* Ẩn hình trống đồng (nằm lệch ra ngoài mép phải gây cuộn ngang) */
+  .auth-landing-trong-dong-bg {
+    display: none;
+  }
+
+  .auth-landing-container .auth-landing-grid {
+    flex-direction: column;
+    gap: 16px !important;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .auth-landing-banner {
+    height: auto;
+    padding: 18px 20px;
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(29, 78, 216, 0.22);
+  }
+
+  .auth-landing-banner-circle {
+    width: 64px;
+    height: 64px;
+  }
+
+  .auth-landing-tagline {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+  }
+
+  .auth-landing-title {
+    margin: 6px 0 6px;
+    font-size: clamp(1.25rem, 5.6vw, 1.6rem);
+    line-height: 1.2;
+  }
+
+  .auth-landing-subtitle {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .auth-landing-tags {
+    margin-top: 10px;
+  }
+
+  /* Ảnh minh hoạ: giữ lại nhưng thu nhỏ cho vừa màn hình */
+  .auth-landing-image-wrapper {
+    margin-top: 12px;
+    max-height: none;
+  }
+
+  .auth-landing-image {
+    width: auto;
+    max-width: 100%;
+    max-height: min(200px, 28vh);
+    border-radius: 14px;
+  }
+
+  .auth-landing-form-wrapper {
+    height: auto;
+    width: 100%;
+  }
+
+  /* Thẻ form đăng nhập / đăng ký / quên mật khẩu */
+  .login-form-card,
+  .register-form-card,
+  .forgot-form-card {
+    max-width: none;
+    padding: 22px 18px 18px;
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
+  }
+
+  .login-form-input,
+  .register-form-input,
+  .forgot-form-input {
+    min-height: 48px;
+    text-overflow: ellipsis;
+  }
+
+  .login-form-submit,
+  .register-form-submit,
+  .forgot-form-submit {
+    min-height: 48px;
+  }
+
+  .login-form-label-row {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+}
+
+/* Điện thoại rất hẹp (<= 480px, ví dụ iPhone SE 320–375px) */
+@media (max-width: 480px) {
+  .auth-landing-subtitle {
+    display: none;
+  }
+
+  .auth-landing-tags {
+    display: none;
+  }
+}

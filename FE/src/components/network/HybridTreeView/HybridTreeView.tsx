@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useIsMobile, useIsTouchDevice } from '../../../hooks/useIsMobile';
+import { useSvgPanZoomGestures } from '../../../hooks/useSvgPanZoomGestures';
 import type { HybridTreeResponse, HybridTreeNode, HybridTreeBridge } from '../../../types/network';
 import { fetchHybridTree } from '../../../services/network.service';
 import './HybridTreeView.css';
@@ -25,6 +27,21 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+
+  // Cảm ứng: pan 1 ngón + pinch-zoom 2 ngón
+  const svgRef = useRef<SVGSVGElement>(null);
+  const isMobileView = useIsMobile();
+  const isTouchDevice = useIsTouchDevice();
+  const touchGestures = useSvgPanZoomGestures({
+    svgRef,
+    pan,
+    zoom,
+    setPan,
+    setZoom,
+    minZoom: 0.6,
+    maxZoom: 2.0,
+    enabled: isMobileView || isTouchDevice,
+  });
 
   const loadTree = useCallback(async () => {
     try {
@@ -271,7 +288,10 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
         {/* Canvas Area */}
         <div className="htv-canvas-wrap">
           <svg
+            ref={svgRef}
             className="htv-svg-canvas"
+            style={touchGestures.style}
+            {...touchGestures.handlers}
             viewBox="0 0 1600 900"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}

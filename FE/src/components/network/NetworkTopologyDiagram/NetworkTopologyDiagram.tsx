@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useIsMobile, useIsTouchDevice } from '../../../hooks/useIsMobile';
+import { useSvgPanZoomGestures } from '../../../hooks/useSvgPanZoomGestures';
 import type { NetworkDiagramNode, NetworkDiagramEdge, NetworkDiagramResponse } from '../../../types/network';
 import { fetchNetworkDiagram } from '../../../services/network.service';
 import './NetworkTopologyDiagram.css';
@@ -28,6 +30,21 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+
+  // Cảm ứng: pan 1 ngón + pinch-zoom 2 ngón
+  const svgRef = useRef<SVGSVGElement>(null);
+  const isMobileView = useIsMobile();
+  const isTouchDevice = useIsTouchDevice();
+  const touchGestures = useSvgPanZoomGestures({
+    svgRef,
+    pan,
+    zoom,
+    setPan,
+    setZoom,
+    minZoom: 0.6,
+    maxZoom: 2.0,
+    enabled: isMobileView || isTouchDevice,
+  });
 
   const loadDiagram = useCallback(async () => {
     try {
@@ -327,7 +344,10 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
 
         {/* SVG Interactive Topology Diagram */}
         <svg
+          ref={svgRef}
           className="ntd-svg-canvas"
+          style={touchGestures.style}
+          {...touchGestures.handlers}
           viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

@@ -50,6 +50,9 @@ import {
 } from '../../components/admin/PlatformAdmin';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileTabBar } from '../../components/mobile/MobileTabBar';
+import { MobileMoreSheet } from '../../components/mobile/MobileMoreSheet';
 import { useClanContext } from '../../context/ClanContext';
 import { ROUTES } from '../../config/routes';
 import type { TreeViewMode } from '../../types/tree';
@@ -215,7 +218,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => window.innerWidth <= 760);
+  const isMobile = useIsMobile();
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [isProcessingToastOpen, setIsProcessingToastOpen] = useState(false);
   const [isFloatingAIChatOpen, setIsFloatingAIChatOpen] = useState(false);
@@ -325,7 +330,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     } else if (tabId === 'dashboard') {
       navigate(basePath, { replace: false });
     }
-  }, [navigate, basePath]);
+  }, [navigate, basePath, isClanAdminRole]);
 
   const handleSelectMember = (memberId: string) => {
     setSelectedMemberId(memberId);
@@ -606,7 +611,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
       );
     }
     if (activeTab === 'net-noi') return <FamilyPaternalTab />;
-    if (activeTab === 'net-ngoai') return <FamilyMaternalTab onNavigateToLinks={() => handleTabChange('family-links')} />;
+    if (activeTab === 'net-ngoai') return <FamilyMaternalTab onNavigateToLinks={() => handleSelectTab('family-links')} />;
     if (activeTab === 'net-dau-re') return <InLawMarriagesTab />;
     if (activeTab === 'net-thong-gia') return <AffiliatedFamiliesTab />;
 
@@ -723,17 +728,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
     );
   };
 
-  const isTreeTab =
-    activeTab === 'tree' ||
-    activeTab === 'admin-tree' ||
-    activeTab === 'family-tree' ||
-    activeTab === 'tree-vertical' ||
-    activeTab === 'tree-horizontal' ||
-    activeTab === 'tree-focus' ||
-    activeTab === 'my-family-network';
-
   return (
-    <div className={`dashboard-page-container ${isTreeTab ? 'is-tree-view' : ''}`}>
+    <div className={`dashboard-page-container ${isMobile ? 'is-mobile' : ''}`}>
       <TopBar
         userName={displayUserName}
         userRole={userRole}
@@ -754,19 +750,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ userName, onLogout }) => {
         <main
           className={`dashboard-main-content ${
             isSidebarCollapsed ? 'collapsed-sidebar' : 'expanded-sidebar'
-          } ${isTreeTab ? 'is-tree-mode' : ''}`}
+          }`}
         >
           {renderMainContent()}
         </main>
       </div>
 
-      {!isTreeTab && (
-        <footer className="dashboard-footer">
-          <div className="dashboard-footer-inner">
-            <strong className="dashboard-footer-brand">MULTI-FAMILY GENEALOGY SYSTEM</strong> © 2026 •
-            Số hóa & Gắn kết các dòng họ Việt Nam.
-          </div>
-        </footer>
+      <footer className="dashboard-footer">
+        <div className="dashboard-footer-inner">
+          <strong className="dashboard-footer-brand">MULTI-FAMILY GENEALOGY SYSTEM</strong> © 2026 •
+          Số hóa & Gắn kết các dòng họ Việt Nam.
+        </div>
+      </footer>
+
+      {isMobile && (
+        <>
+          <MobileTabBar
+            activeTab={activeTab}
+            isMoreOpen={isMoreOpen}
+            isSystemAdmin={isSystemAdmin}
+            onSelectTab={(id) => { setIsMoreOpen(false); handleSelectTab(id); }}
+            onOpenMore={() => setIsMoreOpen(true)}
+          />
+          <MobileMoreSheet
+            isOpen={isMoreOpen}
+            onClose={() => setIsMoreOpen(false)}
+            activeTab={activeTab}
+            userName={displayUserName}
+            userRole={userRole}
+            onSelectTab={handleSelectTab}
+            onLogout={onLogout}
+          />
+        </>
       )}
 
       {/* Global Floating Robot AI Assistant */}

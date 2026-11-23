@@ -70,7 +70,7 @@
 /* 1. ADMIN VIEW: KPIs */
 .fund-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -787,7 +787,7 @@
 /* Fund Cards Grid */
 .fund-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -905,4 +905,169 @@
 
 .qr-upload-box input {
   display: none;
+}
+
+/* ==========================================================================
+   MOBILE (<= 768px): không tràn ngang
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* --- Thanh tab: chia đều, chữ được xuống dòng thay vì cuộn ngang --- */
+  .fund-tabs-nav {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .fund-tab-item {
+    flex: 1 1 calc(33.333% - 4px);
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    padding: 6px 8px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
+    font-size: 13px;
+  }
+
+  /* --- Khối đóng góp: 1 cột, cho phép co dưới độ rộng nội dung --- */
+  .member-donate-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .member-donate-card {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .member-donate-card .card-header h3,
+  .member-donate-card .card-header p {
+    overflow-wrap: anywhere;
+  }
+
+  .qr-container {
+    padding: 12px;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+
+  .qr-image {
+    max-width: min(240px, 100%);
+  }
+
+  /* Nhãn ở trên, giá trị ở dưới */
+  .bank-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .bank-row > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .bank-row > div {
+    flex-wrap: wrap;
+  }
+
+  .bank-value {
+    overflow-wrap: anywhere;
+  }
+
+  .btn-copy {
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* --- Bảng giao dịch → mỗi hàng là một thẻ --- */
+  .fund-table-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .fund-table-heading > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .fund-table-wrap {
+    overflow-x: visible;
+    padding: 12px;
+    background: #f8fafc;
+  }
+
+  .dashboard-main-content .fund-table-wrap table.fund-table--cards,
+  table.fund-table--cards {
+    display: block;
+    overflow: visible;
+  }
+
+  .fund-table--cards thead {
+    display: none;
+  }
+
+  .fund-table--cards tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .fund-table--cards tr {
+    display: block;
+    padding: 4px 14px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+  }
+
+  .fund-table--cards td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px dashed #f1f5f9;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .fund-table--cards td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 45%;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  /* Ô đầu (mã đóng góp) làm tiêu đề thẻ */
+  .fund-table--cards td:first-child {
+    padding-top: 12px;
+    font-size: 14px;
+  }
+
+  /* Ô cuối (thao tác): không nhãn, nút căn phải */
+  .fund-table--cards td:last-child {
+    justify-content: flex-end;
+    border-bottom: 0;
+  }
+
+  .fund-table--cards td:last-child::before {
+    display: none;
+  }
+
+  .fund-table--cards .fund-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .fund-table--cards .fund-actions button {
+    min-height: 40px;
+  }
 }

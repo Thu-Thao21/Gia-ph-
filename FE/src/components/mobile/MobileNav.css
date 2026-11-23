@@ -1,0 +1,255 @@
+/* ==========================================================================
+   MobileNav.css – Tab bar đáy + bottom sheet "Thêm"
+   Chỉ được render khi useIsMobile() = true, nên không ảnh hưởng desktop.
+   ========================================================================== */
+
+/* ---------- Tab bar ---------- */
+.mobile-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: flex;
+  align-items: stretch;
+  height: var(--mobile-tabbar-total, 60px);
+  padding: 0 var(--safe-right, 0px) var(--safe-bottom, 0px) var(--safe-left, 0px);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+  font-family: var(--font-body);
+}
+
+.mobile-tabbar-item {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-tabbar-item.active {
+  color: #2563eb;
+}
+
+.mobile-tabbar-item:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -4px;
+  border-radius: 10px;
+}
+
+.mobile-tabbar-icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.mobile-tabbar-label {
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3; /* đủ chỗ cho dấu tiếng Việt (ụ, ạ…) */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-tabbar-badge {
+  position: absolute;
+  top: -5px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-sizing: border-box;
+  border: 1.5px solid #fff;
+}
+
+/* ---------- Bottom sheet ---------- */
+.mobile-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10000; /* trên nút AI nổi (9999) */
+  display: flex;
+  align-items: flex-end;
+  font-family: var(--font-body);
+}
+
+.mobile-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  animation: mobileSheetFade 0.2s ease;
+}
+
+.mobile-sheet-panel {
+  position: relative;
+  width: 100%;
+  max-height: calc(100vh - var(--safe-top, 0px) - 40px);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.2);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: mobileSheetUp 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.mobile-sheet-drag-area {
+  flex-shrink: 0;
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  touch-action: none;
+  cursor: grab;
+}
+
+.mobile-sheet-handle {
+  width: 40px;
+  height: 5px;
+  margin: 0 auto 10px;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.mobile-sheet-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-sheet-avatar {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.mobile-sheet-user-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-sheet-user-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-sheet-user-role {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.mobile-sheet-close {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.mobile-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-sheet-footer {
+  flex-shrink: 0;
+  padding: 10px 16px calc(10px + var(--safe-bottom, 0px));
+  border-top: 1px solid #f1f5f9;
+}
+
+.mobile-sheet-logout {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---------- Ghi đè Sidebar khi nằm trong sheet ---------- */
+.mobile-more-sheet .sidebar-container,
+.mobile-more-sheet .sidebar-container.expanded {
+  position: static;
+  top: auto;
+  left: auto;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 8px 12px 12px;
+  border-right: 0;
+  box-shadow: none;
+  overflow: visible;
+  z-index: auto;
+}
+
+.mobile-more-sheet .sidebar-group-btn,
+.mobile-more-sheet .sidebar-admin-item {
+  min-height: 48px;
+}
+
+.mobile-more-sheet .sidebar-subitem-btn {
+  min-height: 44px;
+  font-size: 15px;
+}
+
+@keyframes mobileSheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes mobileSheetFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-sheet-panel,
+  .mobile-sheet-scrim {
+    animation: none;
+    transition: none;
+  }
+}

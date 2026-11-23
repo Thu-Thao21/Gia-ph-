@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import type { ErgoTreeNode } from '../../../types/tree';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 import './TreeContextMenu.css';
 
 export interface TreeContextMenuProps {
@@ -51,12 +52,22 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
   onViewMyNetwork,
   onActionToast,
 }) => {
+  // Mobile: hiện dạng bottom sheet có nền mờ thay vì menu nổi tại toạ độ chạm
+  const isMobile = useIsMobile();
+
   useEffect(() => {
     if (!isOpen) return;
     const handleClick = () => onClose();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
-  }, [isOpen, onClose]);
+    if (isMobile) window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose, isMobile]);
 
   if (!isOpen || !node) return null;
 
@@ -68,12 +79,16 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
     ))
   );
 
-  return (
+  const menu = (
     <div
-      className="tree-context-menu"
-      style={{ left: `${x}px`, top: `${y}px` }}
+      className={`tree-context-menu ${isMobile ? 'is-sheet' : ''}`}
+      style={isMobile ? undefined : { left: `${x}px`, top: `${y}px` }}
       onClick={(e) => e.stopPropagation()}
+      role={isMobile ? 'dialog' : undefined}
+      aria-modal={isMobile ? true : undefined}
+      aria-label={isMobile ? `Thao tác với ${node.fullName}` : undefined}
     >
+      {isMobile && <div className="tree-context-menu-handle" aria-hidden="true" />}
       {/* Context Menu Header */}
       <div className="tree-context-menu-header">
         <span className="tree-context-menu-title" title={node.fullName}>
@@ -408,6 +423,15 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
         Thoát
       </button>
     </div>
+  );
+
+  if (!isMobile) return menu;
+
+  return (
+    <>
+      <div className="tree-context-menu-scrim" onClick={onClose} aria-hidden="true" />
+      {menu}
+    </>
   );
 };
 

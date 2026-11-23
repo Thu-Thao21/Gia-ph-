@@ -4,6 +4,9 @@ import type { MyFamilyNetworkResponse, MyFamilyNetworkNode } from '../../../type
 import { TreeNodeCard } from '../TreeNodeCard';
 import { calculateTreeLayout, type TreeDirection } from '../treeLayoutAlgorithm';
 import type { GenealogyChartConfig } from '../GenealogyChartStudio/chartConfigTypes';
+import { useIsMobile, useIsTouchDevice } from '../../../hooks/useIsMobile';
+import { useTreeTouchGestures } from './useTreeTouchGestures';
+import { MobileTreeControls } from './MobileTreeControls';
 import './ErgoTreeCanvas.css';
 
 export const CARD_WIDTH = 140;
@@ -72,6 +75,26 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [showNavHint, setShowNavHint] = useState(true);
+
+  // Cảm ứng (mobile / máy tính bảng): pan 1 ngón, pinch-zoom 2 ngón, nhấn giữ = menu ngữ cảnh
+  const isMobile = useIsMobile();
+  const isTouchDevice = useIsTouchDevice();
+  const touchGesturesEnabled = isMobile || isTouchDevice;
+  const innerRef = useRef<HTMLDivElement>(null);
+  const touch = useTreeTouchGestures({
+    viewportRef,
+    innerRef,
+    zoomScale,
+    onZoomChange: onZoomChange as ((next: number) => void) | undefined,
+    enabled: touchGesturesEnabled,
+  });
+
+  const handleFindMe = (): boolean => {
+    const card = viewportRef.current?.querySelector('.tree-person-card.is-current-user') as HTMLElement | null;
+    if (!card) return false;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    return true;
+  };
 
   useEffect(() => {
     // Tự động mở rộng các tầng ban đầu khi nạp cây dòng họ:
@@ -781,11 +804,13 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     <div className="tree-canvas-container">
       <div
         ref={viewportRef}
-        className={`tree-canvas-viewport ${isPanning ? 'is-panning' : ''}`}
+        className={`tree-canvas-viewport ${isPanning ? 'is-panning' : ''} ${touchGesturesEnabled ? 'is-touch' : ''}`}
         style={{
           backgroundColor: chartConfig?.backgroundColor || undefined,
           transition: 'background-color 0.25s ease',
+          ...(touchGesturesEnabled ? { touchAction: 'none' } : {}),
         }}
+        {...touch.handlers}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -817,6 +842,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
           }}
         >
           <div
+            ref={innerRef}
             className={`tree-canvas-inner direction-${direction} ${isBilateralMode ? 'is-bilateral-mode' : ''}`}
             style={{
               position: 'absolute',
@@ -1949,6 +1975,16 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
         <div />
       </div>
     </div>
+
+    {isMobile && (
+      <MobileTreeControls
+        zoomPercent={Math.round(zoomScale * 100)}
+        onZoomIn={() => touch.zoomBy(0.15)}
+        onZoomOut={() => touch.zoomBy(-0.15)}
+        onCenter={handleCenterView}
+        onFindMe={handleFindMe}
+      />
+    )}
   </div>
   );
 };

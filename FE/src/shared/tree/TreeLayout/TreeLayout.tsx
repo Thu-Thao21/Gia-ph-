@@ -7,6 +7,8 @@ import type { Family, Member } from '../../../types/member';
 import type { ErgoTreeNode, TreeContextMenuState } from '../../../types/tree';
 import { ErgoTreeCanvas } from '../ErgoTreeCanvas';
 import { TreeContextMenu } from '../TreeContextMenu';
+import { TreeNodeSummarySheet } from '../TreeNodeSummarySheet';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 import TreeActionModals, { type ModalType } from '../TreeActionModals/TreeActionModals';
 import { NotificationModal } from '../../common/NotificationModal';
 import { BurialQuickViewModal } from '../../../components/common/BurialQuickViewModal';
@@ -51,6 +53,8 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const isFamilyAdmin = clanRoles.includes('FAMILY_ADMIN');
   const canManageTree = isAdmin || isClanAdmin || isFamilyAdmin;
 
+  const isMobile = useIsMobile();
+  const [summaryNode, setSummaryNode] = useState<ErgoTreeNode | null>(null);
   const [viewScope, setViewScope] = useState<'clan' | 'network'>(initialScope || 'clan');
   const [myNetworkData, setMyNetworkData] = useState<MyFamilyNetworkResponse | null>(null);
   const [expandedInLawPersonId, setExpandedInLawPersonId] = useState<string | null>(null);
@@ -361,10 +365,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
     };
   }, [selectedFamilyId, focusMemberId]);
 
-  const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
-    e.stopPropagation();
-    console.log('[TreeLayout] handleCardClick on:', node.id, node.fullName);
-
+  const applyCardClickAction = (node: ErgoTreeNode) => {
     // 1. Kiểm tra xem thẻ vừa bấm có phải là CHÍNH BẢN THÂN MÌNH (Current User / Ego) hay không
     const isSelf = Boolean(
       node.isCurrentUser ||
@@ -421,6 +422,16 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
     }
 
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleCardClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
+    e.stopPropagation();
+    console.log('[TreeLayout] handleCardClick on:', node.id, node.fullName);
+    if (isMobile) {
+      setSummaryNode(node);
+      return;
+    }
+    applyCardClickAction(node);
   };
 
   const handleContextMenu = (e: React.MouseEvent, node: ErgoTreeNode) => {
@@ -976,6 +987,21 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
           }}
           onViewBurial={(node) => setBurialModalNode(node)}
           chartConfig={appliedChartConfig}
+        />
+      )}
+
+      {/* Mobile: thẻ tóm tắt khi chạm vào một người */}
+      {isMobile && (
+        <TreeNodeSummarySheet
+          node={summaryNode}
+          isFocused={Boolean(summaryNode && focusMemberId === summaryNode.id)}
+          onClose={() => setSummaryNode(null)}
+          onViewProfile={onSelectMemberProfile ? handleViewBio : undefined}
+          onToggleFocus={applyCardClickAction}
+          onMoreActions={(node) => {
+            // Mở ở tick sau: TreeContextMenu tự đóng khi có click trên window, kể cả chính click này
+            window.setTimeout(() => setContextMenu({ isOpen: true, x: 0, y: 0, member: node }), 0);
+          }}
         />
       )}
 
