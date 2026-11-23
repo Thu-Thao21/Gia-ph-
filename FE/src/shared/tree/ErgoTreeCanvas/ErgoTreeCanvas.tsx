@@ -160,9 +160,9 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
         next.has(rawId) ||
         Boolean(
           node?.spouses &&
-            node.spouses.some(
-              (s) => next.has(String(s.id).toLowerCase().trim()) || next.has(String(s.id))
-            )
+          node.spouses.some(
+            (s) => next.has(String(s.id).toLowerCase().trim()) || next.has(String(s.id))
+          )
         );
 
       if (isCurrentlyExpanded) {
@@ -801,7 +801,8 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   };
 
   return (
-    <div className="tree-canvas-container">
+    <>
+      <div className="tree-canvas-container">
       <div
         ref={viewportRef}
         className={`tree-canvas-viewport ${isPanning ? 'is-panning' : ''} ${touchGesturesEnabled ? 'is-touch' : ''}`}
@@ -816,1163 +817,1164 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
-      <div
-        className="tree-canvas-outer-wrapper"
-        style={{
-          minWidth: '100%',
-          width: 'max-content',
-          minHeight: '100%',
-          height: 'max-content',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          padding: '40px 80px',
-          boxSizing: 'border-box',
-          position: 'relative',
-          backgroundColor: chartConfig?.backgroundColor || undefined,
-        }}
-      >
         <div
-          className="tree-canvas-scaled-box"
+          className="tree-canvas-outer-wrapper"
           style={{
-            width: `${totalCanvasWidth * zoomScale}px`,
-            height: `${totalCanvasHeight * zoomScale}px`,
+            minWidth: '100%',
+            width: 'max-content',
+            minHeight: '100%',
+            height: 'max-content',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'flex-start',
+            padding: '40px 80px',
+            boxSizing: 'border-box',
             position: 'relative',
-            flexShrink: 0,
+            backgroundColor: chartConfig?.backgroundColor || undefined,
           }}
         >
           <div
             ref={innerRef}
-            className={`tree-canvas-inner direction-${direction} ${isBilateralMode ? 'is-bilateral-mode' : ''}`}
+            className="tree-canvas-scaled-box"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: `${totalCanvasWidth}px`,
-              height: `${totalCanvasHeight}px`,
-              transform: `scale(${zoomScale})`,
-              transformOrigin: 'top left',
-              transition: 'transform 0.15s ease-out',
+              width: `${totalCanvasWidth * zoomScale}px`,
+              height: `${totalCanvasHeight * zoomScale}px`,
+              position: 'relative',
+              flexShrink: 0,
             }}
           >
-        {/* ========================================================================= */}
-        {/* CASE A: BILATERAL NETWORK CANVAS (MẠNG LƯỚI LIÊN HỌ THỐNG NHẤT 4 ĐỜI)     */}
-        {/* ========================================================================= */}
-        {isBilateralMode && bilateralLayout ? (
-          <>
-            {/* 1. Dual Lineage Header Banners at Top (Chừa khoảng trống 60px trên nhánh) */}
             <div
-              className="tree-bilateral-column-header natal"
-              style={{
-                position: 'absolute',
-                left: `${bilateralLayout.EGO_X - 180}px`,
-                top: '24px',
-                width: '360px',
-                textAlign: 'center',
-                padding: '10px 18px',
-                background: '#eff6ff',
-                border: '1.5px solid #93c5fd',
-                borderRadius: '16px',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
-                zIndex: 3,
-              }}
-            >
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                Dòng họ của bạn (Nội tộc)
-              </div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
-                {bilateralLayout.natalClan?.name?.toUpperCase() || 'DÒNG HỌ DƯƠNG'}
-              </div>
-            </div>
-
-            <div
-              className="tree-bilateral-column-header spouse"
-              style={{
-                position: 'absolute',
-                left: `${bilateralLayout.SPOUSE_X - 180}px`,
-                top: '24px',
-                width: '360px',
-                textAlign: 'center',
-                padding: '10px 18px',
-                background: '#f5f3ff',
-                border: '1.5px solid #c4b5fd',
-                borderRadius: '16px',
-                boxShadow: '0 4px 14px rgba(124, 58, 237, 0.08)',
-                zIndex: 3,
-              }}
-            >
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#7c3aed', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-                Dòng họ bên phối ngẫu (Thông gia)
-              </div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#5b21b6', marginTop: '2px' }}>
-                {bilateralLayout.spouseClan?.name?.toUpperCase() || 'MAI THẾ TỘC'} [4 ĐỜI CHIA SẺ]
-              </div>
-            </div>
-
-            {/* 2. SVG Connectors Layer */}
-            <svg
-              className="tree-svg-connector-canvas bilateral"
+              className={`tree-canvas-inner direction-${direction} ${isBilateralMode ? 'is-bilateral-mode' : ''}`}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 width: `${totalCanvasWidth}px`,
                 height: `${totalCanvasHeight}px`,
-                pointerEvents: 'none',
-                zIndex: 1,
-                overflow: 'visible',
+                transform: `scale(${zoomScale})`,
+                transformOrigin: 'top left',
+                transition: 'transform 0.15s ease-out',
               }}
             >
-              <defs>
-                <linearGradient id="bilateralBridgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#2563eb" />
-                  <stop offset="50%" stopColor="#7c3aed" />
-                  <stop offset="100%" stopColor="#9333ea" />
-                </linearGradient>
-              </defs>
+              {/* ========================================================================= */}
+              {/* CASE A: BILATERAL NETWORK CANVAS (MẠNG LƯỚI LIÊN HỌ THỐNG NHẤT 4 ĐỜI)     */}
+              {/* ========================================================================= */}
+              {isBilateralMode && bilateralLayout ? (
+                <>
+                  {/* 1. Dual Lineage Header Banners at Top (Chừa khoảng trống 60px trên nhánh) */}
+                  <div
+                    className="tree-bilateral-column-header natal"
+                    style={{
+                      position: 'absolute',
+                      left: `${bilateralLayout.EGO_X - 180}px`,
+                      top: '24px',
+                      width: '360px',
+                      textAlign: 'center',
+                      padding: '10px 18px',
+                      background: '#eff6ff',
+                      border: '1.5px solid #93c5fd',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
+                      zIndex: 3,
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                      Dòng họ của bạn (Nội tộc)
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
+                      {bilateralLayout.natalClan?.name?.toUpperCase() || 'DÒNG HỌ DƯƠNG'}
+                    </div>
+                  </div>
 
-              {/* Render edges */}
-              {bilateralLayout.edges.map((edge) => {
-                const src = bilateralLayout.positions[edge.source];
-                const tgt = bilateralLayout.positions[edge.target];
-                if (!src || !tgt) return null;
+                  <div
+                    className="tree-bilateral-column-header spouse"
+                    style={{
+                      position: 'absolute',
+                      left: `${bilateralLayout.SPOUSE_X - 180}px`,
+                      top: '24px',
+                      width: '360px',
+                      textAlign: 'center',
+                      padding: '10px 18px',
+                      background: '#f5f3ff',
+                      border: '1.5px solid #c4b5fd',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 14px rgba(124, 58, 237, 0.08)',
+                      zIndex: 3,
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#7c3aed', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+                      Dòng họ bên phối ngẫu (Thông gia)
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#5b21b6', marginTop: '2px' }}>
+                      {bilateralLayout.spouseClan?.name?.toUpperCase() || 'MAI THẾ TỘC'} [4 ĐỜI CHIA SẺ]
+                    </div>
+                  </div>
 
-                if (edge.type === 'INTER_CLAN_BRIDGE') {
-                  const x1 = Math.min(src.x, tgt.x) + CARD_WIDTH / 2;
-                  const x2 = Math.max(src.x, tgt.x) - CARD_WIDTH / 2;
-                  const y = src.y;
+                  {/* 2. SVG Connectors Layer */}
+                  <svg
+                    className="tree-svg-connector-canvas bilateral"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: `${totalCanvasWidth}px`,
+                      height: `${totalCanvasHeight}px`,
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                      overflow: 'visible',
+                    }}
+                  >
+                    <defs>
+                      <linearGradient id="bilateralBridgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#2563eb" />
+                        <stop offset="50%" stopColor="#7c3aed" />
+                        <stop offset="100%" stopColor="#9333ea" />
+                      </linearGradient>
+                    </defs>
 
-                  return (
-                    <g key={edge.id} className="mfn-bridge-connector">
-                      <line x1={x1} y1={y} x2={x2} y2={y} stroke="#c4b5fd" strokeWidth="8" strokeOpacity="0.4" />
-                      <line x1={x1} y1={y} x2={x2} y2={y} stroke="url(#bilateralBridgeGrad)" strokeWidth="3.5" />
-                      {/* Marriage Ring Badge */}
-                      <g transform={`translate(${bilateralLayout.CX}, ${y})`}>
-                        <rect
-                          x="-88"
-                          y="-16"
-                          width="176"
-                          height="32"
-                          rx="16"
-                          fill="#ffffff"
-                          stroke="#7c3aed"
-                          strokeWidth="2"
-                          filter="drop-shadow(0 3px 8px rgba(124, 58, 237, 0.22))"
-                        />
-                        <circle cx="-62" cy="0" r="5.5" fill="none" stroke="#7c3aed" strokeWidth="2.2" />
-                        <circle cx="-56" cy="0" r="5.5" fill="none" stroke="#db2777" strokeWidth="2.2" />
-                        <text x="10" y="4.5" textAnchor="middle" fontSize="11" fontWeight="800" fill="#6d28d9">
-                          HÔN PHỐI LIÊN TỘC
-                        </text>
-                      </g>
-                    </g>
-                  );
-                }
+                    {/* Render edges */}
+                    {bilateralLayout.edges.map((edge) => {
+                      const src = bilateralLayout.positions[edge.source];
+                      const tgt = bilateralLayout.positions[edge.target];
+                      if (!src || !tgt) return null;
 
-                if (edge.type === 'MARRIAGE') {
-                  const x1 = Math.min(src.x, tgt.x) + CARD_WIDTH / 2;
-                  const x2 = Math.max(src.x, tgt.x) - CARD_WIDTH / 2;
-                  const y = src.y;
-                  const midX = (x1 + x2) / 2;
+                      if (edge.type === 'INTER_CLAN_BRIDGE') {
+                        const x1 = Math.min(src.x, tgt.x) + CARD_WIDTH / 2;
+                        const x2 = Math.max(src.x, tgt.x) - CARD_WIDTH / 2;
+                        const y = src.y;
 
-                  return (
-                    <g key={edge.id} className="mfn-marriage-connector">
-                      <line x1={x1} y1={y} x2={x2} y2={y} stroke="#e2e8f0" strokeWidth="5" />
-                      <line x1={x1} y1={y} x2={x2} y2={y} stroke="#db2777" strokeWidth="2.5" />
-                      <g transform={`translate(${midX}, ${y})`}>
-                        <circle cx="0" cy="0" r="12" fill="#fdf2f8" stroke="#db2777" strokeWidth="1.5" />
-                        <text x="0" y="3.5" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="#be185d">
-                          Vợ
-                        </text>
-                      </g>
-                    </g>
-                  );
-                }
-
-                return null;
-              })}
-
-              {/* 3. Đường nối thế hệ: Nối từ giữa 2 vợ chồng chĩa xuống con/cặp vợ chồng con */}
-              {bilateralLayout.familyUnits.map((unit) => {
-                const chCount = unit.children.length;
-                if (chCount === 0) return null;
-
-                const minTargetY = Math.min(...unit.children.map((c) => c.targetY));
-                const midY = (unit.stemY + minTargetY) / 2;
-                const minX = Math.min(...unit.children.map((c) => c.targetX), unit.stemX);
-                const maxX = Math.max(...unit.children.map((c) => c.targetX), unit.stemX);
-
-                return (
-                  <g key={unit.id} className="mfn-family-unit-connector">
-                    {/* 1. Parent Bracket: Bố mẹ có vợ chồng thì nối từ đáy 2 vợ chồng vào thanh ngang, nút giao ở chính giữa */}
-                    {unit.parentBracket && (
-                      <>
-                        <line
-                          x1={unit.parentBracket.leftX}
-                          y1={unit.parentBracket.parentBottomY}
-                          x2={unit.parentBracket.leftX}
-                          y2={unit.parentBracket.bracketY}
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.parentBracket.leftX}
-                          y1={unit.parentBracket.parentBottomY}
-                          x2={unit.parentBracket.leftX}
-                          y2={unit.parentBracket.bracketY}
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.parentBracket.rightX}
-                          y1={unit.parentBracket.parentBottomY}
-                          x2={unit.parentBracket.rightX}
-                          y2={unit.parentBracket.bracketY}
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.parentBracket.rightX}
-                          y1={unit.parentBracket.parentBottomY}
-                          x2={unit.parentBracket.rightX}
-                          y2={unit.parentBracket.bracketY}
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.parentBracket.leftX}
-                          y1={unit.parentBracket.bracketY}
-                          x2={unit.parentBracket.rightX}
-                          y2={unit.parentBracket.bracketY}
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.parentBracket.leftX}
-                          y1={unit.parentBracket.bracketY}
-                          x2={unit.parentBracket.rightX}
-                          y2={unit.parentBracket.bracketY}
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                        <circle
-                          cx={unit.stemX}
-                          cy={unit.stemY}
-                          r="3.5"
-                          fill="#2563eb"
-                          stroke="#ffffff"
-                          strokeWidth="1.5"
-                        />
-                      </>
-                    )}
-
-                    {/* 2. Đường thả từ giữa 2 vợ chồng xuống con */}
-                    {chCount === 1 && Math.abs(unit.stemX - unit.children[0].targetX) < 3 ? (
-                      <>
-                        <line
-                          x1={unit.stemX}
-                          y1={unit.stemY}
-                          x2={unit.stemX}
-                          y2={unit.children[0].targetY}
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.stemX}
-                          y1={unit.stemY}
-                          x2={unit.stemX}
-                          y2={unit.children[0].targetY}
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                      </>
-                    ) : chCount === 1 ? (
-                      <>
-                        <path
-                          d={`M ${unit.stemX} ${unit.stemY} L ${unit.stemX} ${midY} L ${unit.children[0].targetX} ${midY} L ${unit.children[0].targetX} ${unit.children[0].targetY}`}
-                          fill="none"
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d={`M ${unit.stemX} ${unit.stemY} L ${unit.stemX} ${midY} L ${unit.children[0].targetX} ${midY} L ${unit.children[0].targetX} ${unit.children[0].targetY}`}
-                          fill="none"
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <line
-                          x1={unit.stemX}
-                          y1={unit.stemY}
-                          x2={unit.stemX}
-                          y2={midY}
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={unit.stemX}
-                          y1={unit.stemY}
-                          x2={unit.stemX}
-                          y2={midY}
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                        <circle cx={unit.stemX} cy={midY} r="3.5" fill="#2563eb" stroke="#ffffff" strokeWidth="1.5" />
-                        <line
-                          x1={minX}
-                          y1={midY}
-                          x2={maxX}
-                          y2={midY}
-                          stroke="#ffffff"
-                          strokeWidth="5"
-                          strokeLinecap="round"
-                        />
-                        <line
-                          x1={minX}
-                          y1={midY}
-                          x2={maxX}
-                          y2={midY}
-                          stroke="#2563eb"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                        {unit.children.map((ch) => (
-                          <React.Fragment key={`drop-${ch.id}`}>
-                            <line
-                              x1={ch.targetX}
-                              y1={midY}
-                              x2={ch.targetX}
-                              y2={ch.targetY}
-                              stroke="#ffffff"
-                              strokeWidth="5"
-                              strokeLinecap="round"
-                            />
-                            <line
-                              x1={ch.targetX}
-                              y1={midY}
-                              x2={ch.targetX}
-                              y2={ch.targetY}
-                              stroke="#2563eb"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                            />
-                          </React.Fragment>
-                        ))}
-                      </>
-                    )}
-
-                    {/* 3. Child Bracket: Nếu con đã có vợ chồng thì chỉa xuống cả 2 vợ chồng con */}
-                    {unit.children.map((ch) => {
-                      if (!ch.childBracket) {
                         return (
-                          <circle
-                            key={`dot-${ch.id}`}
-                            cx={ch.targetX}
-                            cy={ch.targetY}
-                            r="3.5"
-                            fill="#2563eb"
-                            stroke="#ffffff"
-                            strokeWidth="1.5"
-                          />
+                          <g key={edge.id} className="mfn-bridge-connector">
+                            <line x1={x1} y1={y} x2={x2} y2={y} stroke="#c4b5fd" strokeWidth="8" strokeOpacity="0.4" />
+                            <line x1={x1} y1={y} x2={x2} y2={y} stroke="url(#bilateralBridgeGrad)" strokeWidth="3.5" />
+                            {/* Marriage Ring Badge */}
+                            <g transform={`translate(${bilateralLayout.CX}, ${y})`}>
+                              <rect
+                                x="-88"
+                                y="-16"
+                                width="176"
+                                height="32"
+                                rx="16"
+                                fill="#ffffff"
+                                stroke="#7c3aed"
+                                strokeWidth="2"
+                                filter="drop-shadow(0 3px 8px rgba(124, 58, 237, 0.22))"
+                              />
+                              <circle cx="-62" cy="0" r="5.5" fill="none" stroke="#7c3aed" strokeWidth="2.2" />
+                              <circle cx="-56" cy="0" r="5.5" fill="none" stroke="#db2777" strokeWidth="2.2" />
+                              <text x="10" y="4.5" textAnchor="middle" fontSize="11" fontWeight="800" fill="#6d28d9">
+                                HÔN PHỐI LIÊN TỘC
+                              </text>
+                            </g>
+                          </g>
                         );
                       }
 
+                      if (edge.type === 'MARRIAGE') {
+                        const x1 = Math.min(src.x, tgt.x) + CARD_WIDTH / 2;
+                        const x2 = Math.max(src.x, tgt.x) - CARD_WIDTH / 2;
+                        const y = src.y;
+                        const midX = (x1 + x2) / 2;
+
+                        return (
+                          <g key={edge.id} className="mfn-marriage-connector">
+                            <line x1={x1} y1={y} x2={x2} y2={y} stroke="#e2e8f0" strokeWidth="5" />
+                            <line x1={x1} y1={y} x2={x2} y2={y} stroke="#db2777" strokeWidth="2.5" />
+                            <g transform={`translate(${midX}, ${y})`}>
+                              <circle cx="0" cy="0" r="12" fill="#fdf2f8" stroke="#db2777" strokeWidth="1.5" />
+                              <text x="0" y="3.5" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="#be185d">
+                                Vợ
+                              </text>
+                            </g>
+                          </g>
+                        );
+                      }
+
+                      return null;
+                    })}
+
+                    {/* 3. Đường nối thế hệ: Nối từ giữa 2 vợ chồng chĩa xuống con/cặp vợ chồng con */}
+                    {bilateralLayout.familyUnits.map((unit) => {
+                      const chCount = unit.children.length;
+                      if (chCount === 0) return null;
+
+                      const minTargetY = Math.min(...unit.children.map((c) => c.targetY));
+                      const midY = (unit.stemY + minTargetY) / 2;
+                      const minX = Math.min(...unit.children.map((c) => c.targetX), unit.stemX);
+                      const maxX = Math.max(...unit.children.map((c) => c.targetX), unit.stemX);
+
                       return (
-                        <g key={`bracket-${ch.id}`} className="mfn-child-bracket">
-                          <line
-                            x1={ch.childBracket.leftX}
-                            y1={ch.childBracket.forkY}
-                            x2={ch.childBracket.rightX}
-                            y2={ch.childBracket.forkY}
-                            stroke="#ffffff"
-                            strokeWidth="5"
-                            strokeLinecap="round"
-                          />
-                          <line
-                            x1={ch.childBracket.leftX}
-                            y1={ch.childBracket.forkY}
-                            x2={ch.childBracket.rightX}
-                            y2={ch.childBracket.forkY}
-                            stroke="#2563eb"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                          />
-                          <line
-                            x1={ch.childBracket.leftX}
-                            y1={ch.childBracket.forkY}
-                            x2={ch.childBracket.leftX}
-                            y2={ch.childBracket.childTopY}
-                            stroke="#ffffff"
-                            strokeWidth="5"
-                            strokeLinecap="round"
-                          />
-                          <line
-                            x1={ch.childBracket.leftX}
-                            y1={ch.childBracket.forkY}
-                            x2={ch.childBracket.leftX}
-                            y2={ch.childBracket.childTopY}
-                            stroke="#2563eb"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                          />
-                          <line
-                            x1={ch.childBracket.rightX}
-                            y1={ch.childBracket.forkY}
-                            x2={ch.childBracket.rightX}
-                            y2={ch.childBracket.childTopY}
-                            stroke="#ffffff"
-                            strokeWidth="5"
-                            strokeLinecap="round"
-                          />
-                          <line
-                            x1={ch.childBracket.rightX}
-                            y1={ch.childBracket.forkY}
-                            x2={ch.childBracket.rightX}
-                            y2={ch.childBracket.childTopY}
-                            stroke="#2563eb"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                          />
-                          <circle
-                            cx={ch.targetX}
-                            cy={ch.targetY}
-                            r="3.5"
-                            fill="#2563eb"
-                            stroke="#ffffff"
-                            strokeWidth="1.5"
-                          />
-                          <circle
-                            cx={ch.childBracket.leftX}
-                            cy={ch.childBracket.childTopY}
-                            r="3"
-                            fill="#2563eb"
-                            stroke="#ffffff"
-                            strokeWidth="1.2"
-                          />
-                          <circle
-                            cx={ch.childBracket.rightX}
-                            cy={ch.childBracket.childTopY}
-                            r="3"
-                            fill="#2563eb"
-                            stroke="#ffffff"
-                            strokeWidth="1.2"
-                          />
+                        <g key={unit.id} className="mfn-family-unit-connector">
+                          {/* 1. Parent Bracket: Bố mẹ có vợ chồng thì nối từ đáy 2 vợ chồng vào thanh ngang, nút giao ở chính giữa */}
+                          {unit.parentBracket && (
+                            <>
+                              <line
+                                x1={unit.parentBracket.leftX}
+                                y1={unit.parentBracket.parentBottomY}
+                                x2={unit.parentBracket.leftX}
+                                y2={unit.parentBracket.bracketY}
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.parentBracket.leftX}
+                                y1={unit.parentBracket.parentBottomY}
+                                x2={unit.parentBracket.leftX}
+                                y2={unit.parentBracket.bracketY}
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.parentBracket.rightX}
+                                y1={unit.parentBracket.parentBottomY}
+                                x2={unit.parentBracket.rightX}
+                                y2={unit.parentBracket.bracketY}
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.parentBracket.rightX}
+                                y1={unit.parentBracket.parentBottomY}
+                                x2={unit.parentBracket.rightX}
+                                y2={unit.parentBracket.bracketY}
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.parentBracket.leftX}
+                                y1={unit.parentBracket.bracketY}
+                                x2={unit.parentBracket.rightX}
+                                y2={unit.parentBracket.bracketY}
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.parentBracket.leftX}
+                                y1={unit.parentBracket.bracketY}
+                                x2={unit.parentBracket.rightX}
+                                y2={unit.parentBracket.bracketY}
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                              <circle
+                                cx={unit.stemX}
+                                cy={unit.stemY}
+                                r="3.5"
+                                fill="#2563eb"
+                                stroke="#ffffff"
+                                strokeWidth="1.5"
+                              />
+                            </>
+                          )}
+
+                          {/* 2. Đường thả từ giữa 2 vợ chồng xuống con */}
+                          {chCount === 1 && Math.abs(unit.stemX - unit.children[0].targetX) < 3 ? (
+                            <>
+                              <line
+                                x1={unit.stemX}
+                                y1={unit.stemY}
+                                x2={unit.stemX}
+                                y2={unit.children[0].targetY}
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.stemX}
+                                y1={unit.stemY}
+                                x2={unit.stemX}
+                                y2={unit.children[0].targetY}
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                            </>
+                          ) : chCount === 1 ? (
+                            <>
+                              <path
+                                d={`M ${unit.stemX} ${unit.stemY} L ${unit.stemX} ${midY} L ${unit.children[0].targetX} ${midY} L ${unit.children[0].targetX} ${unit.children[0].targetY}`}
+                                fill="none"
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d={`M ${unit.stemX} ${unit.stemY} L ${unit.stemX} ${midY} L ${unit.children[0].targetX} ${midY} L ${unit.children[0].targetX} ${unit.children[0].targetY}`}
+                                fill="none"
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <line
+                                x1={unit.stemX}
+                                y1={unit.stemY}
+                                x2={unit.stemX}
+                                y2={midY}
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={unit.stemX}
+                                y1={unit.stemY}
+                                x2={unit.stemX}
+                                y2={midY}
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                              <circle cx={unit.stemX} cy={midY} r="3.5" fill="#2563eb" stroke="#ffffff" strokeWidth="1.5" />
+                              <line
+                                x1={minX}
+                                y1={midY}
+                                x2={maxX}
+                                y2={midY}
+                                stroke="#ffffff"
+                                strokeWidth="5"
+                                strokeLinecap="round"
+                              />
+                              <line
+                                x1={minX}
+                                y1={midY}
+                                x2={maxX}
+                                y2={midY}
+                                stroke="#2563eb"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                              {unit.children.map((ch) => (
+                                <React.Fragment key={`drop-${ch.id}`}>
+                                  <line
+                                    x1={ch.targetX}
+                                    y1={midY}
+                                    x2={ch.targetX}
+                                    y2={ch.targetY}
+                                    stroke="#ffffff"
+                                    strokeWidth="5"
+                                    strokeLinecap="round"
+                                  />
+                                  <line
+                                    x1={ch.targetX}
+                                    y1={midY}
+                                    x2={ch.targetX}
+                                    y2={ch.targetY}
+                                    stroke="#2563eb"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                  />
+                                </React.Fragment>
+                              ))}
+                            </>
+                          )}
+
+                          {/* 3. Child Bracket: Nếu con đã có vợ chồng thì chỉa xuống cả 2 vợ chồng con */}
+                          {unit.children.map((ch) => {
+                            if (!ch.childBracket) {
+                              return (
+                                <circle
+                                  key={`dot-${ch.id}`}
+                                  cx={ch.targetX}
+                                  cy={ch.targetY}
+                                  r="3.5"
+                                  fill="#2563eb"
+                                  stroke="#ffffff"
+                                  strokeWidth="1.5"
+                                />
+                              );
+                            }
+
+                            return (
+                              <g key={`bracket-${ch.id}`} className="mfn-child-bracket">
+                                <line
+                                  x1={ch.childBracket.leftX}
+                                  y1={ch.childBracket.forkY}
+                                  x2={ch.childBracket.rightX}
+                                  y2={ch.childBracket.forkY}
+                                  stroke="#ffffff"
+                                  strokeWidth="5"
+                                  strokeLinecap="round"
+                                />
+                                <line
+                                  x1={ch.childBracket.leftX}
+                                  y1={ch.childBracket.forkY}
+                                  x2={ch.childBracket.rightX}
+                                  y2={ch.childBracket.forkY}
+                                  stroke="#2563eb"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                />
+                                <line
+                                  x1={ch.childBracket.leftX}
+                                  y1={ch.childBracket.forkY}
+                                  x2={ch.childBracket.leftX}
+                                  y2={ch.childBracket.childTopY}
+                                  stroke="#ffffff"
+                                  strokeWidth="5"
+                                  strokeLinecap="round"
+                                />
+                                <line
+                                  x1={ch.childBracket.leftX}
+                                  y1={ch.childBracket.forkY}
+                                  x2={ch.childBracket.leftX}
+                                  y2={ch.childBracket.childTopY}
+                                  stroke="#2563eb"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                />
+                                <line
+                                  x1={ch.childBracket.rightX}
+                                  y1={ch.childBracket.forkY}
+                                  x2={ch.childBracket.rightX}
+                                  y2={ch.childBracket.childTopY}
+                                  stroke="#ffffff"
+                                  strokeWidth="5"
+                                  strokeLinecap="round"
+                                />
+                                <line
+                                  x1={ch.childBracket.rightX}
+                                  y1={ch.childBracket.forkY}
+                                  x2={ch.childBracket.rightX}
+                                  y2={ch.childBracket.childTopY}
+                                  stroke="#2563eb"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                />
+                                <circle
+                                  cx={ch.targetX}
+                                  cy={ch.targetY}
+                                  r="3.5"
+                                  fill="#2563eb"
+                                  stroke="#ffffff"
+                                  strokeWidth="1.5"
+                                />
+                                <circle
+                                  cx={ch.childBracket.leftX}
+                                  cy={ch.childBracket.childTopY}
+                                  r="3"
+                                  fill="#2563eb"
+                                  stroke="#ffffff"
+                                  strokeWidth="1.2"
+                                />
+                                <circle
+                                  cx={ch.childBracket.rightX}
+                                  cy={ch.childBracket.childTopY}
+                                  r="3"
+                                  fill="#2563eb"
+                                  stroke="#ffffff"
+                                  strokeWidth="1.2"
+                                />
+                              </g>
+                            );
+                          })}
                         </g>
                       );
                     })}
-                  </g>
-                );
-              })}
 
-              {/* Children stem from Ego-Spouse marriage bridge */}
-              {bilateralLayout.sharedChildren.length > 0 && (
-                <g className="mfn-children-stem">
-                  <line
-                    x1={bilateralLayout.CX}
-                    y1={bilateralLayout.LEVEL_Y[0] + 16}
-                    x2={bilateralLayout.CX}
-                    y2={880}
-                    stroke="#ffffff"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                  />
-                  <line
-                    x1={bilateralLayout.CX}
-                    y1={bilateralLayout.LEVEL_Y[0] + 16}
-                    x2={bilateralLayout.CX}
-                    y2={880}
-                    stroke="#7c3aed"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                  {bilateralLayout.sharedChildren.length === 1 ? (
-                    <>
-                      <line
-                        x1={bilateralLayout.CX}
-                        y1={880}
-                        x2={bilateralLayout.CX}
-                        y2={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
-                        stroke="#ffffff"
-                        strokeWidth="5"
-                        strokeLinecap="round"
-                      />
-                      <line
-                        x1={bilateralLayout.CX}
-                        y1={880}
-                        x2={bilateralLayout.CX}
-                        y2={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
-                        stroke="#7c3aed"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                      />
-                      <circle
-                        cx={bilateralLayout.CX}
-                        cy={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
-                        r="3.5"
-                        fill="#7c3aed"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <line
-                        x1={bilateralLayout.positions[bilateralLayout.sharedChildren[0].id]?.x || bilateralLayout.CX}
-                        y1={880}
-                        x2={bilateralLayout.positions[bilateralLayout.sharedChildren[bilateralLayout.sharedChildren.length - 1].id]?.x || bilateralLayout.CX}
-                        y2={880}
-                        stroke="#ffffff"
-                        strokeWidth="5"
-                        strokeLinecap="round"
-                      />
-                      <line
-                        x1={bilateralLayout.positions[bilateralLayout.sharedChildren[0].id]?.x || bilateralLayout.CX}
-                        y1={880}
-                        x2={bilateralLayout.positions[bilateralLayout.sharedChildren[bilateralLayout.sharedChildren.length - 1].id]?.x || bilateralLayout.CX}
-                        y2={880}
-                        stroke="#7c3aed"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                      />
-                      {bilateralLayout.sharedChildren.map((ch) => {
-                        const chPos = bilateralLayout.positions[ch.id];
-                        if (!chPos) return null;
-                        return (
-                          <React.Fragment key={`ch-line-${ch.id}`}>
+                    {/* Children stem from Ego-Spouse marriage bridge */}
+                    {bilateralLayout.sharedChildren.length > 0 && (
+                      <g className="mfn-children-stem">
+                        <line
+                          x1={bilateralLayout.CX}
+                          y1={bilateralLayout.LEVEL_Y[0] + 16}
+                          x2={bilateralLayout.CX}
+                          y2={880}
+                          stroke="#ffffff"
+                          strokeWidth="5"
+                          strokeLinecap="round"
+                        />
+                        <line
+                          x1={bilateralLayout.CX}
+                          y1={bilateralLayout.LEVEL_Y[0] + 16}
+                          x2={bilateralLayout.CX}
+                          y2={880}
+                          stroke="#7c3aed"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                        {bilateralLayout.sharedChildren.length === 1 ? (
+                          <>
                             <line
-                              x1={chPos.x}
+                              x1={bilateralLayout.CX}
                               y1={880}
-                              x2={chPos.x}
+                              x2={bilateralLayout.CX}
                               y2={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
                               stroke="#ffffff"
                               strokeWidth="5"
                               strokeLinecap="round"
                             />
                             <line
-                              x1={chPos.x}
+                              x1={bilateralLayout.CX}
                               y1={880}
-                              x2={chPos.x}
+                              x2={bilateralLayout.CX}
                               y2={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
                               stroke="#7c3aed"
                               strokeWidth="2.5"
                               strokeLinecap="round"
                             />
                             <circle
-                              cx={chPos.x}
+                              cx={bilateralLayout.CX}
                               cy={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
                               r="3.5"
                               fill="#7c3aed"
                               stroke="#ffffff"
                               strokeWidth="1.5"
                             />
-                          </React.Fragment>
-                        );
-                      })}
-                    </>
-                  )}
-                </g>
-              )}
-            </svg>
+                          </>
+                        ) : (
+                          <>
+                            <line
+                              x1={bilateralLayout.positions[bilateralLayout.sharedChildren[0].id]?.x || bilateralLayout.CX}
+                              y1={880}
+                              x2={bilateralLayout.positions[bilateralLayout.sharedChildren[bilateralLayout.sharedChildren.length - 1].id]?.x || bilateralLayout.CX}
+                              y2={880}
+                              stroke="#ffffff"
+                              strokeWidth="5"
+                              strokeLinecap="round"
+                            />
+                            <line
+                              x1={bilateralLayout.positions[bilateralLayout.sharedChildren[0].id]?.x || bilateralLayout.CX}
+                              y1={880}
+                              x2={bilateralLayout.positions[bilateralLayout.sharedChildren[bilateralLayout.sharedChildren.length - 1].id]?.x || bilateralLayout.CX}
+                              y2={880}
+                              stroke="#7c3aed"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            />
+                            {bilateralLayout.sharedChildren.map((ch) => {
+                              const chPos = bilateralLayout.positions[ch.id];
+                              if (!chPos) return null;
+                              return (
+                                <React.Fragment key={`ch-line-${ch.id}`}>
+                                  <line
+                                    x1={chPos.x}
+                                    y1={880}
+                                    x2={chPos.x}
+                                    y2={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
+                                    stroke="#ffffff"
+                                    strokeWidth="5"
+                                    strokeLinecap="round"
+                                  />
+                                  <line
+                                    x1={chPos.x}
+                                    y1={880}
+                                    x2={chPos.x}
+                                    y2={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
+                                    stroke="#7c3aed"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                  />
+                                  <circle
+                                    cx={chPos.x}
+                                    cy={bilateralLayout.LEVEL_Y[1] - CARD_HEIGHT / 2}
+                                    r="3.5"
+                                    fill="#7c3aed"
+                                    stroke="#ffffff"
+                                    strokeWidth="1.5"
+                                  />
+                                </React.Fragment>
+                              );
+                            })}
+                          </>
+                        )}
+                      </g>
+                    )}
+                  </svg>
 
-            {/* 3. Render Person Cards (Chừa khoảng trống 60px so với tiêu đề, tuyệt đối không đè) */}
-            {bilateralLayout.renderedNodes.map((item) => (
-              <div
-                key={item.node.id}
-                className="tree-layout-unit-wrapper bilateral-unit"
-                style={{
-                  position: 'absolute',
-                  left: `${item.x - CARD_WIDTH / 2}px`,
-                  top: `${item.y - CARD_HEIGHT / 2}px`,
-                  width: `${CARD_WIDTH}px`,
-                  minHeight: `${CARD_HEIGHT}px`,
-                  zIndex: 2,
-                }}
-              >
-                <TreeNodeCard
-                  node={item.node}
-                  onCardClick={handleNodeClick}
-                  onContextMenu={onContextMenu}
-                  hasChildren={
-                    item.networkNode.relativeLevel === -2 ||
-                    item.networkNode.relativeLevel === -1 ||
-                    (item.networkNode.relativeLevel === 0 && Boolean(bilateralLayout.sharedChildren.length))
-                  }
-                  isExpanded={true}
-                  onViewInLawTree={onViewInLawTree}
-                  onViewBurial={onViewBurial}
-                />
+                  {/* 3. Render Person Cards (Chừa khoảng trống 60px so với tiêu đề, tuyệt đối không đè) */}
+                  {bilateralLayout.renderedNodes.map((item) => (
+                    <div
+                      key={item.node.id}
+                      className="tree-layout-unit-wrapper bilateral-unit"
+                      style={{
+                        position: 'absolute',
+                        left: `${item.x - CARD_WIDTH / 2}px`,
+                        top: `${item.y - CARD_HEIGHT / 2}px`,
+                        width: `${CARD_WIDTH}px`,
+                        minHeight: `${CARD_HEIGHT}px`,
+                        zIndex: 2,
+                      }}
+                    >
+                      <TreeNodeCard
+                        node={item.node}
+                        onCardClick={handleNodeClick}
+                        onContextMenu={onContextMenu}
+                        hasChildren={
+                          item.networkNode.relativeLevel === -2 ||
+                          item.networkNode.relativeLevel === -1 ||
+                          (item.networkNode.relativeLevel === 0 && Boolean(bilateralLayout.sharedChildren.length))
+                        }
+                        isExpanded={true}
+                        onViewInLawTree={onViewInLawTree}
+                        onViewBurial={onViewBurial}
+                      />
 
-                {/* Badge trạng thái quyền xem phả hệ bên phối ngẫu */}
-                {item.networkNode.isSpouse && (
-                  <div
+                      {/* Badge trạng thái quyền xem phả hệ bên phối ngẫu */}
+                      {item.networkNode.isSpouse && (
+                        <div
+                          style={{
+                            marginTop: '6px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          {item.networkNode.grantStatus === 'AWAITING_SPOUSE' ? (
+                            <span
+                              style={{
+                                fontSize: '9.5px',
+                                background: '#fffbeb',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                                padding: '3px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                display: 'inline-block',
+                              }}
+                            >
+                              Chờ phối ngẫu xác nhận
+                            </span>
+                          ) : item.networkNode.grantStatus === 'PENDING_ADMIN_VERIFICATION' ? (
+                            <span
+                              style={{
+                                fontSize: '9.5px',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                padding: '3px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                display: 'inline-block',
+                              }}
+                            >
+                              Chờ Trưởng tộc xác minh
+                            </span>
+                          ) : item.networkNode.grantStatus === 'MARRIAGE_REJECTED' ? (
+                            <span
+                              style={{
+                                fontSize: '9.5px',
+                                background: '#fef2f2',
+                                color: '#b91c1c',
+                                border: '1px solid #fecaca',
+                                padding: '3px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                display: 'inline-block',
+                              }}
+                            >
+                              Hôn phối chưa xác minh
+                            </span>
+                          ) : item.networkNode.grantStatus === 'APPROVED' ? (
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                background: '#ecfdf5',
+                                color: '#047857',
+                                border: '1px solid #a7f3d0',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                display: 'inline-block',
+                              }}
+                            >
+                              ✓ Đã cấp quyền 4 đời
+                            </span>
+                          ) : item.networkNode.grantStatus === 'PENDING' ? (
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                padding: '3px 6px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                display: 'inline-block',
+                              }}
+                            >
+                              Đang chờ duyệt xem gia phả
+                            </span>
+                          ) : item.networkNode.grantStatus === 'REJECTED' ? (
+                            <>
+                              <span
+                                style={{
+                                  fontSize: '9.5px',
+                                  background: '#fef2f2',
+                                  color: '#b91c1c',
+                                  border: '1px solid #fecaca',
+                                  padding: '2px 4px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  textAlign: 'center',
+                                  maxWidth: '136px',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                                title={`Từ chối: ${item.networkNode.rejectionReason || 'Chưa đủ điều kiện'}`}
+                              >
+                                Từ chối: {item.networkNode.rejectionReason || 'Chưa duyệt'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRequestLineageAccess?.(
+                                    item.networkNode.clanId,
+                                    item.networkNode.clanName,
+                                    item.networkNode.id,
+                                    item.networkNode.fullName
+                                  );
+                                }}
+                                style={{
+                                  background: '#dc2626',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '3px 8px',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Gửi lại yêu cầu
+                              </button>
+                            </>
+                          ) : item.networkNode.grantStatus === 'REVOKED' ? (
+                            <>
+                              <span
+                                style={{
+                                  fontSize: '9.5px',
+                                  background: '#fef2f2',
+                                  color: '#b91c1c',
+                                  border: '1px solid #fecaca',
+                                  padding: '2px 4px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  textAlign: 'center',
+                                  maxWidth: '136px',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                                title={`Đã thu hồi: ${item.networkNode.revocationReason || 'Trưởng tộc thu hồi'}`}
+                              >
+                                Đã thu hồi quyền xem
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRequestLineageAccess?.(
+                                    item.networkNode.clanId,
+                                    item.networkNode.clanName,
+                                    item.networkNode.id,
+                                    item.networkNode.fullName
+                                  );
+                                }}
+                                style={{
+                                  background: '#4f46e5',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '3px 8px',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Xin cấp lại quyền
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span
+                                style={{
+                                  fontSize: '9.5px',
+                                  background: '#fef3c7',
+                                  color: '#b45309',
+                                  border: '1px solid #fde68a',
+                                  padding: '2px 4px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  textAlign: 'center',
+                                }}
+                              >
+                                Chưa cấp quyền xem phả hệ
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRequestLineageAccess?.(
+                                    item.networkNode.clanId,
+                                    item.networkNode.clanName,
+                                    item.networkNode.id,
+                                    item.networkNode.fullName
+                                  );
+                                }}
+                                style={{
+                                  background: '#4f46e5',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '4px 8px',
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)',
+                                }}
+                              >
+                                Xin cấp quyền 4 đời
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
+              ) : (
+                /* ========================================================================= */
+                /* CASE B: STANDARD CLAN TREE CANVAS (CÂY PHẢ HỆ TOÀN DÒNG HỌ NỘI TỘC)       */
+                /* ========================================================================= */
+                <>
+                  {/* SVG Connector Layer */}
+                  <svg
+                    className="tree-svg-connector-canvas"
                     style={{
-                      marginTop: '6px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: `${totalCanvasWidth}px`,
+                      height: `${totalCanvasHeight}px`,
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                      overflow: 'visible',
                     }}
                   >
-                    {item.networkNode.grantStatus === 'AWAITING_SPOUSE' ? (
-                      <span
-                        style={{
-                          fontSize: '9.5px',
-                          background: '#fffbeb',
-                          color: '#b45309',
-                          border: '1px solid #fde68a',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          display: 'inline-block',
-                        }}
-                      >
-                        Chờ phối ngẫu xác nhận
-                      </span>
-                    ) : item.networkNode.grantStatus === 'PENDING_ADMIN_VERIFICATION' ? (
-                      <span
-                        style={{
-                          fontSize: '9.5px',
-                          background: '#eff6ff',
-                          color: '#1d4ed8',
-                          border: '1px solid #bfdbfe',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          display: 'inline-block',
-                        }}
-                      >
-                        Chờ Trưởng tộc xác minh
-                      </span>
-                    ) : item.networkNode.grantStatus === 'MARRIAGE_REJECTED' ? (
-                      <span
-                        style={{
-                          fontSize: '9.5px',
-                          background: '#fef2f2',
-                          color: '#b91c1c',
-                          border: '1px solid #fecaca',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          display: 'inline-block',
-                        }}
-                      >
-                        Hôn phối chưa xác minh
-                      </span>
-                    ) : item.networkNode.grantStatus === 'APPROVED' ? (
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          background: '#ecfdf5',
-                          color: '#047857',
-                          border: '1px solid #a7f3d0',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          display: 'inline-block',
-                        }}
-                      >
-                        ✓ Đã cấp quyền 4 đời
-                      </span>
-                    ) : item.networkNode.grantStatus === 'PENDING' ? (
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          background: '#eff6ff',
-                          color: '#1d4ed8',
-                          border: '1px solid #bfdbfe',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          display: 'inline-block',
-                        }}
-                      >
-                        Đang chờ duyệt xem gia phả
-                      </span>
-                    ) : item.networkNode.grantStatus === 'REJECTED' ? (
-                      <>
-                        <span
-                          style={{
-                            fontSize: '9.5px',
-                            background: '#fef2f2',
-                            color: '#b91c1c',
-                            border: '1px solid #fecaca',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            textAlign: 'center',
-                            maxWidth: '136px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                          title={`Từ chối: ${item.networkNode.rejectionReason || 'Chưa đủ điều kiện'}`}
-                        >
-                          Từ chối: {item.networkNode.rejectionReason || 'Chưa duyệt'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRequestLineageAccess?.(
-                              item.networkNode.clanId,
-                              item.networkNode.clanName,
-                              item.networkNode.id,
-                              item.networkNode.fullName
-                            );
-                          }}
-                          style={{
-                            background: '#dc2626',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '3px 8px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Gửi lại yêu cầu
-                        </button>
-                      </>
-                    ) : item.networkNode.grantStatus === 'REVOKED' ? (
-                      <>
-                        <span
-                          style={{
-                            fontSize: '9.5px',
-                            background: '#fef2f2',
-                            color: '#b91c1c',
-                            border: '1px solid #fecaca',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            textAlign: 'center',
-                            maxWidth: '136px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                          title={`Đã thu hồi: ${item.networkNode.revocationReason || 'Trưởng tộc thu hồi'}`}
-                        >
-                          Đã thu hồi quyền xem
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRequestLineageAccess?.(
-                              item.networkNode.clanId,
-                              item.networkNode.clanName,
-                              item.networkNode.id,
-                              item.networkNode.fullName
-                            );
-                          }}
-                          style={{
-                            background: '#4f46e5',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '3px 8px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Xin cấp lại quyền
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          style={{
-                            fontSize: '9.5px',
-                            background: '#fef3c7',
-                            color: '#b45309',
-                            border: '1px solid #fde68a',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            textAlign: 'center',
-                          }}
-                        >
-                          Chưa cấp quyền xem phả hệ
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRequestLineageAccess?.(
-                              item.networkNode.clanId,
-                              item.networkNode.clanName,
-                              item.networkNode.id,
-                              item.networkNode.fullName
-                            );
-                          }}
-                          style={{
-                            background: '#4f46e5',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '4px 8px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)',
-                          }}
-                        >
-                          Xin cấp quyền 4 đời
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </>
-        ) : (
-          /* ========================================================================= */
-          /* CASE B: STANDARD CLAN TREE CANVAS (CÂY PHẢ HỆ TOÀN DÒNG HỌ NỘI TỘC)       */
-          /* ========================================================================= */
-          <>
-            {/* SVG Connector Layer */}
-            <svg
-              className="tree-svg-connector-canvas"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: `${totalCanvasWidth}px`,
-                height: `${totalCanvasHeight}px`,
-                pointerEvents: 'none',
-                zIndex: 1,
-                overflow: 'visible',
-              }}
-            >
-              <defs>
-                <filter id="junctionShadow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#1e3a8a" floodOpacity="0.28" />
-                </filter>
-              </defs>
+                    <defs>
+                      <filter id="junctionShadow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#1e3a8a" floodOpacity="0.28" />
+                      </filter>
+                    </defs>
 
-              {/* Watermark trống đồng Đông Sơn khi kích hoạt */}
-              {chartConfig?.showWatermark && (
-                <g className="tree-watermark-dong-son" opacity="0.12" pointerEvents="none">
-                  <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="380" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="3" />
-                  <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="320" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="1.5" />
-                  <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="250" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="2" />
-                  <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="180" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="1.5" />
-                  <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="100" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="2" />
-                </g>
-              )}
-
-              {clanLayout.busGroups.map((bus) => {
-                const connectorColor = chartConfig?.lineColor || '#2563eb';
-                const connectorWidth = chartConfig?.lineWidth || 2.5;
-                const connectorDash = chartConfig?.lineStyle === 'dashed' ? '6,4' : undefined;
-
-                return (
-                  <g key={bus.id} className="tree-bus-group">
-                    {/* Trunk Line */}
-                    {bus.trunkPath && (
-                      <>
-                        <path
-                          d={bus.trunkPath}
-                          stroke="#ffffff"
-                          strokeWidth={connectorWidth + 2.5}
-                          fill="none"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d={bus.trunkPath}
-                          stroke={connectorColor}
-                          strokeWidth={connectorWidth}
-                          strokeDasharray={connectorDash}
-                          fill="none"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </>
+                    {/* Watermark trống đồng Đông Sơn khi kích hoạt */}
+                    {chartConfig?.showWatermark && (
+                      <g className="tree-watermark-dong-son" opacity="0.12" pointerEvents="none">
+                        <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="380" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="3" />
+                        <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="320" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="1.5" />
+                        <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="250" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="2" />
+                        <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="180" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="1.5" />
+                        <circle cx={totalCanvasWidth / 2} cy={totalCanvasHeight / 2} r="100" fill="none" stroke={chartConfig.lineColor || '#b45309'} strokeWidth="2" />
+                      </g>
                     )}
 
-                    {/* Bus Bar */}
-                    {bus.busBarPath && (
-                      <>
-                        <path
-                          d={bus.busBarPath}
-                          stroke="#ffffff"
-                          strokeWidth={connectorWidth + 2.5}
-                          fill="none"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d={bus.busBarPath}
-                          stroke={connectorColor}
-                          strokeWidth={connectorWidth}
-                          strokeDasharray={connectorDash}
-                          fill="none"
-                          strokeLinecap="round"
-                        />
-                        <circle
-                          cx={bus.trunkJunction.x}
-                          cy={bus.trunkJunction.y}
-                          r="4"
-                          fill={connectorColor}
-                          stroke="#ffffff"
-                          strokeWidth="1.5"
-                          filter="url(#junctionShadow)"
-                        />
-                      </>
-                    )}
+                    {clanLayout.busGroups.map((bus) => {
+                      const connectorColor = chartConfig?.lineColor || '#2563eb';
+                      const connectorWidth = chartConfig?.lineWidth || 2.5;
+                      const connectorDash = chartConfig?.lineStyle === 'dashed' ? '6,4' : undefined;
 
-                    {/* Drop Lines */}
-                    {bus.dropPaths.map((dp, dpIdx) => (
-                      <React.Fragment key={dpIdx}>
-                        <path
-                          d={dp}
-                          stroke="#ffffff"
-                          strokeWidth={connectorWidth + 2.5}
-                          fill="none"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d={dp}
-                          stroke={connectorColor}
-                          strokeWidth={connectorWidth}
-                          strokeDasharray={connectorDash}
-                          fill="none"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </React.Fragment>
-                    ))}
+                      return (
+                        <g key={bus.id} className="tree-bus-group">
+                          {/* Trunk Line */}
+                          {bus.trunkPath && (
+                            <>
+                              <path
+                                d={bus.trunkPath}
+                                stroke="#ffffff"
+                                strokeWidth={connectorWidth + 2.5}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d={bus.trunkPath}
+                                stroke={connectorColor}
+                                strokeWidth={connectorWidth}
+                                strokeDasharray={connectorDash}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </>
+                          )}
 
-                    {/* Drop Junction Dots */}
-                    {bus.dropJunctions.map((dj, djIdx) => (
-                      <circle
-                        key={djIdx}
-                        cx={dj.x}
-                        cy={dj.y}
-                        r="3.5"
-                        fill={connectorColor}
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                        filter="url(#junctionShadow)"
-                      />
-                    ))}
-                  </g>
-                );
-              })}
-            </svg>
+                          {/* Bus Bar */}
+                          {bus.busBarPath && (
+                            <>
+                              <path
+                                d={bus.busBarPath}
+                                stroke="#ffffff"
+                                strokeWidth={connectorWidth + 2.5}
+                                fill="none"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d={bus.busBarPath}
+                                stroke={connectorColor}
+                                strokeWidth={connectorWidth}
+                                strokeDasharray={connectorDash}
+                                fill="none"
+                                strokeLinecap="round"
+                              />
+                              <circle
+                                cx={bus.trunkJunction.x}
+                                cy={bus.trunkJunction.y}
+                                r="4"
+                                fill={connectorColor}
+                                stroke="#ffffff"
+                                strokeWidth="1.5"
+                                filter="url(#junctionShadow)"
+                              />
+                            </>
+                          )}
 
-            {/* Tiêu đề Cuốn thư Hoàng gia khi bật tùy chọn */}
-            {chartConfig?.showClanHeader && (
-              <div
-                className="tree-canvas-imperial-header"
-                style={{
-                  position: 'absolute',
-                  top: '10px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'linear-gradient(135deg, #7c2d12, #b45309, #d97706, #7c2d12)',
-                  color: '#ffffff',
-                  padding: '10px 32px',
-                  borderRadius: '24px',
-                  border: '2px solid #fef08a',
-                  boxShadow: '0 6px 20px rgba(180, 83, 9, 0.35)',
-                  textAlign: 'center',
-                  zIndex: 10,
-                  userSelect: 'none',
-                }}
-              >
-                <div style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '2px', color: '#fef08a', textTransform: 'uppercase' }}>
-                  {chartConfig.chartTitle || 'PHẢ ĐỒ ĐẠI TỘC'}
-                </div>
-                {chartConfig.progenitorTitle && (
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#fef9c3', marginTop: '2px' }}>
-                    {chartConfig.progenitorTitle}
-                  </div>
-                )}
-              </div>
-            )}
+                          {/* Drop Lines */}
+                          {bus.dropPaths.map((dp, dpIdx) => (
+                            <React.Fragment key={dpIdx}>
+                              <path
+                                d={dp}
+                                stroke="#ffffff"
+                                strokeWidth={connectorWidth + 2.5}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d={dp}
+                                stroke={connectorColor}
+                                strokeWidth={connectorWidth}
+                                strokeDasharray={connectorDash}
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </React.Fragment>
+                          ))}
 
-            {/* Câu đối hai bên khi bật tùy chọn */}
-            {chartConfig?.showCouplets && (
-              <>
-                <div
-                  className="tree-canvas-couplet-banner left"
-                  style={{
-                    position: 'absolute',
-                    left: '20px',
-                    top: '120px',
-                    width: '42px',
-                    padding: '16px 6px',
-                    background: 'linear-gradient(180deg, #991b1b, #7f1d1d)',
-                    border: '2px solid #d97706',
-                    borderRadius: '8px',
-                    boxShadow: '0 8px 24px rgba(153, 27, 27, 0.25)',
-                    color: '#fef08a',
-                    fontWeight: 800,
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    writingMode: 'vertical-rl',
-                    textAlign: 'center',
-                    letterSpacing: '4px',
-                    zIndex: 10,
-                    userSelect: 'none',
-                  }}
-                >
-                  {chartConfig.coupletLeft || 'TỔ TIÊN CÔNG ĐỨC MUÔN ĐỜI THỊNH'}
-                </div>
-                <div
-                  className="tree-canvas-couplet-banner right"
-                  style={{
-                    position: 'absolute',
-                    right: '20px',
-                    top: '120px',
-                    width: '42px',
-                    padding: '16px 6px',
-                    background: 'linear-gradient(180deg, #991b1b, #7f1d1d)',
-                    border: '2px solid #d97706',
-                    borderRadius: '8px',
-                    boxShadow: '0 8px 24px rgba(153, 27, 27, 0.25)',
-                    color: '#fef08a',
-                    fontWeight: 800,
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    writingMode: 'vertical-rl',
-                    textAlign: 'center',
-                    letterSpacing: '4px',
-                    zIndex: 10,
-                    userSelect: 'none',
-                  }}
-                >
-                  {chartConfig.coupletRight || 'CON CHÁU THẢO HIỀN VẠN THUỞ XUÂN'}
-                </div>
-              </>
-            )}
+                          {/* Drop Junction Dots */}
+                          {bus.dropJunctions.map((dj, djIdx) => (
+                            <circle
+                              key={djIdx}
+                              cx={dj.x}
+                              cy={dj.y}
+                              r="3.5"
+                              fill={connectorColor}
+                              stroke="#ffffff"
+                              strokeWidth="1.5"
+                              filter="url(#junctionShadow)"
+                            />
+                          ))}
+                        </g>
+                      );
+                    })}
+                  </svg>
 
-            {/* Main Clan Flat Layout Units */}
-            {clanLayout.flatUnits.map((unit) => (
-              <div
-                key={unit.id}
-                className="tree-layout-unit-wrapper"
-                style={{
-                  position: 'absolute',
-                  left: `${unit.x}px`,
-                  top: `${unit.y}px`,
-                  width: `${unit.width}px`,
-                  height: `${unit.height}px`,
-                  zIndex: 2,
-                }}
-              >
-                <TreeNodeCard
-                  node={unit.node}
-                  onCardClick={handleNodeClick}
-                  onContextMenu={onContextMenu}
-                  hasChildren={unit.hasChildren}
-                  isExpanded={unit.isExpanded}
-                  onToggleExpand={(_e, targetNode) => toggleNodeExpansion(targetNode.id, targetNode)}
-                  onViewInLawTree={onViewInLawTree}
-                  isInLawExpanded={Boolean(
-                    expandedInLawPersonId &&
-                    (unit.node.id === expandedInLawPersonId ||
-                     (unit.node.spouses && unit.node.spouses.some((s) => s.id === expandedInLawPersonId)))
+                  {/* Tiêu đề Cuốn thư Hoàng gia khi bật tùy chọn */}
+                  {chartConfig?.showClanHeader && (
+                    <div
+                      className="tree-canvas-imperial-header"
+                      style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'linear-gradient(135deg, #7c2d12, #b45309, #d97706, #7c2d12)',
+                        color: '#ffffff',
+                        padding: '10px 32px',
+                        borderRadius: '24px',
+                        border: '2px solid #fef08a',
+                        boxShadow: '0 6px 20px rgba(180, 83, 9, 0.35)',
+                        textAlign: 'center',
+                        zIndex: 10,
+                        userSelect: 'none',
+                      }}
+                    >
+                      <div style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '2px', color: '#fef08a', textTransform: 'uppercase' }}>
+                        {chartConfig.chartTitle || 'PHẢ ĐỒ ĐẠI TỘC'}
+                      </div>
+                      {chartConfig.progenitorTitle && (
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#fef9c3', marginTop: '2px' }}>
+                          {chartConfig.progenitorTitle}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  onToggleInLawExpand={onToggleInLawExpand}
-                  onViewBurial={onViewBurial}
-                  chartConfig={chartConfig}
-                />
-              </div>
-            ))}
-          </>
-        )}
+
+                  {/* Câu đối hai bên khi bật tùy chọn */}
+                  {chartConfig?.showCouplets && (
+                    <>
+                      <div
+                        className="tree-canvas-couplet-banner left"
+                        style={{
+                          position: 'absolute',
+                          left: '20px',
+                          top: '120px',
+                          width: '42px',
+                          padding: '16px 6px',
+                          background: 'linear-gradient(180deg, #991b1b, #7f1d1d)',
+                          border: '2px solid #d97706',
+                          borderRadius: '8px',
+                          boxShadow: '0 8px 24px rgba(153, 27, 27, 0.25)',
+                          color: '#fef08a',
+                          fontWeight: 800,
+                          fontSize: '14px',
+                          lineHeight: '1.6',
+                          writingMode: 'vertical-rl',
+                          textAlign: 'center',
+                          letterSpacing: '4px',
+                          zIndex: 10,
+                          userSelect: 'none',
+                        }}
+                      >
+                        {chartConfig.coupletLeft || 'TỔ TIÊN CÔNG ĐỨC MUÔN ĐỜI THỊNH'}
+                      </div>
+                      <div
+                        className="tree-canvas-couplet-banner right"
+                        style={{
+                          position: 'absolute',
+                          right: '20px',
+                          top: '120px',
+                          width: '42px',
+                          padding: '16px 6px',
+                          background: 'linear-gradient(180deg, #991b1b, #7f1d1d)',
+                          border: '2px solid #d97706',
+                          borderRadius: '8px',
+                          boxShadow: '0 8px 24px rgba(153, 27, 27, 0.25)',
+                          color: '#fef08a',
+                          fontWeight: 800,
+                          fontSize: '14px',
+                          lineHeight: '1.6',
+                          writingMode: 'vertical-rl',
+                          textAlign: 'center',
+                          letterSpacing: '4px',
+                          zIndex: 10,
+                          userSelect: 'none',
+                        }}
+                      >
+                        {chartConfig.coupletRight || 'CON CHÁU THẢO HIỀN VẠN THUỞ XUÂN'}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Main Clan Flat Layout Units */}
+                  {clanLayout.flatUnits.map((unit) => (
+                    <div
+                      key={unit.id}
+                      className="tree-layout-unit-wrapper"
+                      style={{
+                        position: 'absolute',
+                        left: `${unit.x}px`,
+                        top: `${unit.y}px`,
+                        width: `${unit.width}px`,
+                        height: `${unit.height}px`,
+                        zIndex: 2,
+                      }}
+                    >
+                      <TreeNodeCard
+                        node={unit.node}
+                        onCardClick={handleNodeClick}
+                        onContextMenu={onContextMenu}
+                        hasChildren={unit.hasChildren}
+                        isExpanded={unit.isExpanded}
+                        onToggleExpand={(_e, targetNode) => toggleNodeExpansion(targetNode.id, targetNode)}
+                        onViewInLawTree={onViewInLawTree}
+                        isInLawExpanded={Boolean(
+                          expandedInLawPersonId &&
+                          (unit.node.id === expandedInLawPersonId ||
+                            (unit.node.spouses && unit.node.spouses.some((s) => s.id === expandedInLawPersonId)))
+                        )}
+                        onToggleInLawExpand={onToggleInLawExpand}
+                        onViewBurial={onViewBurial}
+                        chartConfig={chartConfig}
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
 
-    {/* Floating Navigation Controls & Drag Hints */}
-    <div className="tree-canvas-nav-overlay">
-      {showNavHint && (
-        <div className="tree-canvas-hint-pill">
-          <span>🖱️ Bấm giữ chuột trái để kéo sơ đồ | Lăn chuột để cuộn</span>
-          <span
-            className="close-hint"
-            onClick={() => setShowNavHint(false)}
-            title="Ẩn hướng dẫn"
+      {/* Floating Navigation Controls & Drag Hints */}
+      <div className="tree-canvas-nav-overlay">
+        {showNavHint && (
+          <div className="tree-canvas-hint-pill">
+            <span>🖱️ Bấm giữ chuột trái để kéo sơ đồ | Lăn chuột để cuộn</span>
+            <span
+              className="close-hint"
+              onClick={() => setShowNavHint(false)}
+              title="Ẩn hướng dẫn"
+            >
+              ✕
+            </span>
+          </div>
+        )}
+
+        <div className="tree-canvas-nav-dpad" title="Điều khiển di chuyển sơ đồ">
+          <div />
+          <button
+            type="button"
+            className="tree-nav-btn up"
+            onClick={() => handlePanStep(0, -260)}
+            title="Cuộn lên trên"
           >
-            ✕
-          </span>
+            ▲
+          </button>
+          <div />
+
+          <button
+            type="button"
+            className="tree-nav-btn left"
+            onClick={() => handlePanStep(-280, 0)}
+            title="Cuộn sang trái"
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            className="tree-nav-btn center"
+            onClick={handleCenterView}
+            title="🎯 Đưa sơ đồ về chính giữa"
+          >
+            🎯
+          </button>
+          <button
+            type="button"
+            className="tree-nav-btn right"
+            onClick={() => handlePanStep(280, 0)}
+            title="Cuộn sang phải"
+          >
+            ▶
+          </button>
+
+          <div />
+          <button
+            type="button"
+            className="tree-nav-btn down"
+            onClick={() => handlePanStep(0, 260)}
+            title="Cuộn xuống dưới"
+          >
+            ▼
+          </button>
+          <div />
         </div>
-      )}
-
-      <div className="tree-canvas-nav-dpad" title="Điều khiển di chuyển sơ đồ">
-        <div />
-        <button
-          type="button"
-          className="tree-nav-btn up"
-          onClick={() => handlePanStep(0, -260)}
-          title="Cuộn lên trên"
-        >
-          ▲
-        </button>
-        <div />
-
-        <button
-          type="button"
-          className="tree-nav-btn left"
-          onClick={() => handlePanStep(-280, 0)}
-          title="Cuộn sang trái"
-        >
-          ◀
-        </button>
-        <button
-          type="button"
-          className="tree-nav-btn center"
-          onClick={handleCenterView}
-          title="🎯 Đưa sơ đồ về chính giữa"
-        >
-          🎯
-        </button>
-        <button
-          type="button"
-          className="tree-nav-btn right"
-          onClick={() => handlePanStep(280, 0)}
-          title="Cuộn sang phải"
-        >
-          ▶
-        </button>
-
-        <div />
-        <button
-          type="button"
-          className="tree-nav-btn down"
-          onClick={() => handlePanStep(0, 260)}
-          title="Cuộn xuống dưới"
-        >
-          ▼
-        </button>
-        <div />
       </div>
     </div>
 
@@ -1985,7 +1987,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
         onFindMe={handleFindMe}
       />
     )}
-  </div>
+    </>
   );
 };
 
