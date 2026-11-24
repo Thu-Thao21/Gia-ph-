@@ -4,6 +4,7 @@ import {
   fetchAdminUsers,
   fetchAdminUserDetail,
   updateAdminUserStatus,
+  deleteAdminUser,
   type AdminUserItem,
   type AdminUserDetail,
 } from '../../../services/admin.service';
@@ -177,6 +178,39 @@ export const AdminAccountMgmt: React.FC = () => {
     }
   };
 
+  const handleDeleteAccountPermanently = async (acc: UserAccountItem) => {
+    if (acc.email === 'thuthaor120608@gmail.com' || acc.primary_role === 'admin') {
+      setErrorMsg('Không thể xóa tài khoản Quản trị viên tối cao của hệ thống.');
+      setTimeout(() => setErrorMsg(''), 4000);
+      return;
+    }
+    const confirmName = acc.display_name || acc.username || acc.email;
+    if (
+      window.confirm(
+        `⚠️ CẢNH BÁO QUAN TRỌNG:\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản "${confirmName}" (${acc.email || 'không có email'})?\n\nTài khoản sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu và Google Firebase. Thao tác này KHÔNG thể hoàn tác!`
+      )
+    ) {
+      try {
+        await deleteAdminUser(acc.id);
+        setAccounts((prev) => prev.filter((item) => item.id !== acc.id));
+        if (selectedAcc && selectedAcc.id === acc.id) {
+          setIsModalOpen(false);
+          setSelectedAcc(null);
+        }
+        setSuccessMsg(`Đã xóa vĩnh viễn tài khoản "${confirmName}" thành công.`);
+        setErrorMsg('');
+      } catch (err: any) {
+        const info = readApiError(err);
+        setErrorMsg(`Không thể xóa tài khoản: ${info.message}`);
+        setSuccessMsg('');
+      }
+      setTimeout(() => {
+        setSuccessMsg('');
+        setErrorMsg('');
+      }, 5000);
+    }
+  };
+
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAcc) return;
@@ -314,12 +348,12 @@ export const AdminAccountMgmt: React.FC = () => {
             <table className="admin-acc-table">
               <thead>
                 <tr>
-                  <th style={{ width: '28%' }}>Tài khoản / Người dùng</th>
-                  <th style={{ width: '26%' }}>Email / Số điện thoại</th>
-                  <th style={{ width: '14%' }}>Vai trò</th>
-                  <th style={{ width: '14%' }}>Trạng thái</th>
+                  <th style={{ width: '22%' }}>Tài khoản / Người dùng</th>
+                  <th style={{ width: '24%' }}>Email / Số điện thoại</th>
+                  <th style={{ width: '13%' }}>Vai trò</th>
+                  <th style={{ width: '13%' }}>Trạng thái</th>
                   <th style={{ width: '10%' }}>Ngày tạo</th>
-                  <th style={{ width: '8%', textAlign: 'right' }}>Thao tác</th>
+                  <th style={{ width: '18%', textAlign: 'right' }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -404,6 +438,22 @@ export const AdminAccountMgmt: React.FC = () => {
                             }
                           >
                             {acc.status === 'LOCKED' ? 'Mở khóa' : 'Khóa'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-tbl-action btn-tbl-delete"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAccountPermanently(acc);
+                            }}
+                            disabled={acc.email === 'thuthaor120608@gmail.com' || acc.primary_role === 'admin'}
+                            title={
+                              acc.email === 'thuthaor120608@gmail.com' || acc.primary_role === 'admin'
+                                ? 'Không thể xóa tài khoản Quản trị viên tối cao'
+                                : 'Xóa vĩnh viễn tài khoản khỏi hệ thống'
+                            }
+                          >
+                            Xóa
                           </button>
                         </div>
                       </td>
@@ -656,6 +706,19 @@ export const AdminAccountMgmt: React.FC = () => {
                       disabled={selectedAcc.status === 'DISABLED'}
                     >
                       Vô hiệu hóa
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-subtle btn-subtle-danger"
+                      onClick={() => handleDeleteAccountPermanently(selectedAcc)}
+                      disabled={selectedAcc.email === 'thuthaor120608@gmail.com' || selectedAcc.primary_role === 'admin'}
+                      title={
+                        selectedAcc.email === 'thuthaor120608@gmail.com' || selectedAcc.primary_role === 'admin'
+                          ? 'Không thể xóa tài khoản Quản trị viên tối cao'
+                          : 'Xóa vĩnh viễn tài khoản khỏi hệ thống'
+                      }
+                    >
+                      Xóa vĩnh viễn
                     </button>
                   </div>
                   <div className="footer-right">

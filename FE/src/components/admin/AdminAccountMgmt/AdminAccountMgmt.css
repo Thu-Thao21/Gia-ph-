@@ -386,6 +386,22 @@
   border-color: #bbf7d0;
 }
 
+.btn-tbl-delete {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+.btn-tbl-delete:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #991b1b;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
+}
+.btn-tbl-delete:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .btn-tbl-action:disabled {
   opacity: 0.45;
   cursor: not-allowed;

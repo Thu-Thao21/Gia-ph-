@@ -102,6 +102,12 @@ export async function updateAdminUserStatus(
   return res.data;
 }
 
+/** DELETE /admin/users/{userId} - Xóa vĩnh viễn tài khoản khỏi hệ thống và Firebase */
+export async function deleteAdminUser(userId: string): Promise<{ message: string }> {
+  const res = await apiClient.delete(`/admin/users/${userId}`);
+  return res.data;
+}
+
 /** GET /admin/business-registrations */
 export async function fetchAdminRegistrations(params: {
   q?: string;

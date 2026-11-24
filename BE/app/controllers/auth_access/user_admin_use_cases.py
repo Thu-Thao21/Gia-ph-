@@ -540,3 +540,91 @@ async def revoke_family_admin(
         "revoked_assignments": len(revoked_ids),
         "roles_revoked": roles_revoked,
     }
+
+
+# ----- DELETE /admin/users/{user_id} -----
+
+
+async def delete_user_account(
+    *,
+    db: UnitOfWork,
+    users: UserAccessRepository,
+    provider: Any,
+    principal: Principal,
+    user_id: uuid.UUID,
+    client: ClientInfo,
+) -> dict:
+    """Permanently delete a user account from PostgreSQL and Firebase Auth.
+    Strictly protected: The System Admin account cannot be deleted.
+    """
+    from app.core.config import settings
+    import asyncio
+    from sqlalchemy import text
+
+    user = await users.get_user_by_id(user_id)
+    if user is None:
+        raise AppError(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng.")
+
+    is_root_admin = (
+        (user.email and user.email.lower() == settings.INITIAL_SYSTEM_ADMIN_EMAIL.lower())
+        or user.user_id == uuid.UUID("11111111-1111-4111-8111-111111111111")
+    )
+    if is_root_admin:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Không thể xóa tài khoản Quản trị viên tối cao của hệ thống.")
+
+    if user.user_id == principal.user_id:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Không thể tự xóa tài khoản đang đăng nhập.")
+
+    user_email = user.email
+    firebase_uid = user.firebase_uid
+
+    target_sess = db._session if hasattr(db, "_session") else db
+
+    clean_statements = [
+        text("DELETE FROM clan_ownership_history WHERE user_id = :uid"),
+        text("DELETE FROM fund_audit_logs WHERE actor_id = :uid"),
+        text("UPDATE clan_bank_accounts SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE funds SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE worship_spaces SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE relationships SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE inter_clan_requests SET requester_id = NULL WHERE requester_id = :uid"),
+        text("UPDATE lineage_access_grants SET approved_by = NULL WHERE approved_by = :uid"),
+        text("DELETE FROM provisioning_jobs WHERE user_id = :uid"),
+        text("DELETE FROM idempotency_keys WHERE actor_id = :uid"),
+        text("DELETE FROM clan_memberships WHERE user_id = :uid"),
+        text("DELETE FROM user_roles WHERE user_id = :uid"),
+        text("DELETE FROM user_sessions WHERE user_id = :uid"),
+        text("DELETE FROM credential_metadata WHERE user_id = :uid"),
+        text("DELETE FROM person_account_links WHERE user_id = :uid"),
+        text("DELETE FROM gmail_registry WHERE user_id = :uid"),
+        text("DELETE FROM users WHERE user_id = :uid"),
+    ]
+    for stmt in clean_statements:
+        try:
+            await target_sess.execute(stmt, {"uid": user_id})
+        except Exception as e:
+            logger.warning("Error running statement %s on user delete: %s", stmt, e)
+    await db.commit()
+
+    # Delete from Firebase Auth if configured
+    if getattr(provider, "admin_api_enabled", False):
+        from firebase_admin import auth as fb_auth
+        app = getattr(provider, "_get_app", lambda: None)()
+        if app:
+            if firebase_uid:
+                try:
+                    await asyncio.to_thread(fb_auth.delete_user, firebase_uid, app=app)
+                    logger.info("Deleted Firebase user by uid: %s", firebase_uid)
+                except Exception as e:
+                    logger.warning("Firebase delete_user by uid %s: %s", firebase_uid, e)
+            if user_email:
+                try:
+                    fb_user = await asyncio.to_thread(fb_auth.get_user_by_email, user_email, app=app)
+                    if fb_user and fb_user.uid:
+                        await asyncio.to_thread(fb_auth.delete_user, fb_user.uid, app=app)
+                        logger.info("Deleted Firebase user by email: %s", user_email)
+                except Exception as e:
+                    logger.warning("Firebase delete_user by email %s: %s", user_email, e)
+
+    logger.info("user.delete user_id=%s email=%s actor_id=%s", user_id, user_email, principal.user_id)
+    return {"message": f"Đã xóa vĩnh viễn tài khoản {user_email or user_id} thành công."}

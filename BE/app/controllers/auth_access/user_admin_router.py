@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers.auth_access import user_admin_use_cases as use_cases
 from app.controllers.auth_access.use_cases import ClientInfo
+from app.core.integrations.firebase import IdentityProvider, get_identity_provider
 from app.core.middleware.request_id import get_request_id
 from app.core.utils.openapi_responses import AUTHENTICATED, error_responses
 from app.db.postgres import get_db
@@ -192,6 +193,35 @@ async def update_user_status(
         principal=principal,
         user_id=user_id,
         body=body,
+        client=ClientInfo.from_request(request),
+    )
+
+
+@router.delete(
+    "/admin/users/{user_id}",
+    status_code=200,
+    responses=error_responses(
+        *AUTHENTICATED,
+        ErrorCode.FORBIDDEN,
+        ErrorCode.NOT_FOUND,
+        ErrorCode.VALIDATION_ERROR,
+    ),
+)
+async def delete_user(
+    user_id: uuid.UUID,
+    request: Request,
+    principal: Principal = Depends(require_action(Action.USER_STATUS_UPDATE)),
+    db: AsyncSession = Depends(get_db),
+    users: UserAccessRepository = Depends(get_user_access_repo),
+    provider: IdentityProvider = Depends(get_identity_provider),
+) -> dict:
+    """Permanently delete a user account from DB and Firebase. Root System Admin is protected."""
+    return await use_cases.delete_user_account(
+        db=db,
+        users=users,
+        provider=provider,
+        principal=principal,
+        user_id=user_id,
         client=ClientInfo.from_request(request),
     )
 
