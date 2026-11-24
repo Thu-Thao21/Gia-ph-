@@ -1,26 +1,19 @@
 -- =============================================================================
--- KỊCH BẢN DỮ LIỆU MẪU THỰC TẾ CHO NEON POSTGRESQL (MFGMS - HỆ THỐNG GIA PHẢ LIÊN HỌ)
--- 1. System Admin (Quản trị hệ thống toàn quyền):
+-- KỊCH BẢN KHỞI TẠO HỆ THỐNG CHO NEON POSTGRESQL (MFGMS - HỆ THỐNG GIA PHẢ LIÊN HỌ)
+-- CHỈ KHỞI TẠO:
+-- 1. Roles hệ thống (System Roles)
+-- 2. Gói dịch vụ nền tảng (Subscription Plans & Feature Limits)
+-- 3. Tài khoản Quản trị viên tối cao duy nhất (System Administrator):
 --    - Email: thuthaor120608@gmail.com
--- 2. Trưởng tộc (Business Owner - Đăng nhập bằng tài khoản @giapha.com do hệ thống cấp):
---    - vo.danang@giapha.com      -> Trưởng tộc Dòng Họ Võ (Liên kết đại diện Gmail: thangvo250904@gmail.com)
---    - mai.phongdien@giapha.com  -> Trưởng tộc Dòng Họ Mai (Liên kết đại diện Gmail: maiphuchau144@gmail.com)
--- 3. Quản trị viên gia tộc (Family Admin Chi 1 Họ Võ):
---    - huy13052005@gmail.com     -> Nguyễn Gia Huy
--- 4. Thành viên dòng họ (Member - Đăng nhập bằng Gmail thật):
---    - quankophaiwibu@gmail.com  -> Trần Minh Quân (Thành viên Dòng họ & Cầu nối liên họ)
---    - thangvo250904@gmail.com   -> Võ Trí Thắng (Thành viên cá nhân Họ Võ)
---    - maiphuchau144@gmail.com   -> Mai Phúc Hậu (Thành viên cá nhân Họ Mai)
--- MẬT KHẨU: file này KHÔNG chứa mật khẩu hay hash nào. Mọi tài khoản seed có password_hash = NULL
--- và must_change_password = true, nên chưa đăng nhập được cho tới khi đặt mật khẩu riêng bằng
---   python scripts/set_password.py <email> [--must-change]
--- Mật khẩu được gửi riêng cho từng người. Cột password_hash do migration 0005 tạo (alembic).
+--    - Tên hiển thị: Thu Thảo (System Admin)
+--
+-- TUYỆT ĐỐI KHÔNG CHỨA DỮ LIỆU DÒNG HỌ, NHÂN KHẨU HOẶC SỰ KIỆN MẪU.
 -- =============================================================================
 
 BEGIN;
 
 -- -----------------------------------------------------------------------------
--- 1. ĐẢM BẢO ROLES HỆ THỐNG ĐÃ TỒN TẠI
+-- 1. ĐẢM BẢO CÁC VAI TRÒ (ROLES) HỆ THỐNG ĐÃ TỒN TẠI
 -- -----------------------------------------------------------------------------
 INSERT INTO roles (role_id, code, name, is_system_role)
 VALUES 
@@ -31,9 +24,8 @@ VALUES
 ON CONFLICT (code) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
--- 2. TẠO CÁC TÀI KHOẢN NGƯỜI DÙNG (USERS & CREDENTIAL METADATA)
+-- 2. TẠO TÀI KHOẢN DUY NHẤT: THU THẢO (SYSTEM ADMIN)
 -- -----------------------------------------------------------------------------
--- User 1: thuthaor120608@gmail.com (Thu Thảo - System Admin toàn hệ thống)
 INSERT INTO users (
   user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
 ) VALUES (
@@ -54,597 +46,100 @@ INSERT INTO users (
   status = 'ACTIVE',
   email_verified = true;
 
--- User 2: thangvo250904@gmail.com (Võ Trí Thắng - Thành viên cá nhân & Người đại diện đăng ký Họ Võ)
-INSERT INTO users (
-  user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
-) VALUES (
-  'a0000000-0000-0000-0000-000000000001',
-  'usr_thangvo250904',
-  'thangvo',
-  'thangvo250904@gmail.com',
-  '0905123456',
-  'Võ Trí Thắng',
-  'ACTIVE',
-  true,
-  true,
-  false,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (email) DO UPDATE SET 
-  display_name = EXCLUDED.display_name,
-  status = 'ACTIVE',
-  email_verified = true;
+-- Gán vai trò SYSTEM_ADMIN cho tài khoản Thu Thảo
+INSERT INTO user_roles (user_id, role_id)
+SELECT 
+  '11111111-1111-4111-8111-111111111111',
+  role_id
+FROM roles 
+WHERE code = 'SYSTEM_ADMIN'
+ON CONFLICT DO NOTHING;
 
--- User 3: maiphuchau144@gmail.com (Mai Phúc Hậu - Thành viên cá nhân & Người đại diện đăng ký Họ Mai)
-INSERT INTO users (
-  user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
-) VALUES (
-  'a0000000-0000-0000-0000-000000000002',
-  'usr_maiphuchau144',
-  'phuchau',
-  'maiphuchau144@gmail.com',
-  '0914234567',
-  'Mai Phúc Hậu',
-  'ACTIVE',
-  true,
-  true,
-  false,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (email) DO UPDATE SET 
-  display_name = EXCLUDED.display_name,
-  status = 'ACTIVE',
-  email_verified = true;
-
--- User 3: huy13052005@gmail.com (Nguyễn Gia Huy - Family Admin Chi 1 Họ Võ)
-INSERT INTO users (
-  user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
-) VALUES (
-  'a0000000-0000-0000-0000-000000000003',
-  'usr_huy13052005',
-  'giahuy',
-  'huy13052005@gmail.com',
-  '0935345678',
-  'Nguyễn Gia Huy',
-  'ACTIVE',
-  true,
-  true,
-  false,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (email) DO UPDATE SET 
-  display_name = EXCLUDED.display_name,
-  status = 'ACTIVE',
-  email_verified = true;
-
--- User 4: quankophaiwibu@gmail.com (Trần Minh Quân - Thành viên / Rể kết nối liên họ)
-INSERT INTO users (
-  user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
-) VALUES (
-  'a0000000-0000-0000-0000-000000000004',
-  'usr_quankophaiwibu',
-  'minhquan',
-  'quankophaiwibu@gmail.com',
-  '0978456789',
-  'Trần Minh Quân',
-  'ACTIVE',
-  true,
-  true,
-  false,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (email) DO UPDATE SET 
-  display_name = EXCLUDED.display_name,
-  status = 'ACTIVE',
-  email_verified = true;
-
--- User 5: vo.danang@giapha.com (Trưởng Tộc Họ Võ - Tài khoản cấp bởi hệ thống)
-INSERT INTO users (
-  user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
-) VALUES (
-  'a0000000-0000-0000-0000-000000000010',
-  'usr_truongtoc_vo',
-  'truongtoc_vo',
-  'vo.danang@giapha.com',
-  '0905123999',
-  'Trưởng Tộc Võ Đại Tộc',
-  'ACTIVE',
-  true,
-  true,
-  false,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (email) DO UPDATE SET 
-  display_name = EXCLUDED.display_name,
-  status = 'ACTIVE',
-  email_verified = true;
-
--- User 6: mai.phongdien@giapha.com (Trưởng Tộc Họ Mai - Tài khoản cấp bởi hệ thống)
-INSERT INTO users (
-  user_id, firebase_uid, username, email, phone, display_name, status, email_verified, phone_verified, first_login_required, created_at, updated_at
-) VALUES (
-  'a0000000-0000-0000-0000-000000000020',
-  'usr_truongtoc_mai',
-  'truongtoc_mai',
-  'mai.phongdien@giapha.com',
-  '0914234999',
-  'Trưởng Tộc Mai Thế Tộc',
-  'ACTIVE',
-  true,
-  true,
-  false,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (email) DO UPDATE SET 
-  display_name = EXCLUDED.display_name,
-  status = 'ACTIVE',
-  email_verified = true;
-
--- Tạo credential_metadata KHÔNG có mật khẩu: password_hash = NULL (đăng nhập bị từ chối) và
--- must_change_password = true. Mật khẩu riêng từng người đặt bằng scripts/set_password.py.
--- Chạy lại file này sẽ XÓA mật khẩu đã đặt của các tài khoản seed (phải đặt lại).
+-- Khởi tạo metadata thông tin xác thực
 INSERT INTO credential_metadata (user_id, auth_provider, password_hash, must_change_password, failed_login_count, locked_until, updated_at)
-SELECT u.user_id, 'LOCAL', NULL, true, 0, NULL, CURRENT_TIMESTAMP
-FROM users u
-WHERE u.email IN (
-  'thuthaor120608@gmail.com', 'thangvo250904@gmail.com', 'maiphuchau144@gmail.com',
-  'huy13052005@gmail.com', 'quankophaiwibu@gmail.com', 'vo.danang@giapha.com', 'mai.phongdien@giapha.com'
+VALUES (
+  '11111111-1111-4111-8111-111111111111',
+  'LOCAL',
+  NULL,
+  false,
+  0,
+  NULL,
+  CURRENT_TIMESTAMP
 )
 ON CONFLICT (user_id) DO UPDATE SET
-  password_hash = NULL,
   auth_provider = 'LOCAL',
-  must_change_password = true,
   failed_login_count = 0,
   locked_until = NULL;
 
--- -----------------------------------------------------------------------------
--- 3. TẠO 2 DÒNG HỌ THỰC TẾ (HỌ VÕ ĐẠI TỘC & HỌ MAI THẾ TỘC)
--- -----------------------------------------------------------------------------
--- Clan 1: Họ Võ Đại Tộc (Quảng Nam)
-INSERT INTO clans (clan_id, clan_code, name, status, created_by, activated_at, created_at, updated_at)
+-- Đăng ký Gmail chuẩn hóa trong gmail_registry
+INSERT INTO gmail_registry (normalized_email, original_email, user_id, purpose, created_at)
 VALUES (
-  'c0000000-0000-0000-0000-000000000001',
-  'CLAN-VO-01',
-  'Võ Đại Tộc (Gò Nổi - Quảng Nam)',
-  'ACTIVE',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'),
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP,
+  'thuthaor120608@gmail.com',
+  'thuthaor120608@gmail.com',
+  '11111111-1111-4111-8111-111111111111',
+  'SYSTEM_ADMIN',
   CURRENT_TIMESTAMP
-) ON CONFLICT (clan_code) DO NOTHING;
-
-INSERT INTO clan_profiles (clan_id, origin_place, history, ancestral_house_address, public_description, updated_at)
-VALUES (
-  'c0000000-0000-0000-0000-000000000001',
-  'Gò Nổi, Huyện Điện Bàn, Tỉnh Quảng Nam',
-  'Dòng họ Võ Đại Tộc khai canh từ thế kỷ 18, có truyền thống khoa bảng, hiếu học và đoàn kết.',
-  'Số 12 Đường Hùng Vương, TX Điện Bàn, Quảng Nam',
-  'Gia phả chính thống Họ Võ Đại Tộc - kết nối các chi nhánh trong và ngoài nước.',
-  CURRENT_TIMESTAMP
-) ON CONFLICT (clan_id) DO NOTHING;
-
--- Clan 2: Họ Mai Thế Tộc (Huế)
-INSERT INTO clans (clan_id, clan_code, name, status, created_by, activated_at, created_at, updated_at)
-VALUES (
-  'c0000000-0000-0000-0000-000000000002',
-  'CLAN-MAI-02',
-  'Mai Thế Tộc (Phong Điền - Thừa Thiên Huế)',
-  'ACTIVE',
-  (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'),
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP,
-  CURRENT_TIMESTAMP
-) ON CONFLICT (clan_code) DO NOTHING;
-
-INSERT INTO clan_profiles (clan_id, origin_place, history, ancestral_house_address, public_description, updated_at)
-VALUES (
-  'c0000000-0000-0000-0000-000000000002',
-  'Phong Điền, Tỉnh Thừa Thiên Huế',
-  'Mai Thế Tộc gốc Cố đô Huế, gìn giữ gia phong và nề nếp gia giáo qua nhiều thế hệ.',
-  'Làng Cổ Phước Tích, Huyện Phong Điền, Thừa Thiên Huế',
-  'Gia phả Họ Mai Thế Tộc - Nơi lưu giữ nguồn cội và kết nối anh em dòng tộc.',
-  CURRENT_TIMESTAMP
-) ON CONFLICT (clan_id) DO NOTHING;
+)
+ON CONFLICT (normalized_email) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
--- 3.5. HỒ SƠ ĐĂNG KÝ DÒNG TỘC (LIÊN KẾT GMAIL THẬT VỚI TÀI KHOẢN @GIAPHA.COM ĐÃ ĐƯỢC DUYỆT)
+-- 3. GÓI DỊCH VỤ HỆ THỐNG CHUẨN (SUBSCRIPTION PLANS & FEATURE LIMITS)
 -- -----------------------------------------------------------------------------
-INSERT INTO business_registrations (
-  registration_id, requested_plan_id, tracking_code_hash, clan_name, representative_name, representative_email, representative_phone,
-  status, reviewed_by, created_at, updated_at
-) VALUES 
-  ('b0000000-0000-0000-0000-000000000001', (SELECT plan_id FROM subscription_plans LIMIT 1), 'track_vo_001_hash', 'Võ Đại Tộc (Gò Nổi - Quảng Nam)', 'Võ Trí Thắng', 'thangvo250904@gmail.com', '0905123456', 'APPROVED', (SELECT user_id FROM users WHERE email = 'thuthaor120608@gmail.com'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('b0000000-0000-0000-0000-000000000002', (SELECT plan_id FROM subscription_plans LIMIT 1), 'track_mai_002_hash', 'Mai Thế Tộc (Phong Điền - Thừa Thiên Huế)', 'Mai Phúc Hậu', 'maiphuchau144@gmail.com', '0914234567', 'APPROVED', (SELECT user_id FROM users WHERE email = 'thuthaor120608@gmail.com'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO subscription_plans (plan_id, code, name, description, price, billing_period_months, max_members, max_family_admins, storage_mb, status, created_at, updated_at)
+VALUES
+  (
+    '00000000-0000-0000-0000-000000000001',
+    'STANDARD',
+    'Gói Tiêu Chuẩn',
+    'Phù hợp cho các dòng họ quy mô vừa, bắt đầu số hóa cây phả hệ và gắn kết con cháu.',
+    1200000.00,
+    12,
+    500,
+    5,
+    20480,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    '00000000-0000-0000-0000-000000000002',
+    'PREMIUM',
+    'Gói Nâng Cao',
+    'Dành cho các đại tộc đông đúc, mạng lưới nhiều chi phái liên họ và nhu cầu lưu trữ tư liệu lớn.',
+    2400000.00,
+    12,
+    2000,
+    15,
+    102400,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  )
+ON CONFLICT (code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  max_members = EXCLUDED.max_members,
+  storage_mb = EXCLUDED.storage_mb,
+  status = EXCLUDED.status;
 
--- -----------------------------------------------------------------------------
--- 4. PHÂN QUYỀN VAI TRÒ (USER ROLES & CLAN MEMBERSHIPS)
--- -----------------------------------------------------------------------------
--- Thu Thảo: System Admin toàn hệ thống (tài khoản quản trị viên tối cao)
-INSERT INTO user_roles (user_role_id, user_id, role_id, clan_id, granted_by)
-SELECT 
-  gen_random_uuid(),
-  u.user_id,
-  r.role_id,
-  NULL,
-  u.user_id
-FROM users u, roles r
-WHERE u.email = 'thuthaor120608@gmail.com' AND r.code = 'SYSTEM_ADMIN'
-ON CONFLICT DO NOTHING;
+-- Cấu hình tính năng cho gói STANDARD
+INSERT INTO plan_feature_limits (plan_id, feature_code, enabled, limit_value)
+VALUES
+  ('00000000-0000-0000-0000-000000000001', 'GENEALOGY_TREE', true, 500),
+  ('00000000-0000-0000-0000-000000000001', 'DIGITAL_ARCHIVE', true, 20480),
+  ('00000000-0000-0000-0000-000000000001', 'INTER_FAMILY_NETWORK', true, 10),
+  ('00000000-0000-0000-0000-000000000001', 'SMART_AI_ASSISTANT', true, 500)
+ON CONFLICT (plan_id, feature_code) DO NOTHING;
 
--- Trưởng Tộc Họ Võ: Tài khoản cấp riêng vo.danang@giapha.com giữ quyền BUSINESS_OWNER
-INSERT INTO user_roles (user_role_id, user_id, role_id, clan_id, granted_by)
-SELECT 
-  gen_random_uuid(),
-  u.user_id,
-  r.role_id,
-  'c0000000-0000-0000-0000-000000000001',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')
-FROM users u, roles r
-WHERE u.email = 'vo.danang@giapha.com' AND r.code = 'BUSINESS_OWNER'
-ON CONFLICT DO NOTHING;
-
--- Trưởng Tộc Họ Mai: Tài khoản cấp riêng mai.phongdien@giapha.com giữ quyền BUSINESS_OWNER
-INSERT INTO user_roles (user_role_id, user_id, role_id, clan_id, granted_by)
-SELECT 
-  gen_random_uuid(),
-  u.user_id,
-  r.role_id,
-  'c0000000-0000-0000-0000-000000000002',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')
-FROM users u, roles r
-WHERE u.email = 'mai.phongdien@giapha.com' AND r.code = 'BUSINESS_OWNER'
-ON CONFLICT DO NOTHING;
-
--- Mai Phúc Hậu: Thành viên Dòng họ Mai (Người đại diện nộp đơn đăng ký)
-INSERT INTO user_roles (user_role_id, user_id, role_id, clan_id, granted_by)
-SELECT 
-  gen_random_uuid(),
-  u.user_id,
-  r.role_id,
-  'c0000000-0000-0000-0000-000000000002',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')
-FROM users u, roles r
-WHERE u.email = 'maiphuchau144@gmail.com' AND r.code = 'FAMILY_MEMBER'
-ON CONFLICT DO NOTHING;
-
--- Nguyễn Gia Huy: Family Admin Chi 1 Họ Võ
-INSERT INTO user_roles (user_role_id, user_id, role_id, clan_id, granted_by)
-SELECT 
-  gen_random_uuid(),
-  u.user_id,
-  r.role_id,
-  'c0000000-0000-0000-0000-000000000001',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')
-FROM users u, roles r
-WHERE u.email = 'huy13052005@gmail.com' AND r.code = 'FAMILY_ADMIN'
-ON CONFLICT DO NOTHING;
-
--- Trần Minh Quân: Thành viên (Member) Họ Võ
-INSERT INTO user_roles (user_role_id, user_id, role_id, clan_id, granted_by)
-SELECT 
-  gen_random_uuid(),
-  u.user_id,
-  r.role_id,
-  'c0000000-0000-0000-0000-000000000001',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')
-FROM users u, roles r
-WHERE u.email = 'quankophaiwibu@gmail.com' AND r.code = 'FAMILY_MEMBER'
-ON CONFLICT DO NOTHING;
-
--- Chủ quyền dòng họ (Clan Ownership History) - Cấp cho tài khoản Trưởng tộc chính thức
-INSERT INTO clan_ownership_history (ownership_id, clan_id, user_id, started_at)
-VALUES 
-  ('e0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', (SELECT user_id FROM users WHERE email = 'vo.danang@giapha.com'), CURRENT_TIMESTAMP),
-  ('e0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', (SELECT user_id FROM users WHERE email = 'mai.phongdien@giapha.com'), CURRENT_TIMESTAMP)
-ON CONFLICT DO NOTHING;
-
--- Thành viên gia nhập dòng họ (Clan Memberships)
-INSERT INTO clan_memberships (membership_id, clan_id, user_id, status, joined_at)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', (SELECT user_id FROM users WHERE email = 'vo.danang@giapha.com'), 'ACTIVE', CURRENT_TIMESTAMP),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'), 'ACTIVE', CURRENT_TIMESTAMP),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', (SELECT user_id FROM users WHERE email = 'huy13052005@gmail.com'), 'ACTIVE', CURRENT_TIMESTAMP),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', (SELECT user_id FROM users WHERE email = 'quankophaiwibu@gmail.com'), 'ACTIVE', CURRENT_TIMESTAMP),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', (SELECT user_id FROM users WHERE email = 'mai.phongdien@giapha.com'), 'ACTIVE', CURRENT_TIMESTAMP),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'), 'ACTIVE', CURRENT_TIMESTAMP)
-ON CONFLICT DO NOTHING;
-
--- -----------------------------------------------------------------------------
--- 5. TẠO CÁC CHI / NHÁNH (BRANCHES)
--- -----------------------------------------------------------------------------
--- Họ Võ: Chi 1 (Trưởng) & Chi 2
-INSERT INTO branches (branch_id, clan_id, parent_branch_id, name, status, branch_order)
-VALUES 
-  ('b0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', NULL, 'Chi 1 (Chi Trưởng - Phụng thờ Từ Đường)', 'ACTIVE', 1),
-  ('b0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', NULL, 'Chi 2 (Chi Thứ - Phát triển phương xa)', 'ACTIVE', 2)
-ON CONFLICT (branch_id) DO NOTHING;
-
--- Phân quyền quản trị Chi 1 cho Nguyễn Gia Huy (Family Admin)
-INSERT INTO family_admin_assignments (assignment_id, user_id, clan_id, branch_id, assigned_by)
-VALUES (
-  'f0000000-0000-0000-0000-000000000001',
-  (SELECT user_id FROM users WHERE email = 'huy13052005@gmail.com'),
-  'c0000000-0000-0000-0000-000000000001',
-  'b0000000-0000-0000-0000-000000000001',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')
-) ON CONFLICT DO NOTHING;
-
--- Họ Mai: Chi Trưởng
-INSERT INTO branches (branch_id, clan_id, parent_branch_id, name, status, branch_order)
-VALUES 
-  ('b0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000002', NULL, 'Chi Trưởng Họ Mai (Cố Đô)', 'ACTIVE', 1)
-ON CONFLICT (branch_id) DO NOTHING;
-
--- -----------------------------------------------------------------------------
--- 6. TẠO CÁC THÀNH VIÊN GIA PHẢ (PERSONS - 4 ĐỜI)
--- (UUID hợp lệ với tiền tố fa000000...)
--- -----------------------------------------------------------------------------
--- === DÒNG HỌ VÕ ===
--- Đời 1 (Thủy tổ):
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  ('fa000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Cụ Võ Văn Tiên', 'MALE', '1910-02-15', '1985-08-20', false, 1, 'Thủy tổ dòng họ Võ Đại Tộc tại Gò Nổi, có công khai hoang lập nghiệp.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Cụ Bà Lê Thị Lành', 'FEMALE', '1915-05-10', '1990-11-04', false, 1, 'Chính thất Thủy tổ, hiền thục mẫu mực, giàu đức hy sinh.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Đời 2 (Con của Cụ Tiên):
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  ('fa000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Võ Văn Trung', 'MALE', '1940-03-20', '2018-04-12', false, 2, 'Trưởng nam Đời 2, từng giữ chức vụ trong hội đồng hương xã.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Trần Thị Huệ', 'FEMALE', '1945-07-15', NULL, true, 2, 'Dâu trưởng đời 2, đang sinh sống an hưởng tuổi già tại quê nhà.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'Võ Văn Dũng', 'MALE', '1948-09-08', NULL, true, 2, 'Chi trưởng Chi 2, cựu giáo viên toán trường huyện.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000006', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'Phạm Thị Loan', 'FEMALE', '1952-12-01', NULL, true, 2, 'Vợ ông Võ Văn Dũng, giáo viên tiểu học về hưu.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000007', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Võ Thị Mai', 'FEMALE', '1955-06-18', NULL, true, 2, 'Con gái cụ Tiên, định cư tại Đà Nẵng.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Đời 3 (Con của ông Trung và ông Dũng):
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  -- Con ông Trung:
-  ('fa000000-0000-0000-0000-000000000008', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Võ Trí Thắng', 'MALE', '1975-09-25', NULL, true, 3, 'Trưởng tộc đời 3, Kỹ sư xây dựng, đảm trách quản lý số hóa gia phả.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Mai Thị Ngọc Lan', 'FEMALE', '1978-10-14', NULL, true, 3, 'Vợ Võ Trí Thắng (con gái Họ Mai Thế Tộc), Bác sĩ đa khoa.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000010', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Võ Bích Ngọc', 'FEMALE', '1980-04-12', NULL, true, 3, 'Em gái ông Thắng, Giảng viên đại học.', 'ACTIVE'),
-  -- Con ông Dũng:
-  ('fa000000-0000-0000-0000-000000000011', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Võ Trí Thành', 'MALE', '1978-01-30', NULL, true, 3, 'Con trưởng Chi 2, Doanh nhân tại TP.HCM.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000012', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Nguyễn Thị Thu', 'FEMALE', '1982-08-19', NULL, true, 3, 'Vợ ông Võ Trí Thành.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000013', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Nguyễn Gia Huy', 'MALE', '1985-05-13', NULL, true, 3, 'Quản trị viên Chi 1, Cử nhân Công nghệ thông tin.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Đời 4 (Hậu duệ):
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  -- Con của Võ Trí Thắng & Mai Thị Ngọc Lan:
-  ('fa000000-0000-0000-0000-000000000014', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Võ Minh Khôi', 'MALE', '2004-09-25', NULL, true, 4, 'Đích tôn đời 4, sinh viên Đại học Bách Khoa.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000015', 'c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Võ Tuệ An', 'FEMALE', '2008-11-15', NULL, true, 4, 'Ái nữ đời 4, học sinh phổ thông chuyên.', 'ACTIVE'),
-  -- Con gái ông Thành & Rể Trần Minh Quân:
-  ('fa000000-0000-0000-0000-000000000016', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Võ Bích Hạnh', 'FEMALE', '2003-03-10', NULL, true, 4, 'Con gái ông Võ Trí Thành, kết hôn cùng Trần Minh Quân.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Trần Minh Quân', 'MALE', '2002-06-20', NULL, true, 4, 'Con rể dòng họ Võ, thành viên tích cực hỗ trợ truyền thông gia tộc.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- === DÒNG HỌ MAI ===
--- Đời 1 (Thủy tổ):
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  ('fa000000-0000-0000-0000-000000000020', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Cụ Mai Thế Hùng', 'MALE', '1912-04-10', '1980-09-12', false, 1, 'Thủy tổ dòng họ Mai Thế Tộc tại Thừa Thiên Huế.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000021', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Cụ Bà Hoàng Thị Nhàn', 'FEMALE', '1918-07-22', '1995-03-05', false, 1, 'Chính thất cụ Mai Thế Hùng, công dung ngôn hạnh.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Đời 2:
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  ('fa000000-0000-0000-0000-000000000022', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Mai Thế Đức', 'MALE', '1942-08-14', NULL, true, 2, 'Nguyên Trưởng tộc đời 2 họ Mai, uy tín đức độ.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000023', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Đặng Thị Cúc', 'FEMALE', '1946-02-28', NULL, true, 2, 'Vợ ông Mai Thế Đức.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Đời 3:
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  ('fa000000-0000-0000-0000-000000000024', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Mai Phúc Hậu', 'MALE', '1976-06-15', NULL, true, 3, 'Trưởng tộc đời 3 Họ Mai, Giám đốc doanh nghiệp dược phẩm.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000025', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Lê Hoàng Yến', 'FEMALE', '1980-03-21', NULL, true, 3, 'Vợ ông Mai Phúc Hậu, Thạc sĩ Tài chính.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000026', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Mai Thế Khang', 'MALE', '1984-11-09', NULL, true, 3, 'Em trai ông Hậu, Kỹ sư phần mềm.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Đời 4:
-INSERT INTO persons (person_id, clan_id, branch_id, full_name, gender, birth_date, death_date, is_living, generation_no, biography, status)
-VALUES 
-  ('fa000000-0000-0000-0000-000000000027', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Mai Phúc Lâm', 'MALE', '2005-01-18', NULL, true, 4, 'Đích tôn đời 4 Họ Mai, sinh viên.', 'ACTIVE'),
-  ('fa000000-0000-0000-0000-000000000028', 'c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'Mai Bảo Trâm', 'FEMALE', '2009-08-30', NULL, true, 4, 'Con gái ông Mai Phúc Hậu.', 'ACTIVE')
-ON CONFLICT (person_id) DO NOTHING;
-
--- Cập nhật Thủy tổ sáng lập cho 2 dòng họ
-UPDATE clan_profiles SET founder_person_id = 'fa000000-0000-0000-0000-000000000001' WHERE clan_id = 'c0000000-0000-0000-0000-000000000001';
-UPDATE clan_profiles SET founder_person_id = 'fa000000-0000-0000-0000-000000000020' WHERE clan_id = 'c0000000-0000-0000-0000-000000000002';
-
--- -----------------------------------------------------------------------------
--- 7. THIẾT LẬP MỐI QUAN HỆ GIA PHẢ (RELATIONSHIPS)
--- (UUID hợp lệ với tiền tố fb000000...)
--- -----------------------------------------------------------------------------
--- === QUAN HỆ HỌ VÕ ===
--- 1. Hôn nhân cụ Tiên - cụ Lành
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  ('fb000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000002', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 2. Cha mẹ - Con (Cụ Tiên & Cụ Lành -> Võ Văn Trung, Võ Văn Dũng, Võ Thị Mai)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, parent_type, child_order, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000003', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000003', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000005', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000005', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000007', 'PARENT_CHILD', 'BIOLOGICAL', 3, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000007', 'PARENT_CHILD', 'BIOLOGICAL', 3, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 3. Hôn nhân Võ Văn Trung - Trần Thị Huệ
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000003', 'fa000000-0000-0000-0000-000000000004', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 4. Cha mẹ - Con (Võ Văn Trung & Trần Thị Huệ -> Võ Trí Thắng, Võ Bích Ngọc)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, parent_type, child_order, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000003', 'fa000000-0000-0000-0000-000000000008', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000004', 'fa000000-0000-0000-0000-000000000008', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000003', 'fa000000-0000-0000-0000-000000000010', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000004', 'fa000000-0000-0000-0000-000000000010', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 5. Hôn nhân Võ Trí Thắng - Mai Thị Ngọc Lan (Thông gia liên họ)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000008', 'fa000000-0000-0000-0000-000000000009', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 6. Cha mẹ - Con (Võ Trí Thắng & Mai Thị Ngọc Lan -> Võ Minh Khôi, Võ Tuệ An)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, parent_type, child_order, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000008', 'fa000000-0000-0000-0000-000000000014', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000009', 'fa000000-0000-0000-0000-000000000014', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000008', 'fa000000-0000-0000-0000-000000000015', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000009', 'fa000000-0000-0000-0000-000000000015', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 7. Hôn nhân Võ Bích Hạnh - Trần Minh Quân (Rể Đời 4)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'fa000000-0000-0000-0000-000000000016', 'fa000000-0000-0000-0000-000000000017', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- === QUAN HỆ HỌ MAI ===
--- 1. Hôn nhân Cụ Mai Thế Hùng - Cụ Hoàng Thị Nhàn
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000020', 'fa000000-0000-0000-0000-000000000021', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 2. Cha mẹ - Con (Cụ Hùng -> Mai Thế Đức)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, parent_type, child_order, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000020', 'fa000000-0000-0000-0000-000000000022', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000021', 'fa000000-0000-0000-0000-000000000022', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 3. Hôn nhân Mai Thế Đức - Đặng Thị Cúc
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000022', 'fa000000-0000-0000-0000-000000000023', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 4. Cha mẹ - Con (Mai Thế Đức & Đặng Thị Cúc -> Mai Phúc Hậu, Mai Thế Khang)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, parent_type, child_order, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000022', 'fa000000-0000-0000-0000-000000000024', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000023', 'fa000000-0000-0000-0000-000000000024', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000022', 'fa000000-0000-0000-0000-000000000026', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000023', 'fa000000-0000-0000-0000-000000000026', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 5. Hôn nhân Mai Phúc Hậu - Lê Hoàng Yến
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000024', 'fa000000-0000-0000-0000-000000000025', 'SPOUSE', 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- 6. Cha mẹ - Con (Mai Phúc Hậu & Lê Hoàng Yến -> Mai Phúc Lâm, Mai Bảo Trâm)
-INSERT INTO relationships (relationship_id, clan_id, from_person_id, to_person_id, relationship_type, parent_type, child_order, status, created_by)
-VALUES 
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000024', 'fa000000-0000-0000-0000-000000000027', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000025', 'fa000000-0000-0000-0000-000000000027', 'PARENT_CHILD', 'BIOLOGICAL', 1, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000024', 'fa000000-0000-0000-0000-000000000028', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'fa000000-0000-0000-0000-000000000025', 'fa000000-0000-0000-0000-000000000028', 'PARENT_CHILD', 'BIOLOGICAL', 2, 'ACTIVE', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'))
-ON CONFLICT DO NOTHING;
-
--- -----------------------------------------------------------------------------
--- 8. GẮN TÀI KHOẢN VỚI THÀNH VIÊN GIA PHẢ (PERSON_ACCOUNT_LINKS)
--- -----------------------------------------------------------------------------
-INSERT INTO person_account_links (link_id, person_id, user_id, clan_id, status, linked_at)
-VALUES 
-  -- Võ Trí Thắng gắn với Person Võ Trí Thắng
-  (gen_random_uuid(), 'fa000000-0000-0000-0000-000000000008', (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'), 'c0000000-0000-0000-0000-000000000001', 'ACTIVE', CURRENT_TIMESTAMP),
-  -- Mai Phúc Hậu gắn với Person Mai Phúc Hậu
-  (gen_random_uuid(), 'fa000000-0000-0000-0000-000000000024', (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com'), 'c0000000-0000-0000-0000-000000000002', 'ACTIVE', CURRENT_TIMESTAMP),
-  -- Nguyễn Gia Huy gắn với Person Nguyễn Gia Huy
-  (gen_random_uuid(), 'fa000000-0000-0000-0000-000000000013', (SELECT user_id FROM users WHERE email = 'huy13052005@gmail.com'), 'c0000000-0000-0000-0000-000000000001', 'ACTIVE', CURRENT_TIMESTAMP),
-  -- Trần Minh Quân gắn với Person Trần Minh Quân
-  (gen_random_uuid(), 'fa000000-0000-0000-0000-000000000017', (SELECT user_id FROM users WHERE email = 'quankophaiwibu@gmail.com'), 'c0000000-0000-0000-0000-000000000001', 'ACTIVE', CURRENT_TIMESTAMP)
-ON CONFLICT (person_id, clan_id) DO NOTHING;
-
--- -----------------------------------------------------------------------------
--- 9. THIẾT LẬP LIÊN HỌ (INTER-CLAN LINKS & POLICIES GIỮA HỌ VÕ VÀ HỌ MAI)
--- -----------------------------------------------------------------------------
--- Yêu cầu liên họ đã được duyệt (Mai Thị Ngọc Lan họ Mai kết duyên với Võ Trí Thắng họ Võ)
-INSERT INTO inter_clan_requests (inter_request_id, source_clan_id, target_clan_id, requester_id, source_person_id, target_person_id, status, reviewed_by)
-VALUES (
-  'd0000000-0000-0000-0000-000000000001',
-  'c0000000-0000-0000-0000-000000000001',
-  'c0000000-0000-0000-0000-000000000002',
-  (SELECT user_id FROM users WHERE email = 'thangvo250904@gmail.com'),
-  'fa000000-0000-0000-0000-000000000008',
-  'fa000000-0000-0000-0000-000000000009',
-  'APPROVED',
-  (SELECT user_id FROM users WHERE email = 'maiphuchau144@gmail.com')
-) ON CONFLICT (inter_request_id) DO NOTHING;
-
--- Liên kết liên họ (Inter Clan Link)
-INSERT INTO inter_clan_links (link_id, request_id, clan_a_id, clan_b_id, status, linked_at)
-VALUES (
-  'd0000000-0000-0000-0000-000000000002',
-  'd0000000-0000-0000-0000-000000000001',
-  'c0000000-0000-0000-0000-000000000001',
-  'c0000000-0000-0000-0000-000000000002',
-  'ACTIVE',
-  CURRENT_TIMESTAMP
-) ON CONFLICT (link_id) DO NOTHING;
-
--- Chính sách chia sẻ dữ liệu liên họ
-INSERT INTO inter_clan_shared_policies (policy_id, link_id, owner_clan_id, data_scope, allowed_fields, visibility, can_export)
-VALUES 
-  ('d0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'ALL', '["full_name", "gender", "birth_date", "biography"]'::jsonb, 'INTER_FAMILY', true),
-  ('d0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000002', 'ALL', '["full_name", "gender", "birth_date", "biography"]'::jsonb, 'INTER_FAMILY', true)
-ON CONFLICT (policy_id) DO NOTHING;
-
--- -----------------------------------------------------------------------------
--- 10. TÍNH TOÁN CLOSURE TABLE (PERSON_CLOSURE) CHO TRUY VẤN CÂY
--- -----------------------------------------------------------------------------
--- Độ sâu 0 (Bản thân)
-INSERT INTO person_closure (ancestor_id, descendant_id, depth)
-SELECT person_id, person_id, 0 FROM persons
-ON CONFLICT (ancestor_id, descendant_id) DO NOTHING;
-
--- Độ sâu 1 (Cha mẹ trực tiếp)
-INSERT INTO person_closure (ancestor_id, descendant_id, depth)
-SELECT from_person_id, to_person_id, 1 
-FROM relationships 
-WHERE relationship_type = 'PARENT_CHILD'
-ON CONFLICT (ancestor_id, descendant_id) DO NOTHING;
-
--- Độ sâu 2 (Ông bà -> Cháu)
-INSERT INTO person_closure (ancestor_id, descendant_id, depth)
-SELECT p1.from_person_id, p2.to_person_id, 2
-FROM relationships p1
-JOIN relationships p2 ON p1.to_person_id = p2.from_person_id
-WHERE p1.relationship_type = 'PARENT_CHILD' AND p2.relationship_type = 'PARENT_CHILD'
-ON CONFLICT (ancestor_id, descendant_id) DO NOTHING;
-
--- Độ sâu 3 (Cụ -> Chắt)
-INSERT INTO person_closure (ancestor_id, descendant_id, depth)
-SELECT p1.from_person_id, p3.to_person_id, 3
-FROM relationships p1
-JOIN relationships p2 ON p1.to_person_id = p2.from_person_id
-JOIN relationships p3 ON p2.to_person_id = p3.from_person_id
-WHERE p1.relationship_type = 'PARENT_CHILD' AND p2.relationship_type = 'PARENT_CHILD' AND p3.relationship_type = 'PARENT_CHILD'
-ON CONFLICT (ancestor_id, descendant_id) DO NOTHING;
+-- Cấu hình tính năng cho gói PREMIUM
+INSERT INTO plan_feature_limits (plan_id, feature_code, enabled, limit_value)
+VALUES
+  ('00000000-0000-0000-0000-000000000002', 'GENEALOGY_TREE', true, 2000),
+  ('00000000-0000-0000-0000-000000000002', 'DIGITAL_ARCHIVE', true, 102400),
+  ('00000000-0000-0000-0000-000000000002', 'INTER_FAMILY_NETWORK', true, 50),
+  ('00000000-0000-0000-0000-000000000002', 'SMART_AI_ASSISTANT', true, 5000),
+  ('00000000-0000-0000-0000-000000000002', 'VIRTUAL_WORSHIP_HALL', true, 10)
+ON CONFLICT (plan_id, feature_code) DO NOTHING;
 
 COMMIT;
-
--- =============================================================================
--- HOÀN TẤT IMPORT DỮ LIỆU THỰC TẾ
--- Kiểm tra:
---   SELECT email, display_name, status FROM users;
---   SELECT clan_code, name, status FROM clans;
---   SELECT count(*) AS total_persons FROM persons;
--- =============================================================================
