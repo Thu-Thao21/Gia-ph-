@@ -566,7 +566,7 @@ async def delete_user_account(
         raise AppError(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng.")
 
     is_root_admin = (
-        (user.email and user.email.lower() == settings.INITIAL_SYSTEM_ADMIN_EMAIL.lower())
+        (user.email and user.email.lower() == "thuthaor120608@gmail.com")
         or user.user_id == uuid.UUID("11111111-1111-4111-8111-111111111111")
     )
     if is_root_admin:
@@ -574,6 +574,10 @@ async def delete_user_account(
 
     if user.user_id == principal.user_id:
         raise AppError(ErrorCode.VALIDATION_ERROR, "Không thể tự xóa tài khoản đang đăng nhập.")
+
+    has_sa_role = await users.has_active_role(user_id, "SYSTEM_ADMIN", clan_id=None)
+    if has_sa_role:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Không thể xóa tài khoản Quản trị viên hệ thống (System Admin).")
 
     user_email = user.email
     firebase_uid = user.firebase_uid

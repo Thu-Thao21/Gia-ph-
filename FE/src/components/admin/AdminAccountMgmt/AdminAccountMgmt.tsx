@@ -52,6 +52,10 @@ export const AdminAccountMgmt: React.FC = () => {
   const [editReason, setEditReason] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // Confirm delete modal state
+  const [deleteTargetAcc, setDeleteTargetAcc] = useState<UserAccountItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
 
@@ -178,32 +182,37 @@ export const AdminAccountMgmt: React.FC = () => {
     }
   };
 
-  const handleDeleteAccountPermanently = async (acc: UserAccountItem) => {
+  const handleDeleteAccountPermanently = (acc: UserAccountItem) => {
     if (acc.email === 'thuthaor120608@gmail.com' || acc.primary_role === 'admin') {
       setErrorMsg('Không thể xóa tài khoản Quản trị viên tối cao của hệ thống.');
       setTimeout(() => setErrorMsg(''), 4000);
       return;
     }
-    const confirmName = acc.display_name || acc.username || acc.email;
-    if (
-      window.confirm(
-        `⚠️ CẢNH BÁO QUAN TRỌNG:\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản "${confirmName}" (${acc.email || 'không có email'})?\n\nTài khoản sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu và Google Firebase. Thao tác này KHÔNG thể hoàn tác!`
-      )
-    ) {
-      try {
-        await deleteAdminUser(acc.id);
-        setAccounts((prev) => prev.filter((item) => item.id !== acc.id));
-        if (selectedAcc && selectedAcc.id === acc.id) {
-          setIsModalOpen(false);
-          setSelectedAcc(null);
-        }
-        setSuccessMsg(`Đã xóa vĩnh viễn tài khoản "${confirmName}" thành công.`);
-        setErrorMsg('');
-      } catch (err: any) {
-        const info = readApiError(err);
-        setErrorMsg(`Không thể xóa tài khoản: ${info.message}`);
-        setSuccessMsg('');
+    setDeleteTargetAcc(acc);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetAcc) return;
+    setIsDeleting(true);
+    const targetName =
+      deleteTargetAcc.display_name || deleteTargetAcc.username || deleteTargetAcc.email || 'người dùng';
+    try {
+      await deleteAdminUser(deleteTargetAcc.id);
+      setAccounts((prev) => prev.filter((item) => item.id !== deleteTargetAcc.id));
+      if (selectedAcc && selectedAcc.id === deleteTargetAcc.id) {
+        setIsModalOpen(false);
+        setSelectedAcc(null);
       }
+      setSuccessMsg(`Đã xóa vĩnh viễn tài khoản "${targetName}" thành công.`);
+      setErrorMsg('');
+      setDeleteTargetAcc(null);
+    } catch (err: any) {
+      const info = readApiError(err);
+      setErrorMsg(`Không thể xóa tài khoản: ${info.message}`);
+      setSuccessMsg('');
+      setDeleteTargetAcc(null);
+    } finally {
+      setIsDeleting(false);
       setTimeout(() => {
         setSuccessMsg('');
         setErrorMsg('');
@@ -769,6 +778,182 @@ export const AdminAccountMgmt: React.FC = () => {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận xóa vĩnh viễn tài khoản (Custom Danger Dialog) */}
+      {deleteTargetAcc && (
+        <div
+          className="admin-acc-modal-overlay"
+          onClick={() => !isDeleting && setDeleteTargetAcc(null)}
+          style={{ zIndex: 1100 }}
+        >
+          <div
+            className="delete-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="delete-confirm-header">
+              <div className="delete-warning-icon-wrapper">
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#dc2626"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 id="delete-modal-title" className="delete-confirm-title">
+                  Xác nhận xóa vĩnh viễn tài khoản
+                </h3>
+                <p className="delete-confirm-subtitle">
+                  Hành động này mang tính phá hủy và <strong>KHÔNG THỂ HOÀN TÁC</strong>!
+                </p>
+              </div>
+              <button
+                type="button"
+                className="delete-modal-close"
+                onClick={() => !isDeleting && setDeleteTargetAcc(null)}
+                disabled={isDeleting}
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="delete-confirm-body">
+              <div className="delete-user-card">
+                <div className={`delete-user-avatar avatar-${deleteTargetAcc.primary_role}`}>
+                  {(
+                    deleteTargetAcc.display_name ||
+                    deleteTargetAcc.username ||
+                    deleteTargetAcc.email ||
+                    'U'
+                  )
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+                <div className="delete-user-info">
+                  <div className="delete-user-name">
+                    {deleteTargetAcc.display_name || deleteTargetAcc.username || 'Chưa đặt họ tên'}
+                  </div>
+                  <div className="delete-user-meta">
+                    {deleteTargetAcc.username && (
+                      <span className="delete-user-handle">@{deleteTargetAcc.username}</span>
+                    )}
+                    {deleteTargetAcc.email && (
+                      <span className="delete-user-email">{deleteTargetAcc.email}</span>
+                    )}
+                  </div>
+                  <div className="delete-user-badges">
+                    <span className={`role-badge role-${deleteTargetAcc.primary_role}`}>
+                      {deleteTargetAcc.primary_role === 'admin'
+                        ? 'Admin'
+                        : deleteTargetAcc.primary_role === 'family_head'
+                        ? 'Chủ dòng họ'
+                        : deleteTargetAcc.primary_role === 'viewer'
+                        ? 'Người xem'
+                        : 'Thành viên'}
+                    </span>
+                    <span
+                      className={`status-badge ${
+                        (STATUS_CONFIG[deleteTargetAcc.status] || { className: '' }).className
+                      }`}
+                    >
+                      <span className="status-dot" />
+                      <span>
+                        {(STATUS_CONFIG[deleteTargetAcc.status] || { label: deleteTargetAcc.status }).label}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="delete-warning-box">
+                <div className="delete-warning-box-title">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#b91c1c"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  Hậu quả khi xác nhận xóa:
+                </div>
+                <ul className="delete-warning-list">
+                  <li>
+                    Tài khoản sẽ bị <strong>xóa hoàn toàn</strong> khỏi cơ sở dữ liệu hệ thống (PostgreSQL).
+                  </li>
+                  <li>
+                    Tài khoản đăng nhập trên <strong>Google Firebase Authentication</strong> sẽ bị xóa ngay lập tức.
+                  </li>
+                  <li>
+                    Mọi phân quyền, quyền truy cập phả hệ và phiên đăng nhập hiện có sẽ bị hủy bỏ vĩnh viễn.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="delete-confirm-footer">
+              <button
+                type="button"
+                className="btn-cancel-delete"
+                onClick={() => setDeleteTargetAcc(null)}
+                disabled={isDeleting}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                className="btn-confirm-delete"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="delete-spinner" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                    Xác nhận Xóa Vĩnh Viễn
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
