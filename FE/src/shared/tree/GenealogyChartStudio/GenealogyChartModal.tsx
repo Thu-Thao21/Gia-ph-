@@ -95,7 +95,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
     try {
       localStorage.setItem(userStorageKey, JSON.stringify(draftConfig));
       onApplyToTree(draftConfig);
-      showToast('Đã áp dụng thành công diện mạo mới lên cây gia phả!');
+      onClose(); // Tự động đóng modal và quay lại xem cây ngay lập tức
     } catch {
       showToast('Không thể lưu cấu hình vào bộ nhớ trình duyệt');
     }
@@ -106,7 +106,7 @@ export const GenealogyChartModal: React.FC<GenealogyChartModalProps> = ({
     try {
       localStorage.setItem(clanStorageKey, JSON.stringify(draftConfig));
       onApplyToTree(draftConfig);
-      showToast(`Đã lưu làm cấu hình mặc định cho toàn bộ dòng họ ${clanName}!`);
+      onClose(); // Tự động đóng modal và quay lại xem cây ngay lập tức
     } catch {
       showToast('Không thể lưu cấu hình dòng họ');
     }

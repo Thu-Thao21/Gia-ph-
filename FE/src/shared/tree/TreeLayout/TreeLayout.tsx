@@ -814,18 +814,12 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             </button>
           </div>
 
-          {/* Legend Badges */}
-          <div className="tree-legend-group">
-            <span className="tree-legend-item male">Nam</span>
-            <span className="tree-legend-item female">Nữ (Dâu)</span>
-            <span className="tree-legend-item focus">Đang chọn</span>
-          </div>
-
           {branches.length > 0 && (
             <select
               className="tree-control-select"
               value={selectedBranch || ''}
               onChange={(e) => setSelectedBranch(e.target.value || undefined)}
+              title="Lọc hiển thị theo chi nhánh dòng họ"
             >
               <option value="">-- Tất cả chi nhánh --</option>
               {branches.map((b) => (
@@ -842,32 +836,12 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             onChange={(e) =>
               setSelectedGeneration(e.target.value ? Number(e.target.value) : undefined)
             }
+            title="Lọc hiển thị theo thế hệ"
           >
             <option value="">-- Tất cả thế hệ --</option>
             {Array.from({ length: maxGen }, (_, i) => i + 1).map((g) => (
               <option key={g} value={g}>
                 Đời thứ {g}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="tree-control-select focus-select"
-            value={focusMemberId || ''}
-            onChange={(e) => {
-              const val = e.target.value || undefined;
-              if (val) {
-                setZoomScale(1.15);
-              } else {
-                setZoomScale(1.0);
-              }
-              setFocusMemberId(val);
-            }}
-          >
-            <option value="">-- Xem toàn bộ cây gia phả --</option>
-            {allMembers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.fullName} (Đời {m.generation}) - Xem 4 đời
               </option>
             ))}
           </select>

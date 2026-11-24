@@ -585,18 +585,60 @@ async def delete_user_account(
     target_sess = db._session if hasattr(db, "_session") else db
 
     clean_statements = [
+        # Nullify creator/actor/reviewer references
+        text("UPDATE clans SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE persons SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE clan_documents SET uploaded_by = NULL WHERE uploaded_by = :uid"),
+        text("UPDATE relationships SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE worship_spaces SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE worship_persons SET added_by = NULL WHERE added_by = :uid"),
+        text("UPDATE funds SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE clan_bank_accounts SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE donations SET verified_by = NULL WHERE verified_by = :uid"),
+        text("UPDATE inter_clan_requests SET requester_id = NULL WHERE requester_id = :uid"),
+        text("UPDATE inter_clan_requests SET reviewed_by = NULL WHERE reviewed_by = :uid"),
+        text("UPDATE inter_clan_shared_policies SET updated_by = NULL WHERE updated_by = :uid"),
+        text("UPDATE person_privacy_settings SET updated_by = NULL WHERE updated_by = :uid"),
+        text("UPDATE person_account_links SET linked_by = NULL WHERE linked_by = :uid"),
+        text("UPDATE clan_locations SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE person_burials SET created_by = NULL WHERE created_by = :uid"),
+        text("UPDATE location_proposals SET reviewed_by = NULL WHERE reviewed_by = :uid"),
+        text("UPDATE inter_clan_links SET terminated_by = NULL WHERE terminated_by = :uid"),
+        text("UPDATE inter_clan_person_mappings SET requested_by = NULL WHERE requested_by = :uid"),
+        text("UPDATE inter_clan_person_mappings SET verified_by = NULL WHERE verified_by = :uid"),
+        text("UPDATE clan_ai_settings SET updated_by = NULL WHERE updated_by = :uid"),
+        text("UPDATE business_registrations SET reviewed_by = NULL WHERE reviewed_by = :uid"),
+        text("UPDATE registration_status_history SET changed_by = NULL WHERE changed_by = :uid"),
+        text("UPDATE support_access_grants SET system_admin_user_id = NULL WHERE system_admin_user_id = :uid"),
+        text("UPDATE support_access_grants SET approved_by = NULL WHERE approved_by = :uid"),
+        text("UPDATE lineage_access_grants SET approved_by = NULL WHERE approved_by = :uid"),
+        text("UPDATE lineage_access_grants SET revoked_by = NULL WHERE revoked_by = :uid"),
+        text("UPDATE lineage_access_requests SET reviewed_by = NULL WHERE reviewed_by = :uid"),
+        # Delete dependent rows
+        text("DELETE FROM audit_logs WHERE actor_id = :uid"),
+        text("DELETE FROM login_history WHERE user_id = :uid"),
+        text("DELETE FROM password_reset_tokens WHERE user_id = :uid"),
+        text("DELETE FROM used_password_reset_codes WHERE user_id = :uid"),
+        text("DELETE FROM user_notifications WHERE user_id = :uid"),
+        text("DELETE FROM email_delivery_logs WHERE user_id = :uid"),
+        text("DELETE FROM account_invitations WHERE user_id = :uid OR created_by = :uid"),
+        text("DELETE FROM clan_join_requests WHERE user_id = :uid OR reviewer_id = :uid"),
+        text("DELETE FROM family_admin_permissions WHERE granted_by = :uid"),
+        text("DELETE FROM family_admin_assignments WHERE user_id = :uid OR assigned_by = :uid"),
+        text("DELETE FROM ai_consents WHERE user_id = :uid"),
+        text("DELETE FROM worship_daily_offerings WHERE user_id = :uid"),
+        text("DELETE FROM worship_streaks WHERE user_id = :uid"),
+        text("DELETE FROM worship_removed_persons WHERE removed_by = :uid"),
+        text("DELETE FROM location_proposals WHERE proposer_id = :uid"),
+        text("DELETE FROM lineage_access_requests WHERE requester_user_id = :uid OR grantee_user_id = :uid"),
+        text("DELETE FROM lineage_access_grants WHERE grantee_user_id = :uid"),
+        text("DELETE FROM donations WHERE user_id = :uid"),
         text("DELETE FROM clan_ownership_history WHERE user_id = :uid"),
         text("DELETE FROM fund_audit_logs WHERE actor_id = :uid"),
-        text("UPDATE clan_bank_accounts SET created_by = NULL WHERE created_by = :uid"),
-        text("UPDATE funds SET created_by = NULL WHERE created_by = :uid"),
-        text("UPDATE worship_spaces SET created_by = NULL WHERE created_by = :uid"),
-        text("UPDATE relationships SET created_by = NULL WHERE created_by = :uid"),
-        text("UPDATE inter_clan_requests SET requester_id = NULL WHERE requester_id = :uid"),
-        text("UPDATE lineage_access_grants SET approved_by = NULL WHERE approved_by = :uid"),
-        text("DELETE FROM provisioning_jobs WHERE user_id = :uid"),
+        text("DELETE FROM provisioning_jobs WHERE user_id = :uid OR requested_by = :uid"),
         text("DELETE FROM idempotency_keys WHERE actor_id = :uid"),
         text("DELETE FROM clan_memberships WHERE user_id = :uid"),
-        text("DELETE FROM user_roles WHERE user_id = :uid"),
+        text("DELETE FROM user_roles WHERE user_id = :uid OR granted_by = :uid"),
         text("DELETE FROM user_sessions WHERE user_id = :uid"),
         text("DELETE FROM credential_metadata WHERE user_id = :uid"),
         text("DELETE FROM person_account_links WHERE user_id = :uid"),
@@ -605,7 +647,8 @@ async def delete_user_account(
     ]
     for stmt in clean_statements:
         try:
-            await target_sess.execute(stmt, {"uid": user_id})
+            async with target_sess.begin_nested():
+                await target_sess.execute(stmt, {"uid": user_id})
         except Exception as e:
             logger.warning("Error running statement %s on user delete: %s", stmt, e)
     await db.commit()
