@@ -6,7 +6,10 @@ import { useRetryCountdown } from '../../../hooks/useRetryCountdown';
 import {
   createBusinessRegistration,
   fetchServicePlans,
+  formatPlanFeatures,
   formatPlanMemberLimit,
+  formatPlanPrice,
+  formatPlanStorage,
   RATE_LIMIT_DONE_MESSAGE,
   rateLimitMessage,
   readApiError,
@@ -697,18 +700,131 @@ export const BusinessRegisterWizard: React.FC = () => {
                 )}
 
                 <div className="tier-select-grid">
-                  {plans.map((plan) => (
-                    <div
-                      key={plan.plan_id}
-                      className={`tier-option-card ${selectedTier === plan.plan_id ? 'selected' : ''}`}
-                      data-testid={`tier-card-${plan.plan_id}`}
-                      onClick={() => setSelectedTier(plan.plan_id)}
-                    >
-                      <h4>{plan.name}</h4>
-                      {formatPlanMemberLimit(plan) && <span className="tier-limit">{formatPlanMemberLimit(plan)}</span>}
-                      {plan.description && <p className="tier-desc">{plan.description}</p>}
-                    </div>
-                  ))}
+                  {plans.map((plan, idx) => {
+                    const isSelected = selectedTier === plan.plan_id;
+                    const numericPrice = parseFloat(plan.price || '0');
+                    const priceAmount = numericPrice === 0 ? '0' : numericPrice.toLocaleString('vi-VN');
+                    const period =
+                      plan.billing_period_months === 1
+                        ? '/ tháng'
+                        : plan.billing_period_months === 12
+                        ? '/ năm'
+                        : `/ ${plan.billing_period_months} tháng`;
+                    const isPopular =
+                      plan.code === 'STANDARD' ||
+                      plan.name.toLowerCase().includes('standard') ||
+                      plan.name.toLowerCase().includes('nâng cao') ||
+                      (plans.length === 2 && idx === 1);
+                    const features = formatPlanFeatures(plan);
+                    const memberLimit = formatPlanMemberLimit(plan);
+                    const storage = formatPlanStorage(plan);
+
+                    return (
+                      <div
+                        key={plan.plan_id}
+                        className={`plan-card tier-option-card ${isPopular ? 'popular-plan' : ''} ${isSelected ? 'selected' : ''}`}
+                        data-testid={`tier-card-${plan.plan_id}`}
+                        onClick={() => setSelectedTier(plan.plan_id)}
+                      >
+                        {isPopular && (
+                          <div className="plan-popular-ribbon">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            KHUYÊN DÙNG CHO DÒNG TỘC
+                          </div>
+                        )}
+
+                        <div className="plan-card-header">
+                          <div className="plan-icon-wrapper">
+                            {isPopular ? (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                              </svg>
+                            ) : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="plan-name">{plan.name}</h3>
+                            <div className="plan-tagline">
+                              {plan.description || (isPopular ? 'Gói giải pháp toàn diện cho đại gia đình' : 'Gói khởi đầu gọn gàng cho chi nhánh')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Price display */}
+                        <div className="plan-price-block">
+                          <div className="plan-price-main">
+                            <span className="plan-price-amount">{priceAmount}</span>
+                            <span className="plan-price-currency">đ</span>
+                          </div>
+                          <span className="plan-price-period">{period}</span>
+                        </div>
+
+                        {/* Core Specs Box */}
+                        <div className="plan-specs-box">
+                          {memberLimit && (
+                            <div className="plan-spec-item">
+                              <div className="spec-icon-bubble user-bubble">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                  <circle cx="9" cy="7" r="4" />
+                                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                              </div>
+                              <div className="spec-info">
+                                <span className="spec-label">Quy mô thành viên</span>
+                                <strong className="spec-value">{memberLimit}</strong>
+                              </div>
+                            </div>
+                          )}
+
+                          {storage && (
+                            <div className="plan-spec-item">
+                              <div className="spec-icon-bubble storage-bubble">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                                </svg>
+                              </div>
+                              <div className="spec-info">
+                                <span className="spec-label">Dung lượng tư liệu</span>
+                                <strong className="spec-value">{storage}</strong>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="plan-divider" />
+
+                        {/* Features List */}
+                        <div className="plan-features-label">Quyền lợi và tính năng gói:</div>
+                        <ul className="plan-features-list">
+                          {features.map((feat, fIdx) => (
+                            <li key={fIdx} className="plan-feature-item">
+                              <span className="feat-check-bubble">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </span>
+                              <span className="feat-text">{feat}</span>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {/* Selection Button */}
+                        <button
+                          type="button"
+                          className={`select-plan-btn ${isSelected ? 'popular-btn selected-btn' : ''}`}
+                        >
+                          {isSelected ? '✓ Đang chọn gói này' : 'Chọn gói này'}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="wiz-action-row">
