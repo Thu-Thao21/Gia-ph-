@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import apiClient from '../../../api/axios';
 import { type AuditLevel, type AuditLogRecord, type AuditStatus } from '../../../types/adminOperations.types';
 import { AdminModal, AdminPageHeader, AdminPagination, AdminStatePanel, AdminStatusBadge, formatAdminDate } from '../PlatformAdmin/shared';
 import { fetchClanAuditLogs, type ClanAuditLogItem } from '../../../services/genealogy.service';
@@ -10,7 +11,7 @@ const levelLabels: Record<AuditLevel, string> = { info: 'Thông tin', warning: '
 
 export const AdminAuditLogsMgmt: React.FC = () => {
   const { activeClanId } = useClanContext();
-  const effectiveClanId = activeClanId || '3705a0e2-7eb4-4eaa-89ed-a92b4e7613e4';
+  const effectiveClanId = activeClanId || '';
 
   const [logs, setLogs] = useState<AuditLogRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,32 +25,63 @@ export const AdminAuditLogsMgmt: React.FC = () => {
   const [selected, setSelected] = useState<AuditLogRecord | null>(null);
 
   const loadAuditLogsFromDb = async () => {
-    if (!effectiveClanId) return;
     setLoading(true);
     try {
-      const realLogs = await fetchClanAuditLogs(effectiveClanId);
-      const mapped: AuditLogRecord[] = realLogs.map((item: ClanAuditLogItem) => {
-        const actLower = (item.action || '').toLowerCase();
-        const isErr = actLower.includes('lỗi') || actLower.includes('thất bại');
-        const isWarn = actLower.includes('xóa') || actLower.includes('từ chối');
-        const isSec = actLower.includes('bảo mật') || actLower.includes('phân quyền') || actLower.includes('khóa');
+      // 1. Ưu tiên lấy nhật ký toàn hệ thống từ /admin/audit-logs trên PostgreSQL
+      const res = await apiClient.get<any>('/admin/audit-logs').catch(() => null);
+      if (res && res.data && Array.isArray(res.data.items)) {
+        const mapped: AuditLogRecord[] = res.data.items.map((item: any) => {
+          const actLower = (item.action || '').toLowerCase();
+          const isErr = actLower.includes('lỗi') || actLower.includes('thất bại');
+          const isWarn = actLower.includes('xóa') || actLower.includes('từ chối');
+          const isSec = actLower.includes('bảo mật') || actLower.includes('phân quyền') || actLower.includes('khóa');
 
-        return {
-          id: item.id,
-          timestamp: item.occurredAt || new Date().toISOString(),
-          user: item.actor || 'Quản trị viên',
-          action: item.action || 'Thao tác hệ thống',
-          module: item.actionType || item.entityType || 'Hệ thống',
-          ip: '127.0.0.1',
-          device: 'Máy chủ Web / DB',
-          status: isErr ? 'failed' : 'success',
-          level: isErr ? 'error' : isSec ? 'security' : isWarn ? 'warning' : 'info',
-          detail: item.reason || (item.changes ? JSON.stringify(item.changes, null, 2) : item.action),
-        };
-      });
-      setLogs(mapped);
+          return {
+            id: item.id,
+            timestamp: item.timestamp || new Date().toISOString(),
+            user: item.user || 'Quản trị viên',
+            action: item.action || 'Thao tác hệ thống',
+            module: item.module || 'Hệ thống',
+            ip: item.ip || '127.0.0.1',
+            device: item.device || 'Web Admin Client',
+            status: isErr ? 'failed' : 'success',
+            level: isErr ? 'error' : isSec ? 'security' : isWarn ? 'warning' : 'info',
+            detail: item.detail || item.action,
+          };
+        });
+        setLogs(mapped);
+        return;
+      }
+
+      // 2. Dự phòng theo ID dòng họ nếu có
+      if (effectiveClanId) {
+        const realLogs = await fetchClanAuditLogs(effectiveClanId);
+        const mapped: AuditLogRecord[] = realLogs.map((item: ClanAuditLogItem) => {
+          const actLower = (item.action || '').toLowerCase();
+          const isErr = actLower.includes('lỗi') || actLower.includes('thất bại');
+          const isWarn = actLower.includes('xóa') || actLower.includes('từ chối');
+          const isSec = actLower.includes('bảo mật') || actLower.includes('phân quyền') || actLower.includes('khóa');
+
+          return {
+            id: item.id,
+            timestamp: item.occurredAt || new Date().toISOString(),
+            user: item.actor || 'Quản trị viên',
+            action: item.action || 'Thao tác hệ thống',
+            module: item.actionType || item.entityType || 'Hệ thống',
+            ip: '127.0.0.1',
+            device: 'Máy chủ Web / DB',
+            status: isErr ? 'failed' : 'success',
+            level: isErr ? 'error' : isSec ? 'security' : isWarn ? 'warning' : 'info',
+            detail: item.reason || (item.changes ? JSON.stringify(item.changes, null, 2) : item.action),
+          };
+        });
+        setLogs(mapped);
+      } else {
+        setLogs([]);
+      }
     } catch (err) {
       console.error('Lỗi khi tải nhật ký kiểm toán từ Database:', err);
+      setLogs([]);
     } finally {
       setLoading(false);
     }

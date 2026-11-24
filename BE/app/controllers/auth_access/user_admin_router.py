@@ -87,6 +87,58 @@ async def get_admin_stats(
 
 
 @router.get(
+    "/admin/audit-logs",
+    dependencies=[Depends(require_action(Action.USER_LIST))],
+    responses=error_responses(*AUTHENTICATED, ErrorCode.FORBIDDEN),
+)
+async def list_admin_audit_logs(
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Fetch system-wide audit logs from the PostgreSQL audit_logs table for System Admin."""
+    from app.models.user_access.entities import AuditLog, User
+    from app.models.family.entities import Clan
+    from sqlalchemy import select
+
+    stmt = (
+        select(
+            AuditLog.log_id,
+            AuditLog.clan_id,
+            AuditLog.actor_id,
+            AuditLog.action,
+            AuditLog.entity_type,
+            AuditLog.entity_id,
+            AuditLog.reason,
+            AuditLog.ip_address,
+            AuditLog.occurred_at,
+            User.display_name.label("actor_name"),
+            Clan.name.label("clan_name"),
+        )
+        .outerjoin(User, User.user_id == AuditLog.actor_id)
+        .outerjoin(Clan, Clan.clan_id == AuditLog.clan_id)
+        .order_by(AuditLog.occurred_at.desc())
+        .limit(limit)
+    )
+    res = await db.execute(stmt)
+    rows = res.mappings().all()
+
+    items = []
+    for r in rows:
+        items.append({
+            "id": str(r["log_id"]),
+            "timestamp": r["occurred_at"].isoformat() if r["occurred_at"] else None,
+            "user": r["actor_name"] or "Hệ thống",
+            "action": r["action"],
+            "module": r["entity_type"] or "Hệ thống",
+            "clan_name": r["clan_name"],
+            "ip": str(r["ip_address"]) if r["ip_address"] else "127.0.0.1",
+            "device": "Web Admin Client",
+            "detail": r["reason"] or f"Thao tác trên thực thể {r['entity_type']}",
+        })
+    return {"items": items, "total": len(items)}
+
+
+@router.get(
     "/admin/users",
     response_model=Page[AdminUserSummary],
     dependencies=[Depends(require_action(Action.USER_LIST))],
