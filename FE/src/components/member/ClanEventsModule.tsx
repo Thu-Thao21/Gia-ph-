@@ -12,7 +12,7 @@ import {
   type EventStatus,
   type FamilyEventRecord,
   type MemorialRecord,
-} from '../../data/sprint5MockData';
+} from '../../types/clanActivity.types';
 import { useLocalPreviewState } from '../../features/familyAdmin/useLocalPreviewState';
 import './ClanEventsModule.css';
 

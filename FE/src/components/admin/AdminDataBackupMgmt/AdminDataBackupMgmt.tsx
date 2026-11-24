@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { backupMockData, type BackupRecord, type BackupStatus } from '../../../data/adminOperationsMockData';
+import { backupMockData, type BackupRecord, type BackupStatus } from '../../../types/adminOperations.types';
 import { AdminConfirmDialog, AdminModal, AdminPageHeader, AdminPagination, AdminStatePanel, AdminStatusBadge, AdminToast, formatAdminDate, useAdminToast } from '../PlatformAdmin/shared';
 import '../PlatformAdmin/PlatformAdmin.css';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { type AuditLevel, type AuditLogRecord, type AuditStatus } from '../../../data/adminOperationsMockData';
+import { type AuditLevel, type AuditLogRecord, type AuditStatus } from '../../../types/adminOperations.types';
 import { AdminModal, AdminPageHeader, AdminPagination, AdminStatePanel, AdminStatusBadge, formatAdminDate } from '../PlatformAdmin/shared';
 import { fetchClanAuditLogs, type ClanAuditLogItem } from '../../../services/genealogy.service';
 import { useClanContext } from '../../../context/ClanContext';

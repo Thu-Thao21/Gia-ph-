@@ -1,7 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FeatureEmptyState, FeatureIcon, FeatureModal, FeaturePagination, FeatureToast } from '../common/FeatureUI';
-import { proposalMockData, type ProposalRecord, type ProposalStatus } from '../../data/sprint5MockData';
+import { proposalMockData, type ProposalRecord, type ProposalStatus } from '../../types/clanActivity.types';
 import './MyProposalsModule.css';
 
 type ProposalForm = {
