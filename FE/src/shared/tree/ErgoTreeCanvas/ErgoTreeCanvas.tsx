@@ -33,6 +33,7 @@ export interface ErgoTreeCanvasProps {
   ) => void;
   onViewBurial?: (node: ErgoTreeNode) => void;
   chartConfig?: GenealogyChartConfig;
+  expandTrigger?: { action: 'expand_all' | 'collapse_all'; timestamp: number } | null;
 }
 
 export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
@@ -51,6 +52,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   onRequestLineageAccess,
   onViewBurial,
   chartConfig,
+  expandTrigger,
 }) => {
   // Set of explicitly expanded node IDs (all expanded by default in clan mode)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -116,9 +118,8 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     };
     nodes.forEach(countRecursive);
 
-    // Dòng họ lớn (> 100 thành viên): mở rộng sẵn 2-3 thế hệ đầu tiên để xem tổng quan.
-    // Dòng họ vừa và nhỏ: mở rộng toàn bộ.
-    const maxAutoExpandGen = totalNodeCount > 100 ? 2 : 99;
+    // Mặc định luôn mở rộng TOÀN BỘ các thế hệ trong dòng họ để người dùng xem được trọn vẹn gia phả
+    const maxAutoExpandGen = 99;
     const initialExpanded = new Set<string>();
 
     const expandRecursive = (n: ErgoTreeNode) => {
@@ -141,6 +142,37 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     nodes.forEach(expandRecursive);
     setExpandedIds(initialExpanded);
   }, [nodes, isBilateralMode, direction]);
+
+  // Hỗ trợ nút mở rộng tất cả / thu gọn từ Toolbar bên ngoài
+  useEffect(() => {
+    if (!expandTrigger) return;
+    if (expandTrigger.action === 'expand_all') {
+      const allExpanded = new Set<string>();
+      const expandAllRecursive = (n: ErgoTreeNode) => {
+        allExpanded.add(String(n.id).toLowerCase().trim());
+        allExpanded.add(String(n.id));
+        if (n.spouses && n.spouses.length > 0) {
+          n.spouses.forEach((sp) => {
+            allExpanded.add(String(sp.id).toLowerCase().trim());
+            allExpanded.add(String(sp.id));
+          });
+        }
+        if (n.children && n.children.length > 0) {
+          n.children.forEach(expandAllRecursive);
+        }
+      };
+      nodes.forEach(expandAllRecursive);
+      setExpandedIds(allExpanded);
+    } else if (expandTrigger.action === 'collapse_all') {
+      // Chỉ giữ lại thế hệ tổ tiên ban đầu
+      const rootExpanded = new Set<string>();
+      nodes.forEach((r) => {
+        rootExpanded.add(String(r.id).toLowerCase().trim());
+        rootExpanded.add(String(r.id));
+      });
+      setExpandedIds(rootExpanded);
+    }
+  }, [expandTrigger, nodes]);
 
   const toggleNodeExpansion = (nodeId: string, node?: ErgoTreeNode) => {
     const rawId = String(nodeId);

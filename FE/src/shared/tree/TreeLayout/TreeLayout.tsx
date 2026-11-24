@@ -58,6 +58,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const [viewScope, setViewScope] = useState<'clan' | 'network'>(initialScope || 'clan');
   const [myNetworkData, setMyNetworkData] = useState<MyFamilyNetworkResponse | null>(null);
   const [expandedInLawPersonId, setExpandedInLawPersonId] = useState<string | null>(null);
+  const [expandTrigger, setExpandTrigger] = useState<{ action: 'expand_all' | 'collapse_all'; timestamp: number } | null>(null);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [appliedChartConfig, setAppliedChartConfig] = useState<GenealogyChartConfig>(() => {
     try {
@@ -922,6 +923,22 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               🎯 Căn giữa
             </button>
             <button
+              className="tree-control-btn expand-all-btn"
+              onClick={() => setExpandTrigger({ action: 'expand_all', timestamp: Date.now() })}
+              title="Mở rộng tất cả các đời và nhánh trong gia phả"
+              style={{ fontSize: '11px', padding: '0 8px', minWidth: 'auto', fontWeight: 700, color: '#16a34a' }}
+            >
+              🔽 Mở rộng hết
+            </button>
+            <button
+              className="tree-control-btn collapse-all-btn"
+              onClick={() => setExpandTrigger({ action: 'collapse_all', timestamp: Date.now() })}
+              title="Thu gọn các nhánh về các đời trên"
+              style={{ fontSize: '11px', padding: '0 8px', minWidth: 'auto', fontWeight: 700, color: '#64748b' }}
+            >
+              🔼 Thu gọn
+            </button>
+            <button
               className="tree-control-btn reset"
               onClick={() => {
                 setZoomScale(1);
@@ -991,6 +1008,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
           }}
           onViewBurial={(node) => setBurialModalNode(node)}
           chartConfig={appliedChartConfig}
+          expandTrigger={expandTrigger}
         />
       )}
 

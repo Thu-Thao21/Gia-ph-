@@ -250,6 +250,18 @@
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.22);
 }
 
+.tree-control-btn.expand-all-btn:hover {
+  background: #16a34a;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.22);
+}
+
+.tree-control-btn.collapse-all-btn:hover {
+  background: #475569;
+  color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(71, 85, 105, 0.22);
+}
+
 .tree-control-btn.reset {
   font-size: 12px;
   padding: 6px 10px;
