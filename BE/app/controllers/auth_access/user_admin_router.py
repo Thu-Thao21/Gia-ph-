@@ -55,7 +55,7 @@ ADMIN_STATS_SQL = text(
         (SELECT count(*) FROM persons) AS total_persons,
         (SELECT count(*) FROM business_registrations WHERE status = 'PENDING') AS pending_registrations,
         (SELECT count(*) FROM subscription_plans) AS total_packages,
-        (SELECT count(*) FROM documents) AS total_documents
+        (SELECT count(*) FROM clan_documents) AS total_documents
     FROM
         (SELECT count(*) AS total_users,
                 count(*) FILTER (WHERE status = 'ACTIVE') AS active_users FROM users) AS u,
