@@ -18,6 +18,7 @@ Review (approve or reject) rules:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
 import string
@@ -264,13 +265,20 @@ async def similar_clans(family: FamilyRepository, registration) -> list[SimilarC
     return items
 
 
-async def owner_login_id(users: UserAccessRepository, clan_code: str) -> str:
+async def owner_login_id(users: UserAccessRepository, clan_code: str, provider: Any = None) -> str:
     """Mốc M5c: "<clan code>@giapha.com", then "-2", "-3"... when that e-mail exists already."""
     from app.core.utils import clan_identity
 
     for candidate in clan_identity.login_id_candidates(clan_code):
-        if await users.get_user_by_email_ci(candidate) is None:
-            return candidate
+        if await users.get_user_by_email_ci(candidate) is not None:
+            continue
+        if provider and hasattr(provider, "email_exists"):
+            try:
+                if await provider.email_exists(candidate):
+                    continue
+            except Exception:
+                pass
+        return candidate
     raise AppError(ErrorCode.INTERNAL_ERROR, "No free login ID for this clan code.")
 
 
@@ -530,30 +538,56 @@ async def approve_and_provision_registration(
     expires_at = None
     delivery_status = None
     if existing_owner is None:
-        clan_leader_email = await owner_login_id(users, clan.clan_code)  # Mốc M5c
+        clan_leader_email = await owner_login_id(users, clan.clan_code, provider=provider)  # Mốc M5c
 
         provision_success = False
         if getattr(provider, "admin_api_enabled", False):
             try:
                 owner_key = f"auto-owner-{clan.clan_id}"
-                prov = await owner_provisioning_use_cases.provision_owner(
-                    db=db,
-                    users=users,
-                    family=family,
-                    jobs=jobs,
-                    idempotency=idempotency,
-                    provider=provider,
-                    sender=sender,
-                    principal=principal,
-                    clan_id=clan.clan_id,
-                    body=OwnerProvisionRequest(
-                        email=clan_leader_email,
-                        display_name=clan.name,
-                        phone=rep_phone,
-                    ),
-                    key=owner_key,
-                    client=client,
+                stale_key = await idempotency.lock_existing(
+                    actor_id=principal.user_id,
+                    endpoint="POST /admin/clans/{clan_id}/owner",
+                    idempotency_key=owner_key,
                 )
+                if stale_key is not None and stale_key.status != "COMPLETED":
+                    await idempotency.delete(stale_key)
+                    await db.commit()
+
+                # Check if there is an existing retryable job for this clan
+                blockers = await jobs.list_blocking(clan_id=clan.clan_id, email=clan_leader_email)
+                retry_candidate = next((j for j in blockers if j.clan_id == clan.clan_id and j.status == "FAILED_RETRYABLE"), None)
+                if retry_candidate is not None:
+                    prov = await owner_provisioning_use_cases.retry_job(
+                        db=db,
+                        users=users,
+                        family=family,
+                        jobs=jobs,
+                        idempotency=idempotency,
+                        provider=provider,
+                        sender=sender,
+                        principal=principal,
+                        job_id=retry_candidate.job_id,
+                        client=client,
+                    )
+                else:
+                    prov = await owner_provisioning_use_cases.provision_owner(
+                        db=db,
+                        users=users,
+                        family=family,
+                        jobs=jobs,
+                        idempotency=idempotency,
+                        provider=provider,
+                        sender=sender,
+                        principal=principal,
+                        clan_id=clan.clan_id,
+                        body=OwnerProvisionRequest(
+                            email=clan_leader_email,
+                            display_name=clan.name,
+                            phone=rep_phone,
+                        ),
+                        key=owner_key,
+                        client=client,
+                    )
                 temp_pass = prov.response.temporary_password
                 expires_at = prov.response.temporary_password_expires_at
                 delivery_status = prov.response.email_delivery_status
@@ -589,9 +623,13 @@ async def approve_and_provision_registration(
         owner_name = owner_user.display_name if owner_user else rep_name
         delivery_status = "SENT"
 
-    # 5. Activate Clan if PENDING
-    clan_status = clan.status
-    if clan.status == "PENDING":
+    # 5. Activate Clan if PENDING (refresh clan from DB to avoid expired attribute access across commits)
+    clan = await family.get_clan_by_registration_id(registration_id)
+    if clan is None:
+        raise AppError(ErrorCode.INTERNAL_ERROR, "Clan not found after provisioning.")
+
+    clan_status = str(clan.status)
+    if clan_status == "PENDING":
         try:
             await clan_admin_use_cases.activate_clan(
                 db=db,
@@ -607,7 +645,7 @@ async def approve_and_provision_registration(
             logger.warning("Clan activation in approve_and_provision: %s", e)
             clan_refresh = await family.get_clan_by_registration_id(registration_id)
             if clan_refresh:
-                clan_status = clan_refresh.status
+                clan_status = str(clan_refresh.status)
 
     # 5b. Ensure Clan Leader has a Person profile in the clan's phả hệ and PersonAccountLink
     try:

@@ -46,6 +46,7 @@ IdentityProvider.set_owner_password, which accepts nothing but an own-<uuid>.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
@@ -301,7 +302,7 @@ async def _execute(
         await _firebase_step(provider, run, password)
         await _mark_created(db=db, idempotency=idempotency, jobs=jobs, run=run, clock=clock)
         user_id, issued_at, expires_at = await _finish(
-            db=db, users=users, family=family, jobs=jobs, idempotency=idempotency, run=run, clock=clock
+            db=db, users=users, family=family, jobs=jobs, idempotency=idempotency, run=run, clock=clock, password=password
         )
     except _LostLease:
         raise _lost_lease_error() from None
@@ -309,6 +310,12 @@ async def _execute(
         raise await _record_failure(
             db=db, users=users, jobs=jobs, idempotency=idempotency, provider=provider, run=run,
             failure=exc.failure, clock=clock,
+        ) from None
+    except Exception as exc:
+        logger.exception("Unexpected error in owner provisioning _execute: %s", exc)
+        raise await _record_failure(
+            db=db, users=users, jobs=jobs, idempotency=idempotency, provider=provider, run=run,
+            failure=FAILURES["INTERNAL_ERROR"], clock=clock,
         ) from None
 
     contact = await owner_contact(db, users, family, run.clan_id, user_id)
@@ -549,7 +556,7 @@ async def _mark_created(*, db, idempotency, jobs, run: JobRun, clock) -> None:
     await _phase(db, work)
 
 
-async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock):
+async def _finish(*, db, users, family, jobs, idempotency, run: JobRun, clock, password: str = ""):
     async def work():
         await idempotency.set_lock_timeout(LOCK_TIMEOUT_SECONDS)
         # lock order: the idempotency row, the clan, the job

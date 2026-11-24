@@ -157,6 +157,8 @@ class IdentityProvider(Protocol):
 
     async def generate_password_reset_link(self, email: str) -> str: ...
 
+    async def email_exists(self, email: str) -> bool: ...
+
 
 def identity_from_claims(claims: dict[str, Any]) -> VerifiedIdentity:
     uid = claims.get("uid") or claims.get("sub")
@@ -330,6 +332,26 @@ class FirebaseIdentityProvider:
         except firebase_auth.UidAlreadyExistsError:
             raise ProviderUserExists() from None
         except firebase_auth.EmailAlreadyExistsError:
+            # If the existing account with this email is an orphaned provisioning user (own-<uuid>)
+            # left by an earlier failed transaction, clean it up and recreate with current uid.
+            try:
+                existing = await self._call(firebase_auth.get_user_by_email, email, app=app)
+                if is_own_uid(existing.uid):
+                    logger.info("Cleaning up orphaned provisioning user %s with email %s", existing.uid, email)
+                    await self._call(firebase_auth.delete_user, existing.uid, app=app)
+                    record = await self._call(
+                        firebase_auth.create_user,
+                        uid=uid,
+                        email=email,
+                        display_name=display_name,
+                        password=password,
+                        email_verified=False,
+                        disabled=False,
+                        app=app,
+                    )
+                    return _provider_user(record)
+            except Exception as e:
+                logger.warning("Could not recover from EmailAlreadyExistsError: %s", e)
             raise ProviderEmailTaken() from None
         except (ValueError, firebase_exceptions.InvalidArgumentError) as exc:
             raise _classify_invalid(exc) from None
@@ -402,6 +424,16 @@ class FirebaseIdentityProvider:
                 "get_user_by_email_failed", error=firebase_error_name(exc)
             ) from None
         return False
+
+    async def email_exists(self, email: str) -> bool:
+        """True when a user with this email exists in Firebase Auth."""
+        if not self.admin_api_enabled:
+            return False
+        app = self._get_app()
+        try:
+            return not (await self._no_user_with_email(email, app))
+        except Exception:
+            return False
 
     async def delete_user(self, uid: str) -> bool:
         """Delete the user `uid`, only if it is an `own-<uuid>`. True if deleted, False if there was none."""
