@@ -1,9 +1,10 @@
-import { LoadingState } from '../../../shared/Feedback/LoadingState';
+﻿import { LoadingState } from '../../../shared/Feedback/LoadingState';
 import React, { useEffect, useState } from 'react';
 import type { MemberDetail } from '../../../types/member';
 import type { PersonBurial } from '../../../types/location';
 import { useAuth } from '../../../hooks/useAuth';
-import { fetchPersonBurial, getGoogleMapsDirectionUrl, getGoogleMapsEmbedUrl } from '../../../services/location.service';
+import { fetchPersonBurial, getGoogleMapsDirectionUrl } from '../../../services/location.service';
+import { LocationPreviewMap } from '../../worldmap/LocationPreviewMap';
 import { BurialEditModal } from '../../common/BurialEditModal';
 import { LocationProposalModal } from '../../common/LocationProposalModal';
 import '../Profile.css';
@@ -180,50 +181,14 @@ export const StatusTab: React.FC<StatusTabProps> = ({ member }) => {
                     <span className="profile-info-value">{burial.notes}</span>
                   </div>
                 )}
-
-                {/* Photo URLs for headstone / grave */}
-                {burial.photoUrls && burial.photoUrls.length > 0 && (
-                  <div className="profile-info-item status-full-width" style={{ marginTop: '8px' }}>
-                    <span className="profile-info-label" style={{ marginBottom: '6px', display: 'block' }}>
-                      Hình ảnh bia mộ / Nơi an nghỉ thực tế
-                    </span>
-                    <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
-                      {burial.photoUrls.map((url, idx) => (
-                        <a
-                          key={idx}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Xem ảnh phóng to"
-                          style={{ display: 'block', flexShrink: 0 }}
-                        >
-                          <img
-                            src={url}
-                            alt={`Bia mộ #${idx + 1}`}
-                            style={{
-                              width: '100px',
-                              height: '100px',
-                              objectFit: 'cover',
-                              borderRadius: '8px',
-                              border: '1px solid #cbd5e1',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                            }}
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Embedded Google Maps Preview */}
               <div className="burial-map-preview-container">
-                <iframe
-                  title="Google Maps Preview"
-                  className="burial-map-iframe"
-                  loading="lazy"
-                  src={getGoogleMapsEmbedUrl(burial.latitude, burial.longitude)}
-                  allowFullScreen
+                <LocationPreviewMap
+                  latitude={burial.latitude}
+                  longitude={burial.longitude}
+                  label="Vị trí mộ phần trên bản đồ"
                 />
               </div>
 

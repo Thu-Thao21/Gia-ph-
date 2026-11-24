@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { submitLocationProposal } from '../../services/location.service';
 import { LocationPickerModal } from './LocationPickerModal';
+import { formatFormCoords, initialFormCoords, requireFormCoords } from './locationFormCoords';
 import './BurialEditModal.css';
 
 export interface LocationProposalModalProps {
@@ -34,8 +35,9 @@ export const LocationProposalModal: React.FC<LocationProposalModalProps> = ({
 }) => {
   const [proposedName, setProposedName] = useState<string>(personName || locationName || '');
   const [proposedAddress, setProposedAddress] = useState<string>(currentAddress || '');
-  const [proposedLat, setProposedLat] = useState<number>(currentLat || 15.8893);
-  const [proposedLng, setProposedLng] = useState<number>(currentLng || 108.2392);
+  // Chưa có tọa độ hiện tại thì để null (không dùng tọa độ mặc định).
+  const [proposedLat, setProposedLat] = useState<number | null>(() => initialFormCoords(currentLat, currentLng).lat);
+  const [proposedLng, setProposedLng] = useState<number | null>(() => initialFormCoords(currentLat, currentLng).lng);
   const [reason, setReason] = useState<string>('');
   const [evidencePhotoUrl, setEvidencePhotoUrl] = useState<string>('');
   const [isMapPickerOpen, setIsMapPickerOpen] = useState<boolean>(false);
@@ -50,8 +52,9 @@ export const LocationProposalModal: React.FC<LocationProposalModalProps> = ({
       setErrorMsg('Vui lòng nêu rõ lý do hoặc căn cứ đề xuất điều chỉnh vị trí.');
       return;
     }
-    if (!proposedLat || !proposedLng) {
-      setErrorMsg('Vui lòng chọn tọa độ vị trí chính xác trên bản đồ.');
+    const picked = requireFormCoords(proposedLat, proposedLng);
+    if (!picked) {
+      setErrorMsg('Vui lòng chọn vị trí trên bản đồ.');
       return;
     }
 
@@ -64,8 +67,8 @@ export const LocationProposalModal: React.FC<LocationProposalModalProps> = ({
         locationId: locationId || undefined,
         proposedName: proposedName.trim() || undefined,
         proposedAddress: proposedAddress.trim() || undefined,
-        proposedLat,
-        proposedLng,
+        proposedLat: picked.lat,
+        proposedLng: picked.lng,
         reason: reason.trim(),
         evidencePhotos: evidencePhotoUrl.trim() ? [evidencePhotoUrl.trim()] : [],
       });
@@ -109,7 +112,7 @@ export const LocationProposalModal: React.FC<LocationProposalModalProps> = ({
             <div className="burial-map-picker-banner">
               <div className="burial-coords-info">
                 <span className="burial-coords-label">Tọa độ đề xuất mới:</span>
-                <span className="burial-coords-val">{proposedLat.toFixed(6)}, {proposedLng.toFixed(6)}</span>
+                <span className="burial-coords-val">{formatFormCoords(proposedLat, proposedLng)}</span>
               </div>
               <button
                 type="button"

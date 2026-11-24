@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { ClanLocation, LocationType, LocationPrivacyLevel } from '../../types/location';
 import { createClanLocation, updateClanLocation } from '../../services/location.service';
 import { LocationPickerModal } from '../common/LocationPickerModal';
+import { formatFormCoords, initialFormCoords, requireFormCoords } from '../common/locationFormCoords';
 import '../common/BurialEditModal.css';
 
 export interface ClanLocationEditModalProps {
@@ -22,8 +23,9 @@ export const ClanLocationEditModal: React.FC<ClanLocationEditModalProps> = ({
   const [name, setName] = useState<string>(initialData?.name || '');
   const [locationType, setLocationType] = useState<LocationType>(initialData?.locationType || 'ANCESTRAL_HALL');
   const [address, setAddress] = useState<string>(initialData?.address || '');
-  const [latitude, setLatitude] = useState<number>(initialData?.latitude || 15.8893);
-  const [longitude, setLongitude] = useState<number>(initialData?.longitude || 108.2392);
+  // Chưa có tọa độ thì để null (không dùng tọa độ mặc định).
+  const [latitude, setLatitude] = useState<number | null>(() => initialFormCoords(initialData?.latitude, initialData?.longitude).lat);
+  const [longitude, setLongitude] = useState<number | null>(() => initialFormCoords(initialData?.latitude, initialData?.longitude).lng);
   const [description, setDescription] = useState<string>(initialData?.description || '');
   const [privacyLevel, setPrivacyLevel] = useState<LocationPrivacyLevel>(initialData?.privacyLevel || 'PUBLIC');
   const [isMapPickerOpen, setIsMapPickerOpen] = useState<boolean>(false);
@@ -42,8 +44,9 @@ export const ClanLocationEditModal: React.FC<ClanLocationEditModalProps> = ({
       setErrorMsg('Vui lòng nhập địa chỉ cụ thể.');
       return;
     }
-    if (!latitude || !longitude) {
-      setErrorMsg('Vui lòng chọn tọa độ trên bản đồ số.');
+    const picked = requireFormCoords(latitude, longitude);
+    if (!picked) {
+      setErrorMsg('Vui lòng chọn vị trí trên bản đồ.');
       return;
     }
 
@@ -54,8 +57,8 @@ export const ClanLocationEditModal: React.FC<ClanLocationEditModalProps> = ({
         name: name.trim(),
         locationType,
         address: address.trim(),
-        latitude,
-        longitude,
+        latitude: picked.lat,
+        longitude: picked.lng,
         description: description.trim() || undefined,
         privacyLevel,
       };
@@ -131,7 +134,7 @@ export const ClanLocationEditModal: React.FC<ClanLocationEditModalProps> = ({
             <div className="burial-map-picker-banner">
               <div className="burial-coords-info">
                 <span className="burial-coords-label">Tọa độ GPS bản đồ:</span>
-                <span className="burial-coords-val">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
+                <span className="burial-coords-val">{formatFormCoords(latitude, longitude)}</span>
               </div>
               <button
                 type="button"
@@ -164,7 +167,7 @@ export const ClanLocationEditModal: React.FC<ClanLocationEditModalProps> = ({
                 value={privacyLevel}
                 onChange={(e) => setPrivacyLevel(e.target.value as LocationPrivacyLevel)}
               >
-                <option value="PUBLIC">Công khai (Mọi người đều xem được)</option>
+                <option value="PUBLIC">Công khai (Mọi người và khách vãng lai đều xem được)</option>
                 <option value="CLAN_ONLY">Nội bộ dòng họ (Chỉ thành viên đã duyệt của dòng họ)</option>
                 <option value="BRANCH_ONLY">Nội bộ chi nhánh (Chỉ thành viên chi phái)</option>
                 <option value="PRIVATE">Riêng tư (Chỉ Trưởng tộc và Family Admin)</option>

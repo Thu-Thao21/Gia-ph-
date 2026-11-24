@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { PersonBurial } from '../../types/location';
-import { fetchPersonBurial, getGoogleMapsDirectionUrl, getGoogleMapsEmbedUrl } from '../../services/location.service';
+import { fetchPersonBurial, getGoogleMapsDirectionUrl } from '../../services/location.service';
+import { LocationPreviewMap } from '../worldmap/LocationPreviewMap';
 import { useAuth } from '../../hooks/useAuth';
 import { BurialEditModal } from './BurialEditModal';
 import { LocationProposalModal } from './LocationProposalModal';
@@ -30,7 +31,6 @@ export const BurialQuickViewModal: React.FC<BurialQuickViewModalProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
   const [isProposalOpen, setIsProposalOpen] = useState<boolean>(false);
-  const [proposalSuccess, setProposalSuccess] = useState<string | null>(null);
 
   const roleLower = (userRole || '').toLowerCase();
   const canManage = [
@@ -90,11 +90,6 @@ export const BurialQuickViewModal: React.FC<BurialQuickViewModalProps> = ({
           </div>
 
           <div className="burial-modal-body">
-            {proposalSuccess && (
-              <div style={{ padding: '10px 14px', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
-                {proposalSuccess}
-              </div>
-            )}
             {loading ? (
               <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                 Đang tra cứu dữ liệu mộ phần từ máy chủ gia tộc...
@@ -137,47 +132,12 @@ export const BurialQuickViewModal: React.FC<BurialQuickViewModalProps> = ({
                   </div>
                 </div>
 
-                {/* Grave Headstone Photo if available */}
-                {burial.photoUrls && burial.photoUrls.length > 0 && (
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '6px' }}>
-                      Ảnh chụp bia mộ / Nơi an nghỉ
-                    </span>
-                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                      {burial.photoUrls.map((url, idx) => (
-                        <a
-                          key={idx}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Bấm để xem ảnh kích thước lớn"
-                          style={{ display: 'block', flexShrink: 0, textDecoration: 'none' }}
-                        >
-                          <img
-                            src={url}
-                            alt={`Bia mộ ${personName}`}
-                            style={{
-                              width: '96px',
-                              height: '96px',
-                              objectFit: 'cover',
-                              borderRadius: '8px',
-                              border: '1px solid #cbd5e1',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                            }}
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Map Preview */}
                 <div style={{ height: '220px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
-                  <iframe
-                    title="Map Preview"
-                    src={getGoogleMapsEmbedUrl(burial.latitude, burial.longitude)}
-                    style={{ width: '100%', height: '100%', border: 'none' }}
-                    loading="lazy"
+                  <LocationPreviewMap
+                    latitude={burial.latitude}
+                    longitude={burial.longitude}
+                    label={`Vị trí mộ phần của ${personName}`}
                   />
                 </div>
 
@@ -338,8 +298,7 @@ export const BurialQuickViewModal: React.FC<BurialQuickViewModalProps> = ({
           currentLng={burial?.longitude}
           currentAddress={burial?.address || ''}
           onSuccess={() => {
-            setProposalSuccess('Đã gửi đề xuất vị trí mộ phần thành công. Trưởng tộc sẽ kiểm tra và phê duyệt vào gia phả.');
-            setTimeout(() => setProposalSuccess(null), 5000);
+            alert('Đã gửi đề xuất thành công. Trưởng tộc sẽ kiểm tra và xác nhận.');
           }}
         />
       )}

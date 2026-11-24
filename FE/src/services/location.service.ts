@@ -1,5 +1,5 @@
 import apiClient from '../api/axios';
-import type { ClanLocation, PersonBurial, LocationProposal } from '../types/location';
+import type { ClanLocation, PersonBurial, LocationProposal, LocationPrivacyLevel } from '../types/location';
 
 /**
  * Universal Google Maps Directions Deep Link
@@ -69,6 +69,68 @@ export async function savePersonBurial(personId: string, data: Partial<PersonBur
 
 export async function deletePersonBurial(personId: string): Promise<void> {
   await apiClient.delete(`/members/${personId}/burial`);
+}
+
+// -------------------------------------------------------------
+// Clan Burials API (Mộ phần cả dòng họ — lớp "Mộ phần" trên bản đồ thế giới)
+// GET /families/{clanId}/burials: đã lọc quyền riêng tư ở BE (giống /locations), kèm tên người
+// (JOIN sẵn, không gọi riêng từng /members/{id}/burial). Trả { items, total, limit, offset }.
+// -------------------------------------------------------------
+
+/** Dạng BurialEntry của worldmap (worldMapData.ts), lặp lại cấu trúc ở đây để location.service.ts
+ * không phụ thuộc ngược vào components/worldmap/ — TypeScript so khớp theo cấu trúc (structural typing). */
+export interface ClanBurialMapEntry {
+  burial: PersonBurial;
+  personName?: string | null;
+}
+
+interface ClanBurialListItem {
+  personId: string;
+  personName?: string | null;
+  burialId: string;
+  clanId: string;
+  cemeteryName?: string | null;
+  graveCode?: string | null;
+  address?: string | null;
+  burialDate?: string | null;
+  latitude: number;
+  longitude: number;
+  privacyLevel: LocationPrivacyLevel;
+  photoUrls?: string[];
+}
+
+/** BE giới hạn tối đa 500 bản ghi/trang; bản đồ gọi 1 trang lớn nhất cho tổng quan cả dòng họ.
+ * Dòng họ có hơn 500 mộ (có tọa độ) thì trang sau chưa hiển thị — không ảnh hưởng chế độ xem hiện tại. */
+const MAX_BURIALS_PER_PAGE = 500;
+
+export async function fetchClanBurials(clanId: string): Promise<ClanBurialMapEntry[]> {
+  try {
+    const res = await apiClient.get(`/families/${clanId}/burials`, {
+      params: { limit: MAX_BURIALS_PER_PAGE },
+    });
+    const items: ClanBurialListItem[] = Array.isArray(res?.data?.items) ? res.data.items : [];
+    return items.map((item) => ({
+      personName: item.personName ?? null,
+      burial: {
+        burialId: item.burialId,
+        personId: item.personId,
+        clanId: item.clanId,
+        cemeteryName: item.cemeteryName ?? null,
+        graveCode: item.graveCode ?? null,
+        address: item.address ?? null,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        burialDate: item.burialDate ?? null,
+        photoUrls: item.photoUrls ?? [],
+        privacyLevel: item.privacyLevel,
+      },
+    }));
+  } catch (err) {
+    // Lỗi (mất mạng, chưa đủ quyền...) không được làm vỡ bản đồ: báo console, trả rỗng — lớp địa điểm
+    // dòng họ vẫn hiển thị bình thường, bản đồ coi như chưa có dữ liệu mộ phần (trạng thái "rỗng").
+    console.error('Lỗi tải lớp mộ phần dòng họ trên bản đồ:', err);
+    return [];
+  }
 }
 
 // -------------------------------------------------------------
