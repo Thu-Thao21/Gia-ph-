@@ -65,14 +65,14 @@ export const AdminAuditLogsMgmt: React.FC = () => {
           return {
             id: item.id,
             timestamp: item.occurredAt || new Date().toISOString(),
-            user: item.actor || 'Quản trị viên',
+            user: item.actorName || 'Quản trị viên',
             action: item.action || 'Thao tác hệ thống',
-            module: item.actionType || item.entityType || 'Hệ thống',
+            module: item.actionType || 'Hệ thống',
             ip: '127.0.0.1',
             device: 'Máy chủ Web / DB',
             status: isErr ? 'failed' : 'success',
             level: isErr ? 'error' : isSec ? 'security' : isWarn ? 'warning' : 'info',
-            detail: item.reason || (item.changes ? JSON.stringify(item.changes, null, 2) : item.action),
+            detail: item.details || item.action,
           };
         });
         setLogs(mapped);
