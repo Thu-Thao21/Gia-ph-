@@ -212,3 +212,15 @@ class FundSummaryResponse(BaseModel):
     pending_donations_count: int = 0
     confirmed_donations_count: int = 0
     awaiting_verification_count: int = 0
+
+
+class TopDonorItem(BaseModel):
+    rank: int
+    user_id: Optional[uuid.UUID] = None
+    donor_name: str
+    total_amount: float
+    donations_count: int
+    last_donation_date: Optional[datetime] = None
+    badge: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

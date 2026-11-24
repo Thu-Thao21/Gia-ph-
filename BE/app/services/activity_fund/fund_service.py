@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.utils.image_validation import ImageRejected, check_image
@@ -38,6 +38,7 @@ from app.schemas.activity_fund import (
     FundResponse,
     FundSummaryResponse,
     FundUpdate,
+    TopDonorItem,
 )
 from app.services.auth_access.access_service import AccessService
 
@@ -1244,3 +1245,75 @@ class FundService:
             confirmed_donations_count=confirmed_cnt,
             awaiting_verification_count=awaiting_cnt,
         )
+
+    async def get_donation_leaderboard(
+        self,
+        clan_id: uuid.UUID,
+        actor: Account,
+        limit: int = 10,
+        fund_id: Optional[uuid.UUID] = None,
+    ) -> List[TopDonorItem]:
+        """Lấy bảng xếp hạng vinh danh Top người đóng góp nhiều nhất cho dòng họ (các khoản SUCCESS)."""
+        _, _, is_member = await self.get_user_clan_roles(actor.id, clan_id)
+        if not is_member:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Bạn không có quyền truy cập dữ liệu dòng họ này.",
+            )
+
+        query = (
+            select(
+                Donation.user_id,
+                func.coalesce(
+                    func.nullif(func.max(Donation.donor_name), ""),
+                    func.max(Account.display_name),
+                    "Thành viên dòng họ",
+                ).label("donor_name"),
+                func.coalesce(func.sum(Donation.amount), 0).label("total_amount"),
+                func.count(Donation.id).label("donations_count"),
+                func.coalesce(func.max(Donation.verified_at), func.max(Donation.created_at)).label("last_donation_date"),
+            )
+            .outerjoin(Account, Account.user_id == Donation.user_id)
+            # QUY TẮC BẮT BUỘC: Chỉ các khoản quyên góp đã được Tộc trưởng bấm xác nhận (status == 'SUCCESS')
+            # mới được tính vào tổng tiền và thứ hạng vinh danh. Chưa xác nhận (PENDING/AWAITING) tuyệt đối không tính.
+            .where(Donation.clan_id == clan_id, Donation.status == "SUCCESS")
+        )
+
+        if fund_id:
+            query = query.where(Donation.fund_id == fund_id)
+
+        query = (
+            query.group_by(Donation.user_id)
+            .order_by(desc("total_amount"), desc("last_donation_date"))
+            .limit(max(1, min(limit, 50)))
+        )
+
+        rows = (await self.db.execute(query)).all()
+
+        results: List[TopDonorItem] = []
+        for rank, row in enumerate(rows, start=1):
+            badge = None
+            if rank == 1:
+                badge = "Quán quân vinh danh"
+            elif rank == 2:
+                badge = "Á quân vinh danh"
+            elif rank == 3:
+                badge = "Hạng ba vinh danh"
+            elif rank <= 5:
+                badge = "Tấm lòng vàng"
+            elif rank <= 10:
+                badge = "Nhà hảo tâm"
+
+            results.append(
+                TopDonorItem(
+                    rank=rank,
+                    user_id=row.user_id,
+                    donor_name=row.donor_name or "Thành viên dòng họ",
+                    total_amount=float(row.total_amount or 0.0),
+                    donations_count=int(row.donations_count or 0),
+                    last_donation_date=row.last_donation_date,
+                    badge=badge,
+                )
+            )
+
+        return results

@@ -15,6 +15,7 @@ import {
   type DonationStatus,
   type FundItem,
   type FundSummary,
+  type TopDonorItem,
   cancelDonation,
   createClanFund,
   createDonation,
@@ -24,6 +25,7 @@ import {
   fetchClanDonations,
   fetchClanFunds,
   fetchFundsSummary,
+  fetchDonationLeaderboard,
   fetchMyDonations,
   rejectDonation,
   submitDonationVerification,
@@ -107,8 +109,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
   const [toast, setToast] = useState<{ message: string; tone?: 'success' | 'error' | 'info' } | null>(null);
 
   // Tab điều hướng
-  type TabType = 'ledger' | 'pending' | 'funds' | 'bank' | 'donate' | 'history';
+  type TabType = 'ledger' | 'pending' | 'funds' | 'bank' | 'donate' | 'history' | 'leaderboard';
   const [currentTab, setCurrentTab] = useState<TabType>(hasManageRights ? 'ledger' : 'funds');
+
+  // Dữ liệu bảng vinh danh Top 10 người quyên góp nhiều nhất
+  const [leaderboard, setLeaderboard] = useState<TopDonorItem[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
+  const [leaderboardFundFilter, setLeaderboardFundFilter] = useState<string>('all');
 
   // Bộ lọc sổ cái
   const [search, setSearch] = useState('');
@@ -198,6 +205,8 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
         const myDonations = await fetchMyDonations(effectiveClanId).catch(() => []);
         setDonations(myDonations);
       }
+
+      await loadLeaderboardData(leaderboardFundFilter);
     } catch (err) {
       console.error('Lỗi khi tải dữ liệu quỹ:', err);
     } finally {
@@ -205,9 +214,61 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
     }
   };
 
+  const loadLeaderboardData = async (fundId?: string, silent = false) => {
+    if (!effectiveClanId) return;
+    if (!silent) setLeaderboardLoading(true);
+    try {
+      const topDonors = await fetchDonationLeaderboard(effectiveClanId, {
+        limit: 10,
+        fund_id: fundId && fundId !== 'all' ? fundId : undefined,
+      });
+      setLeaderboard(topDonors);
+    } catch (err) {
+      console.error('Lỗi khi tải bảng xếp hạng vinh danh:', err);
+    } finally {
+      if (!silent) setLeaderboardLoading(false);
+    }
+  };
+
   useEffect(() => {
     reloadAllData();
   }, [effectiveClanId, hasManageRights]);
+
+  // Luôn tự động cập nhật bảng vinh danh khi ở tab này hoặc khi có thay đổi quyên góp
+  useEffect(() => {
+    if (!effectiveClanId) return;
+
+    if (currentTab === 'leaderboard') {
+      loadLeaderboardData(leaderboardFundFilter);
+    }
+
+    // Tự động polling kiểm tra cập nhật mỗi 8 giây khi đang ở tab Bảng vinh danh
+    let pollTimer: any = null;
+    if (currentTab === 'leaderboard') {
+      pollTimer = setInterval(() => {
+        loadLeaderboardData(leaderboardFundFilter, true);
+      }, 8000);
+    }
+
+    const handleFocus = () => {
+      if (currentTab === 'leaderboard') {
+        loadLeaderboardData(leaderboardFundFilter, true);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      if (pollTimer) clearInterval(pollTimer);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [leaderboardFundFilter, currentTab, effectiveClanId]);
+
+  // Tự động làm mới bảng vinh danh mỗi khi dữ liệu donations trong dòng tộc thay đổi
+  useEffect(() => {
+    if (effectiveClanId) {
+      loadLeaderboardData(leaderboardFundFilter, true);
+    }
+  }, [donations]);
 
   // Bộ lọc giao dịch
   const filteredDonations = useMemo(() => {
@@ -586,6 +647,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
             >
               Đóng góp quỹ
             </button>
+            <button
+              type="button"
+              className={`fund-tab-item ${currentTab === 'leaderboard' ? 'active' : ''}`}
+              onClick={() => setCurrentTab('leaderboard')}
+            >
+              Bảng vinh danh
+            </button>
           </>
         ) : (
           <>
@@ -609,6 +677,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               onClick={() => setCurrentTab('history')}
             >
               Lịch sử đóng góp của tôi
+            </button>
+            <button
+              type="button"
+              className={`fund-tab-item ${currentTab === 'leaderboard' ? 'active' : ''}`}
+              onClick={() => setCurrentTab('leaderboard')}
+            >
+              Bảng vinh danh
             </button>
           </>
         )}
@@ -664,7 +739,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           </div>
 
           <div className="fund-table-wrap">
-            <table className="fund-table fund-table--cards">
+            <table className="fund-table">
               <thead>
                 <tr>
                   <th>Mã đóng góp</th>
@@ -680,13 +755,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               <tbody>
                 {visibleDonations.map((d) => (
                   <tr key={d.id}>
-                    <td data-label="Mã đóng góp">
+                    <td>
                       <strong>{d.donation_code}</strong>
                     </td>
-                    <td data-label="Quỹ đóng góp">{d.fund_name || 'Quỹ dòng họ'}</td>
-                    <td data-label="Người gửi">{d.donor_name}</td>
-                    <td data-label="Số tiền" className="fund-amount-val income">+{formatVnd(d.amount)}</td>
-                    <td data-label="Minh chứng">
+                    <td>{d.fund_name || 'Quỹ dòng họ'}</td>
+                    <td>{d.donor_name}</td>
+                    <td className="fund-amount-val income">+{formatVnd(d.amount)}</td>
+                    <td>
                       {d.evidence_items && d.evidence_items.length > 0 ? (
                         <img
                           src={resolveMediaUrl(d.evidence_items[0].image_path)}
@@ -699,11 +774,11 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                         <span style={{ color: '#94a3b8', fontSize: '11px' }}>Chưa có</span>
                       )}
                     </td>
-                    <td data-label="Ngày tạo">{new Date(d.created_at).toLocaleDateString('vi-VN')}</td>
-                    <td data-label="Trạng thái">
+                    <td>{new Date(d.created_at).toLocaleDateString('vi-VN')}</td>
+                    <td>
                       <span className={`status-badge status-${d.status}`}>{statusLabels[d.status]}</span>
                     </td>
-                    <td data-label="Thao tác">
+                    <td>
                       <div className="fund-actions">
                         <button type="button" onClick={() => setSelectedDonation(d)}>
                           Chi tiết
@@ -760,7 +835,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           </div>
 
           <div className="fund-table-wrap">
-            <table className="fund-table fund-table--cards">
+            <table className="fund-table">
               <thead>
                 <tr>
                   <th>Mã đóng góp</th>
@@ -776,14 +851,14 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               <tbody>
                 {pendingDonations.map((d) => (
                   <tr key={d.id}>
-                    <td data-label="Mã đóng góp">
+                    <td>
                       <strong>{d.donation_code}</strong>
                     </td>
-                    <td data-label="Quỹ">{d.fund_name}</td>
-                    <td data-label="Người đóng góp">{d.donor_name}</td>
-                    <td data-label="Số tiền" className="fund-amount-val income">+{formatVnd(d.amount)}</td>
-                    <td data-label="Mã tham chiếu NH">{d.bank_transaction_reference || <span style={{ color: '#94a3b8' }}>Không có</span>}</td>
-                    <td data-label="Ảnh minh chứng">
+                    <td>{d.fund_name}</td>
+                    <td>{d.donor_name}</td>
+                    <td className="fund-amount-val income">+{formatVnd(d.amount)}</td>
+                    <td>{d.bank_transaction_reference || <span style={{ color: '#94a3b8' }}>Không có</span>}</td>
+                    <td>
                       {d.evidence_items && d.evidence_items.length > 0 ? (
                         <img
                           src={resolveMediaUrl(d.evidence_items[0].image_path)}
@@ -796,8 +871,8 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                         <span style={{ color: '#ef4444', fontSize: '12px' }}>Chờ ảnh</span>
                       )}
                     </td>
-                    <td data-label="Thời gian gửi">{d.submitted_at ? new Date(d.submitted_at).toLocaleString('vi-VN') : 'Mới tạo'}</td>
-                    <td data-label="Hành động">
+                    <td>{d.submitted_at ? new Date(d.submitted_at).toLocaleString('vi-VN') : 'Mới tạo'}</td>
+                    <td>
                       <div className="fund-actions">
                         <button type="button" onClick={() => setSelectedDonation(d)}>
                           Chi tiết
@@ -1324,7 +1399,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           </div>
 
           <div className="fund-table-wrap">
-            <table className="fund-table fund-table--cards">
+            <table className="fund-table">
               <thead>
                 <tr>
                   <th>Mã đóng góp</th>
@@ -1342,13 +1417,13 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                   .filter((d) => ['AWAITING_VERIFICATION', 'SUCCESS', 'REJECTED'].includes(d.status))
                   .map((d) => (
                     <tr key={d.id}>
-                      <td data-label="Mã đóng góp">
+                      <td>
                         <strong>{d.donation_code}</strong>
                       </td>
-                      <td data-label="Quỹ">{d.fund_name}</td>
-                      <td data-label="Số tiền" className="fund-amount-val income">+{formatVnd(d.amount)}</td>
-                      <td data-label="Ngày gửi">{new Date(d.submitted_at || d.created_at).toLocaleDateString('vi-VN')}</td>
-                      <td data-label="Biên lai">
+                      <td>{d.fund_name}</td>
+                      <td className="fund-amount-val income">+{formatVnd(d.amount)}</td>
+                      <td>{new Date(d.submitted_at || d.created_at).toLocaleDateString('vi-VN')}</td>
+                      <td>
                         {d.evidence_items && d.evidence_items.length > 0 ? (
                           <img
                             src={resolveMediaUrl(d.evidence_items[0].image_path)}
@@ -1361,10 +1436,10 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                           <span style={{ color: '#94a3b8' }}>Chưa có</span>
                         )}
                       </td>
-                      <td data-label="Trạng thái">
+                      <td>
                         <span className={`status-badge status-${d.status}`}>{statusLabels[d.status]}</span>
                       </td>
-                      <td data-label="Ghi chú">
+                      <td>
                         {d.status === 'REJECTED' && (
                           <span style={{ color: '#dc2626', fontSize: '12px' }}>
                             Lý do: {d.rejection_reason || 'Không khớp'}
@@ -1381,7 +1456,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                           </span>
                         )}
                       </td>
-                      <td data-label="Thao tác">
+                      <td>
                         <div className="fund-actions">
                           <button type="button" onClick={() => setSelectedDonation(d)}>
                             Chi tiết
@@ -1398,6 +1473,142 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          TAB: BẢNG VINH DANH (MỌI THÀNH VIÊN ĐỀU XEM ĐƯỢC)
+          ===================================================================== */}
+      {currentTab === 'leaderboard' && (
+        <div className="fund-table-card">
+          <div className="fund-table-heading">
+            <div>
+              <h2>Bảng vinh danh</h2>
+              <span>
+                Chỉ ghi nhận và xếp hạng các khoản quyên góp đã được Tộc trưởng nhận tiền và bấm xác nhận
+              </span>
+            </div>
+          </div>
+
+          <div className="fund-toolbar">
+            <select
+              value={leaderboardFundFilter}
+              onChange={(e) => setLeaderboardFundFilter(e.target.value)}
+            >
+              <option value="all">Tất cả các quỹ dòng họ</option>
+              {funds.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {leaderboardLoading && leaderboard.length === 0 ? (
+            <div className="fund-empty-box">
+              <p>Đang tải dữ liệu bảng vinh danh...</p>
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="fund-empty-box">
+              <p>Chưa có khoản quyên góp nào được Tộc trưởng xác nhận.</p>
+              <span style={{ display: 'block', fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                Khi thành viên chuyển khoản đóng góp và Tộc trưởng kiểm tra tài khoản thực tế rồi bấm "Xác nhận đã nhận tiền",
+                hệ thống sẽ lập tức cập nhật số tiền và thứ hạng lên Bảng vinh danh.
+              </span>
+            </div>
+          ) : (
+            <>
+              {/* Thẻ vinh danh Top 3 theo phong cách KPI đồng bộ với hệ thống */}
+              <div className="fund-kpis" style={{ margin: '16px 20px 8px' }}>
+                <article style={{ borderLeft: '4px solid #2563eb', background: '#f8fbff' }}>
+                  <span style={{ color: '#2563eb', fontWeight: 700 }}>Hạng 1 - Quán quân vinh danh</span>
+                  <strong>{leaderboard[0].donor_name}</strong>
+                  <small className="fund-amount-val income">
+                    +{formatVnd(leaderboard[0].total_amount)} ({leaderboard[0].donations_count} lượt đóng góp)
+                  </small>
+                </article>
+                {leaderboard[1] && (
+                  <article style={{ borderLeft: '4px solid #3b82f6', background: '#f8fafc' }}>
+                    <span style={{ color: '#1d4ed8', fontWeight: 700 }}>Hạng 2 - Á quân vinh danh</span>
+                    <strong>{leaderboard[1].donor_name}</strong>
+                    <small className="fund-amount-val income">
+                      +{formatVnd(leaderboard[1].total_amount)} ({leaderboard[1].donations_count} lượt đóng góp)
+                    </small>
+                  </article>
+                )}
+                {leaderboard[2] && (
+                  <article style={{ borderLeft: '4px solid #60a5fa', background: '#f8fafc' }}>
+                    <span style={{ color: '#2563eb', fontWeight: 700 }}>Hạng 3 - Hạng ba vinh danh</span>
+                    <strong>{leaderboard[2].donor_name}</strong>
+                    <small className="fund-amount-val income">
+                      +{formatVnd(leaderboard[2].total_amount)} ({leaderboard[2].donations_count} lượt đóng góp)
+                    </small>
+                  </article>
+                )}
+              </div>
+
+              {/* Bảng chi tiết Top 10 */}
+              <div className="fund-table-wrap">
+                <table className="fund-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Thứ hạng</th>
+                      <th>Người quyên góp</th>
+                      <th>Danh hiệu</th>
+                      <th style={{ textAlign: 'center' }}>Số lượt đóng góp</th>
+                      <th>Lần đóng góp gần nhất</th>
+                      <th style={{ textAlign: 'right' }}>Tổng tiền đóng góp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((item) => (
+                      <tr key={item.rank}>
+                        <td style={{ textAlign: 'center' }}>
+                          <span
+                            className="status-badge"
+                            style={{
+                              fontWeight: 700,
+                              ...(item.rank === 1
+                                ? { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }
+                                : item.rank === 2
+                                ? { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' }
+                                : item.rank === 3
+                                ? { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }
+                                : { background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }),
+                            }}
+                          >
+                            #{item.rank}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{item.donor_name}</strong>
+                          {item.user_id && item.user_id === account?.user_id && (
+                            <span style={{ marginLeft: '6px', fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
+                              (Chính bạn)
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="status-badge status-SUCCESS">
+                            {item.badge || 'Đóng góp tích cực'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>{item.donations_count} lượt</td>
+                        <td>
+                          {item.last_donation_date
+                            ? new Date(item.last_donation_date).toLocaleDateString('vi-VN')
+                            : '-'}
+                        </td>
+                        <td style={{ textAlign: 'right' }} className="fund-amount-val income">
+                          +{formatVnd(item.total_amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       )}
 

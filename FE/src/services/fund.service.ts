@@ -76,6 +76,16 @@ export interface FundSummary {
   awaiting_verification_count: number;
 }
 
+export interface TopDonorItem {
+  rank: number;
+  user_id?: string;
+  donor_name: string;
+  total_amount: number;
+  donations_count: number;
+  last_donation_date?: string;
+  badge?: string;
+}
+
 // ============================================================================
 // 1. QUẢN LÝ QUỸ (FUNDS)
 // ============================================================================
@@ -228,5 +238,13 @@ export async function cancelDonation(clanId: string, donationId: string, reason?
 export async function fetchFundsSummary(clanId: string): Promise<FundSummary> {
   const res = await apiClient.get(`/clans/${clanId}/funds/summary`);
   return res.data;
+}
+
+export async function fetchDonationLeaderboard(clanId: string, params?: {
+  limit?: number;
+  fund_id?: string;
+}): Promise<TopDonorItem[]> {
+  const res = await apiClient.get(`/clans/${clanId}/funds/leaderboard`, { params });
+  return Array.isArray(res.data) ? res.data : [];
 }
 

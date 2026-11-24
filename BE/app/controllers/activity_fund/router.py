@@ -332,6 +332,7 @@ from app.schemas.activity_fund import (
     DonationCancelRequest,
     EvidenceItem,
     FundSummaryResponse,
+    TopDonorItem,
 )
 from app.services.activity_fund.fund_service import FundService, QR_UPLOAD_DIR, EVIDENCE_UPLOAD_DIR
 
@@ -618,6 +619,23 @@ async def get_clan_funds_summary(
     """Lấy dữ liệu tổng hợp số dư, tổng mục tiêu và số khoản đang chờ duyệt."""
     c_uuid = _family_uuid(clan_id)
     return await FundService(db).get_funds_summary(c_uuid, account)
+
+
+@router.get("/clans/{clan_id}/funds/leaderboard", response_model=List[TopDonorItem])
+@router.get("/families/{clan_id}/funds/leaderboard", response_model=List[TopDonorItem])
+async def get_donation_leaderboard(
+    clan_id: str,
+    limit: int = 10,
+    fund_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """Lấy danh sách xếp hạng vinh danh Top người đóng góp nhiều nhất cho dòng họ."""
+    c_uuid = _family_uuid(clan_id)
+    f_uuid = None
+    if fund_id and fund_id not in ("", "all", "null", "undefined"):
+        f_uuid = _family_uuid(fund_id)
+    return await FundService(db).get_donation_leaderboard(c_uuid, account, limit=limit, fund_id=f_uuid)
 
 
 # --- 7. SERVE AN TOÀN TỆP TIN ĐÃ UPLOAD ---
