@@ -1,9 +1,29 @@
 import { useAuth } from '../../context/AuthContext';
+import { useClanContext } from '../../context/ClanContext';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmDialog, FeatureEmptyState, FeatureIcon, FeatureModal, FeaturePagination, FeatureToast } from '../common/FeatureUI';
-import { archiveMockData, type ArchiveFileType, type ArchiveRecord } from '../../data/sprint5MockData';
-import { useLocalPreviewState } from '../../features/familyAdmin/useLocalPreviewState';
+import {
+  fetchClanDocuments,
+  createClanDocument,
+  deleteClanDocument,
+  type ClanDocumentItem,
+} from '../../services/archive.service';
 import './ClanDocumentsModule.css';
+
+type ArchiveFileType = 'photo' | 'document' | 'video' | 'audio' | 'record';
+
+interface ArchiveRecord {
+  id: string;
+  name: string;
+  type: ArchiveFileType;
+  category: string;
+  uploadDate: string;
+  size: string;
+  owner: string;
+  url?: string;
+  description: string;
+  tags: string[];
+}
 
 type ArchiveForm = { name: string; type: ArchiveFileType; tags: string; description: string };
 const EMPTY_FORM: ArchiveForm = { name: '', type: 'document', tags: '', description: '' };
@@ -20,11 +40,15 @@ const inferType = (fileName: string): ArchiveFileType => {
   return 'document';
 };
 
-export interface ClanDocumentsModuleProps { canManage?: boolean }
+export interface ClanDocumentsModuleProps { canManage?: boolean; clanId?: string }
 
-export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canManage = true }) => {
+export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canManage = true, clanId }) => {
   const { account } = useAuth();
-  const [records, setRecords] = useLocalPreviewState<ArchiveRecord[]>('documents', archiveMockData);
+  const { activeClanId } = useClanContext();
+  const effectiveClanId = clanId || activeClanId || '3705a0e2-7eb4-4eaa-89ed-a92b4e7613e4';
+
+  const [records, setRecords] = useState<ArchiveRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | ArchiveFileType>('all');
   const [fromDate, setFromDate] = useState('');
@@ -44,6 +68,35 @@ export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canMan
   const [toast, setToast] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
 
+  const loadDocumentsFromDb = async () => {
+    if (!effectiveClanId) return;
+    setLoading(true);
+    try {
+      const docs = await fetchClanDocuments(effectiveClanId);
+      const mapped: ArchiveRecord[] = docs.map((d) => ({
+        id: d.id,
+        name: d.title,
+        type: (d.fileType as ArchiveFileType) || 'document',
+        category: d.category,
+        uploadDate: d.createdAt ? new Date(d.createdAt).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+        size: '1.2 MB',
+        owner: 'Ban Quản Trị',
+        url: d.fileUrl,
+        description: d.description || '',
+        tags: [d.category],
+      }));
+      setRecords(mapped);
+    } catch (err) {
+      console.error('Không thể tải tư liệu từ Neon DB:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocumentsFromDb();
+  }, [effectiveClanId]);
+
   const filtered = useMemo(() => records.filter((item) => {
     const text = `${item.name} ${item.owner} ${item.tags.join(' ')} ${item.description}`.toLocaleLowerCase('vi');
     return text.includes(search.trim().toLocaleLowerCase('vi')) && (typeFilter === 'all' || item.type === typeFilter) && (!fromDate || dateStamp(item.uploadDate) >= new Date(fromDate).getTime());
@@ -62,20 +115,46 @@ export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canMan
 
   const openUpload = () => { if (!canManage) return; setShowUpload(true); setForm(EMPTY_FORM); setFile(null); setError(''); setUploadProgress(0); setUploadState('idle'); };
 
-  const upload = (event: React.FormEvent) => {
+  const upload = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!file) { setError('Vui lòng chọn một tệp để tải lên.'); setUploadState('error'); return; }
     if (!form.name.trim()) { setError('Vui lòng nhập tên tư liệu.'); setUploadState('error'); return; }
-    setError(''); setUploadState('uploading'); setUploadProgress(8);
-    const timer = window.setInterval(() => setUploadProgress((current) => {
-      const next = Math.min(100, current + 14);
-      if (next >= 100) {
-        window.clearInterval(timer);
-        const record: ArchiveRecord = { id: `TL-${String(Date.now()).slice(-5)}`, name: form.name.trim(), type: form.type, owner: account?.display_name || 'Thành viên', uploadDate: new Date().toLocaleDateString('vi-VN'), size: `${(file.size / 1024 / 1024).toFixed(1)} MB`, tags: form.tags.split(',').map((item) => item.trim()).filter(Boolean), description: form.description.trim() || 'Tư liệu gia tộc do thành viên đóng góp.' };
-        setRecords((items) => [record, ...items]); setUploadState('success'); setTimeout(() => { setShowUpload(false); setToast('Đã lưu metadata trong trình duyệt; tệp gốc chưa được tải lên máy chủ.'); }, 550);
-      }
-      return next;
-    }), 160);
+    setError(''); setUploadState('uploading'); setUploadProgress(30);
+
+    try {
+      setUploadProgress(70);
+      await createClanDocument(effectiveClanId, {
+        title: form.name.trim(),
+        description: form.description.trim() || undefined,
+        category: form.type.toUpperCase(),
+        fileType: form.type,
+        fileUrl: undefined,
+      });
+      setUploadProgress(100);
+      setUploadState('success');
+      setToast('Đã lưu trữ tư liệu gia tộc thành công vào CSDL Neon.');
+      setTimeout(() => {
+        setShowUpload(false);
+        loadDocumentsFromDb();
+      }, 550);
+    } catch (err: any) {
+      console.error('Lỗi khi lưu tư liệu vào Database:', err);
+      setError(err?.response?.data?.detail || 'Không thể lưu tư liệu lên máy chủ.');
+      setUploadState('error');
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteClanDocument(effectiveClanId, deleteTarget.id);
+      setDeleteTarget(null);
+      setToast(`Đã xóa tư liệu "${deleteTarget.name}" khỏi CSDL.`);
+      await loadDocumentsFromDb();
+    } catch (err) {
+      console.error('Lỗi khi xóa tư liệu khỏi Database:', err);
+      setToast('Không thể xóa tư liệu.');
+    }
   };
 
   const saveMetadata = (event: React.FormEvent) => {
@@ -101,7 +180,7 @@ export const ClanDocumentsModule: React.FC<ClanDocumentsModuleProps> = ({ canMan
     {showUpload && <FeatureModal title="Thêm tư liệu" eyebrow="KHO LƯU TRỮ SỐ" onClose={() => uploadState !== 'uploading' && setShowUpload(false)} wide footer={<><button type="button" className="feature-button secondary" disabled={uploadState === 'uploading'} onClick={() => setShowUpload(false)}>Hủy</button><button type="submit" form="archive-upload-form" className="feature-button primary" disabled={uploadState === 'uploading' || uploadState === 'success'}><FeatureIcon name="upload" /> {uploadState === 'uploading' ? `Đang xử lý ${uploadProgress}%` : 'Lưu tư liệu'}</button></>}><form id="archive-upload-form" onSubmit={upload} className="feature-form-grid" noValidate><div className="feature-field full"><label>Tệp tư liệu <em>*</em></label><div className={`archive-dropzone ${dragActive ? 'active' : ''} ${error ? 'error' : ''}`} onDragOver={(event) => { event.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)} onDrop={(event) => { event.preventDefault(); setDragActive(false); chooseFile(event.dataTransfer.files[0]); }}><input ref={fileInput} type="file" onChange={(event) => chooseFile(event.target.files?.[0])} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" /><div><FeatureIcon name="upload" size={27} /><strong>Kéo và thả tệp vào đây</strong><span>hoặc <button type="button" onClick={() => fileInput.current?.click()}>chọn từ thiết bị</button></span><small>Ảnh, tài liệu, video, âm thanh · tối đa 250 MB</small>{file && <em>{file.name} · {(file.size/1024/1024).toFixed(1)} MB</em>}</div></div>{error && <span className="feature-field-error">{error}</span>}</div><div className="feature-field"><label>Tên hiển thị <em>*</em></label><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div><div className="feature-field"><label>Loại tư liệu</label><select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ArchiveFileType })}>{Object.entries(typeLabels).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="feature-field full"><label>Thẻ phân loại</label><input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} placeholder="Gia phả cổ, Chi trưởng, Nghi lễ" /></div><div className="feature-field full"><label>Mô tả / Nguồn gốc</label><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></div>{uploadState === 'uploading' && <div className="archive-progress full"><span style={{width:`${uploadProgress}%`}} /><strong>{uploadProgress}% · Đang xử lý...</strong></div>}{uploadState === 'success' && <div className="archive-upload-success full"><FeatureIcon name="check" /> Đã lưu tư liệu thành công.</div>}</form></FeatureModal>}
     {editing && <FeatureModal title="Chỉnh sửa tư liệu" eyebrow={editing.id} onClose={() => setEditing(null)} wide footer={<><button type="button" className="feature-button secondary" onClick={() => setEditing(null)}>Hủy</button><button type="submit" form="archive-edit-form" className="feature-button primary"><FeatureIcon name="check" /> Lưu thay đổi</button></>}><form id="archive-edit-form" onSubmit={saveMetadata} className="feature-form-grid"><div className="feature-field"><label>Tên hiển thị <em>*</em></label><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></div><div className="feature-field"><label>Loại tư liệu</label><select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as ArchiveFileType })}>{Object.entries(typeLabels).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="feature-field full"><label>Thẻ</label><input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} /></div><div className="feature-field full"><label>Mô tả</label><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></div></form></FeatureModal>}
     {selected && <FeatureModal title={selected.name} eyebrow={`${typeLabels[selected.type]} · ${selected.size}`} onClose={() => setSelected(null)} wide footer={<><button type="button" className="feature-button secondary" onClick={() => setSelected(null)}>Đóng</button><button type="button" className="feature-button ghost" onClick={() => download(selected)}><FeatureIcon name="download" /> Tải tư liệu</button><button type="button" className="feature-button primary" disabled={!canManage} onClick={() => openEdit(selected)}><FeatureIcon name="edit" /> Sửa tư liệu</button></>}><div className="archive-preview"><div className={`archive-preview-visual ${selected.type}`}><span>{typeGlyphs[selected.type]}</span><strong>{typeLabels[selected.type].toLocaleUpperCase('vi')}</strong></div><dl><div><dt>Người tải lên</dt><dd>{selected.owner}</dd></div><div><dt>Ngày tải</dt><dd>{selected.uploadDate}</dd></div><div><dt>Dung lượng</dt><dd>{selected.size}</dd></div><div><dt>Thẻ</dt><dd>{selected.tags.join(', ')}</dd></div></dl><p>{selected.description}</p></div></FeatureModal>}
-    {deleteTarget && <ConfirmDialog title="Xóa tư liệu?" description={`“${deleteTarget.name}” sẽ bị xóa khỏi thư viện.`} confirmLabel="Xóa tư liệu" danger onCancel={() => setDeleteTarget(null)} onConfirm={() => { setRecords((items) => items.filter((item) => item.id !== deleteTarget.id)); setDeleteTarget(null); setToast('Đã xóa tư liệu.'); }} />}
+    {deleteTarget && <ConfirmDialog title="Xóa tư liệu?" description={`“${deleteTarget.name}” sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu.`} confirmLabel="Xóa tư liệu" danger onCancel={() => setDeleteTarget(null)} onConfirm={handleDeleteConfirm} />}
     {toast && <FeatureToast message={toast} onClose={() => setToast('')} />}
   </section>;
 };

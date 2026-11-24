@@ -1,12 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { auditLogMockData, type AuditLevel, type AuditLogRecord, type AuditStatus } from '../../../data/adminOperationsMockData';
+import { type AuditLevel, type AuditLogRecord, type AuditStatus } from '../../../data/adminOperationsMockData';
 import { AdminModal, AdminPageHeader, AdminPagination, AdminStatePanel, AdminStatusBadge, formatAdminDate } from '../PlatformAdmin/shared';
+import { fetchClanAuditLogs, type ClanAuditLogItem } from '../../../services/genealogy.service';
+import { useClanContext } from '../../../context/ClanContext';
 import '../PlatformAdmin/PlatformAdmin.css';
 
 const PAGE_SIZE = 5;
 const levelLabels: Record<AuditLevel, string> = { info: 'Thông tin', warning: 'Cảnh báo', security: 'Bảo mật', error: 'Lỗi' };
 
 export const AdminAuditLogsMgmt: React.FC = () => {
+  const { activeClanId } = useClanContext();
+  const effectiveClanId = activeClanId || '3705a0e2-7eb4-4eaa-89ed-a92b4e7613e4';
+
+  const [logs, setLogs] = useState<AuditLogRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState<'all' | AuditLevel>('all');
@@ -17,46 +23,81 @@ export const AdminAuditLogsMgmt: React.FC = () => {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AuditLogRecord | null>(null);
 
-  useEffect(() => { const timer = window.setTimeout(() => setLoading(false), 360); return () => window.clearTimeout(timer); }, []);
+  const loadAuditLogsFromDb = async () => {
+    if (!effectiveClanId) return;
+    setLoading(true);
+    try {
+      const realLogs = await fetchClanAuditLogs(effectiveClanId);
+      const mapped: AuditLogRecord[] = realLogs.map((item: ClanAuditLogItem) => {
+        const actLower = (item.action || '').toLowerCase();
+        const isErr = actLower.includes('lỗi') || actLower.includes('thất bại');
+        const isWarn = actLower.includes('xóa') || actLower.includes('từ chối');
+        const isSec = actLower.includes('bảo mật') || actLower.includes('phân quyền') || actLower.includes('khóa');
+
+        return {
+          id: item.id,
+          timestamp: item.occurredAt || new Date().toISOString(),
+          user: item.actor || 'Quản trị viên',
+          action: item.action || 'Thao tác hệ thống',
+          module: item.actionType || item.entityType || 'Hệ thống',
+          ip: '127.0.0.1',
+          device: 'Máy chủ Web / DB',
+          status: isErr ? 'failed' : 'success',
+          level: isErr ? 'error' : isSec ? 'security' : isWarn ? 'warning' : 'info',
+          detail: item.reason || (item.changes ? JSON.stringify(item.changes, null, 2) : item.action),
+        };
+      });
+      setLogs(mapped);
+    } catch (err) {
+      console.error('Lỗi khi tải nhật ký kiểm toán từ Database:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAuditLogsFromDb();
+  }, [effectiveClanId]);
+
   useEffect(() => setPage(1), [search, level, status, module, fromDate, toDate]);
-  const modules = Array.from(new Set(auditLogMockData.map((item) => item.module)));
+  const modules = Array.from(new Set(logs.map((item) => item.module)));
   const invalidRange = Boolean(fromDate && toDate && fromDate > toDate);
-  const filtered = useMemo(() => auditLogMockData.filter((item) => {
+  const filtered = useMemo(() => logs.filter((item) => {
     const needle = search.trim().toLowerCase();
     const text = `${item.id} ${item.user} ${item.action} ${item.module} ${item.ip} ${item.device}`.toLowerCase();
     const itemDate = item.timestamp.slice(0, 10);
     return text.includes(needle) && (level === 'all' || item.level === level) && (status === 'all' || item.status === status) && (module === 'all' || item.module === module) && (!fromDate || itemDate >= fromDate) && (!toDate || itemDate <= toDate);
-  }), [search, level, status, module, fromDate, toDate]);
+  }), [logs, search, level, status, module, fromDate, toDate]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const reset = () => { setSearch(''); setLevel('all'); setStatus('all'); setModule('all'); setFromDate(''); setToDate(''); };
 
   return <section className="s6a-page">
-    <AdminPageHeader eyebrow="GIÁM SÁT & BẢO MẬT" title="Nhật ký hệ thống" description="Theo dõi thao tác, thiết bị và sự kiện bảo mật trong toàn bộ nền tảng." actions={<button type="button" className="s6a-button secondary" onClick={() => { const blob = new Blob([JSON.stringify(filtered, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='system-logs.json'; a.click(); URL.revokeObjectURL(url); }}>Xuất nhật ký</button>} />
+    <AdminPageHeader eyebrow="GIÁM SÁT & BẢO MẬT" title="Nhật ký hệ thống" description="Theo dõi thao tác, thiết bị và sự kiện bảo mật trong toàn bộ nền tảng (Dữ liệu thời gian thực từ Database Neon)." actions={<button type="button" className="s6a-button secondary" onClick={() => { const blob = new Blob([JSON.stringify(filtered, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='system-logs.json'; a.click(); URL.revokeObjectURL(url); }}>Xuất nhật ký</button>} />
     <div className="s6a-metric-grid four">
       <article className="s6a-metric-card theme-blue">
         <span className="s6a-metric-title">Tổng bản ghi</span>
-        <strong className="s6a-metric-val">{auditLogMockData.length}</strong>
-        <small className="s6a-metric-sub">Nhật ký hệ thống</small>
+        <strong className="s6a-metric-val">{logs.length}</strong>
+        <small className="s6a-metric-sub">Nhật ký từ Database</small>
       </article>
 
       <article className="s6a-metric-card theme-purple">
         <span className="s6a-metric-title">Sự kiện bảo mật</span>
-        <strong className="s6a-metric-val">{auditLogMockData.filter((item) => item.level === 'security').length}</strong>
+        <strong className="s6a-metric-val">{logs.filter((item) => item.level === 'security').length}</strong>
         <small className="s6a-metric-sub">Cần theo dõi</small>
       </article>
 
       <article className="s6a-metric-card theme-amber">
         <span className="s6a-metric-title">Cảnh báo &amp; lỗi</span>
-        <strong className="s6a-metric-val">{auditLogMockData.filter((item) => item.level === 'warning' || item.level === 'error').length}</strong>
-        <small className="s6a-metric-sub">Trong 7 ngày</small>
+        <strong className="s6a-metric-val">{logs.filter((item) => item.level === 'warning' || item.level === 'error').length}</strong>
+        <small className="s6a-metric-sub">Trong CSDL</small>
       </article>
 
       <article className="s6a-metric-card theme-emerald">
         <span className="s6a-metric-title">Thành công</span>
         <strong className="s6a-metric-val">
-          {auditLogMockData.length ? Math.round(auditLogMockData.filter((item) => item.status === 'success').length / auditLogMockData.length * 100) : 100}%
+          {logs.length ? Math.round(logs.filter((item) => item.status === 'success').length / logs.length * 100) : 100}%
         </strong>
         <small className="s6a-metric-sub">Tỷ lệ tác vụ hoàn tất</small>
       </article>
