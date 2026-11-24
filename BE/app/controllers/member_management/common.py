@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.family.entities import FamilyAdminAssignment
 from app.models.postgres import Account
 from app.services.auth_access.access_service import AccessService
+
+# Tầng riêng tư từ thấp đến cao: PUBLIC < CLAN_ONLY < (BRANCH_ONLY, PRIVATE, chỉ Trưởng tộc/Quản trị xem được).
+_LEADER_ROLE_CODES = {"business_owner", "owner", "family_head", "clan_admin"}
 
 
 def _family_uuid(family_id: str) -> uuid.UUID:
@@ -24,6 +27,37 @@ def _family_uuid(family_id: str) -> uuid.UUID:
 async def _require(db: AsyncSession, account: Account, family_id: uuid.UUID, permission: str) -> None:
     """403 unless the caller holds permission in this family (SA always passes)."""
     await AccessService(db).require_family_permission(account, str(family_id), permission)
+
+
+async def _resolve_membership(
+    db: AsyncSession, account: Account, family_id: uuid.UUID
+) -> Tuple[bool, bool]:
+    """(is_member, is_leader) cho một dòng họ — ĐÚNG quy tắc đang dùng ở GET /families/{id}/locations
+    và GET /members/{id}/burial (không viết lại, chỉ tách ra để tái sử dụng):
+    - System Admin: cả hai True.
+    - Có vai trò active trong dòng họ (AccessService.get_active_roles): is_member True; is_leader True
+      nếu vai trò nằm trong business_owner/owner/family_head/clan_admin.
+    - Không có vai trò nào: cả hai False (người ngoài dòng họ).
+    """
+    if getattr(account, "primary_role", "").lower() in ("admin", "system_admin"):
+        return True, True
+
+    roles = await AccessService(db).repo.get_active_roles(account.id, str(family_id))
+    role_set = {r.lower() for r in roles}
+    if not role_set:
+        return False, False
+    return True, bool(role_set.intersection(_LEADER_ROLE_CODES))
+
+
+def _visible_privacy_levels(is_member: bool, is_leader: bool) -> List[str]:
+    """Các mức privacyLevel được phép thấy — giống hệt điều kiện lọc của GET /families/{id}/locations:
+    người ngoài dòng họ chỉ thấy PUBLIC; thành viên thường thấy thêm CLAN_ONLY; Trưởng tộc/Quản trị thấy
+    cả BRANCH_ONLY và PRIVATE."""
+    if is_leader:
+        return ["PUBLIC", "CLAN_ONLY", "BRANCH_ONLY", "PRIVATE"]
+    if is_member:
+        return ["PUBLIC", "CLAN_ONLY"]
+    return ["PUBLIC"]
 
 
 async def _require_branch_scope(

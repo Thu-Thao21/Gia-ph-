@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+import uuid
+from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, delete, or_, select, text, update
+from sqlalchemy import and_, delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.genealogy.entities import Person, PersonClosure, Relationship
+from app.models.genealogy.entities import Person, PersonBurial, PersonClosure, Relationship
 
 
 class GenealogyRepository:
@@ -49,6 +50,59 @@ class GenealogyRepository:
         stmt = stmt.order_by(Person.generation, Person.full_name).limit(limit).offset(offset)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    def _burial_has_coordinates():
+        """latitude/longitude NOT NULL theo schema hiện tại, nhưng (0, 0) là giá trị dùng để báo
+        "chưa nhập tọa độ" ở nơi khác trong hệ thống (bản đồ FE coi (0,0) là không hợp lệ) — bản ghi
+        kiểu đó cũng bị loại khỏi bản đồ để nhất quán, không chỉ NULL."""
+        return and_(
+            PersonBurial.latitude.is_not(None),
+            PersonBurial.longitude.is_not(None),
+            or_(PersonBurial.latitude != 0, PersonBurial.longitude != 0),
+        )
+
+    async def count_clan_burials(self, clan_id: uuid.UUID, privacy_levels: List[str]) -> int:
+        """Tổng số mộ phần của dòng họ khớp bộ lọc riêng tư + có tọa độ (trước khi phân trang)."""
+        if not privacy_levels:
+            return 0
+        stmt = (
+            select(func.count(PersonBurial.burial_id))
+            .where(
+                PersonBurial.clan_id == clan_id,
+                PersonBurial.privacy_level.in_(privacy_levels),
+                self._burial_has_coordinates(),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return int(result.scalar_one())
+
+    async def list_clan_burials(
+        self,
+        clan_id: uuid.UUID,
+        privacy_levels: List[str],
+        limit: int = 200,
+        offset: int = 0,
+    ) -> List[Tuple[PersonBurial, str]]:
+        """Mộ phần có tọa độ của một dòng họ, lọc theo các mức privacyLevel được phép xem, kèm tên
+        người (JOIN bảng persons, một truy vấn duy nhất — không N+1). Sắp xếp ổn định để phân trang
+        không trùng/lặp trang giữa các lần gọi."""
+        if not privacy_levels:
+            return []
+        stmt = (
+            select(PersonBurial, Person.full_name)
+            .join(Person, Person.id == PersonBurial.person_id)
+            .where(
+                PersonBurial.clan_id == clan_id,
+                PersonBurial.privacy_level.in_(privacy_levels),
+                self._burial_has_coordinates(),
+            )
+            .order_by(PersonBurial.updated_at.desc(), PersonBurial.burial_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
 
     async def create_person(self, person: Person) -> Person:
         self.db.add(person)

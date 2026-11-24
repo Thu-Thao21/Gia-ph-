@@ -20,11 +20,12 @@ from app.models.family.entities import (
 from app.models.genealogy.entities import (
     Person, Relationship, FamilyBranch, ClanLocation, PersonBurial, LocationProposal
 )
+from app.models.genealogy.repository import GenealogyRepository
 from app.models.user_access.entities import User, Role, UserRole
 from app.models.postgres import Account
 from app.services.auth_access.access_service import AccessService
 from app.controllers.member_management.common import (
-    _family_uuid, _require, _require_branch_scope
+    _family_uuid, _require, _require_branch_scope, _resolve_membership, _visible_privacy_levels
 )
 
 router = APIRouter()
@@ -313,6 +314,49 @@ async def delete_clan_location(
 # ---------------------------------------------------------------------------
 # Person Burial Endpoints
 # ---------------------------------------------------------------------------
+
+@router.get("/families/{family_id}/burials")
+async def list_clan_burials(
+    family_id: str,
+    limit: int = Query(200, ge=1, le=500, description="Số bản ghi tối đa mỗi trang (mặc định 200, tối đa 500)."),
+    offset: int = Query(0, ge=0, description="Bỏ qua bao nhiêu bản ghi đầu (phân trang)."),
+    db: AsyncSession = Depends(get_db),
+    account: Account = Depends(get_current_account),
+):
+    """List burial (mộ phần) locations of a clan for the world map.
+
+    Dùng lại ĐÚNG quy tắc phân quyền riêng tư của GET /families/{family_id}/locations (xem
+    _resolve_membership / _visible_privacy_levels ở common.py): người ngoài dòng họ chỉ thấy mộ
+    PUBLIC, thành viên thường thấy thêm CLAN_ONLY, Trưởng tộc/Quản trị thấy cả BRANCH_ONLY và PRIVATE.
+    Mộ thiếu tọa độ (NULL hoặc (0,0)) bị loại khỏi kết quả. Tên người được JOIN cùng truy vấn
+    (không gọi N+1 /members/{id}/burial cho từng người)."""
+    f_uuid = _family_uuid(family_id)
+    is_member, is_leader = await _resolve_membership(db, account, f_uuid)
+    privacy_levels = _visible_privacy_levels(is_member, is_leader)
+
+    repo = GenealogyRepository(db)
+    total = await repo.count_clan_burials(f_uuid, privacy_levels)
+    rows = await repo.list_clan_burials(f_uuid, privacy_levels, limit=limit, offset=offset)
+
+    items = [
+        {
+            "personId": str(burial.person_id),
+            "personName": full_name,
+            "burialId": str(burial.burial_id),
+            "clanId": str(burial.clan_id),
+            "cemeteryName": burial.cemetery_name,
+            "graveCode": burial.grave_code,
+            "address": burial.address,
+            "burialDate": burial.burial_date.isoformat() if burial.burial_date else None,
+            "latitude": burial.latitude,
+            "longitude": burial.longitude,
+            "privacyLevel": burial.privacy_level,
+            "photoUrls": burial.photo_urls or [],
+        }
+        for burial, full_name in rows
+    ]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
 
 @router.get("/members/{person_id}/burial")
 async def get_person_burial(
