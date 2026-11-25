@@ -54,19 +54,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isFamilyAdmin = ['family admin', 'family_admin', 'manager'].includes(roleLower);
   const canManageFamily = isClanAdmin || isFamilyAdmin;
 
-  // Menu dành cho System Administrator (SA UI) theo sơ đồ MVC
+  // Menu dành cho System Administrator (SA UI) theo sơ đồ phân quyền hệ thống
   const adminMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'admin-tree', label: 'Cây Gia Phả', icon: 'tree' },
-    { id: 'admin-members-mgmt', label: 'Quản lý Nhân Khẩu', icon: 'people' },
-    { id: 'admin-family-links', label: 'Quản lý Quan Hệ', icon: 'relation' },
-    { id: 'admin-families-mgmt', label: 'Quản lý Chi Nhánh', icon: 'branch' },
+    { id: 'admin-permissions', label: 'Quản Lý Tài Khoản', icon: 'account' },
     { id: 'admin-approval', label: 'Phê duyệt', icon: 'approval' },
     { id: 'admin-packages', label: 'Gói Dịch Vụ', icon: 'package' },
     { id: 'admin-payments', label: 'Thanh Toán', icon: 'payment' },
     { id: 'admin-moderation', label: 'Kiểm Duyệt', icon: 'moderation' },
     { id: 'admin-roles', label: 'Phân Quyền & Role', icon: 'account' },
-    { id: 'admin-permissions', label: 'Quản Lý Tài Khoản', icon: 'account' },
     { id: 'admin-logs', label: 'Nhật Ký Hệ Thống', icon: 'logs' },
     { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục', icon: 'backup' },
   ];
@@ -214,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className={`sidebar-container ${isCollapsed ? 'collapsed' : 'expanded'}`}>
-      {!isCollapsed && <div className="sidebar-section-title">{isAdmin ? 'QUẢN LÝ GIA PHẢ' : 'DANH MỤC DÒNG HỌ'}</div>}
+      {!isCollapsed && <div className="sidebar-section-title">{isAdmin ? 'QUẢN TRỊ HỆ THỐNG' : 'DANH MỤC DÒNG HỌ'}</div>}
 
       {isAdmin && (
         <nav className="sidebar-admin-menu" aria-label="Điều hướng Family Admin">

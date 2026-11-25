@@ -82,21 +82,17 @@ export const memberNavigation: NavGroup[] = [
 // 3. ADMIN NAVIGATION (QUẢN TRỊ VIÊN HỆ THỐNG)
 export const adminNavigation: NavGroup[] = [
   {
-    groupLabel: 'QUẢN LÝ GIA PHẢ',
+    groupLabel: 'QUẢN TRỊ HỆ THỐNG',
     items: [
       { id: 'dashboard', label: 'Dashboard', route: ROUTES.ADMIN.DASHBOARD },
-      { id: 'admin-tree', label: 'Cây Gia Phả', route: ROUTES.ADMIN.TREE },
-      { id: 'admin-members-mgmt', label: 'Quản lý Nhân Khẩu', route: ROUTES.ADMIN.MEMBERS },
-      { id: 'admin-family-links', label: 'Quản lý Quan Hệ', route: ROUTES.ADMIN.FAMILY_LINKS },
-      { id: 'admin-families-mgmt', label: 'Quản lý Chi Nhánh', route: ROUTES.ADMIN.FAMILIES },
+      { id: 'admin-account-mgmt', label: 'Quản Lý Tài Khoản', route: ROUTES.ADMIN.ACCOUNTS },
       { id: 'admin-approvals', label: 'Phê duyệt', route: ROUTES.ADMIN.APPROVALS },
-      { id: 'admin-account-mgmt', label: 'Quản lý Tài Khoản', route: ROUTES.ADMIN.ACCOUNTS },
-      { id: 'admin-roles', label: 'Vai trò & Phân quyền', route: ROUTES.ADMIN.ROLES },
-      { id: 'admin-packages', label: 'Gói dịch vụ', route: ROUTES.ADMIN.PACKAGES },
-      { id: 'admin-payments', label: 'Thanh toán', route: ROUTES.ADMIN.PAYMENTS },
-      { id: 'admin-moderation', label: 'Kiểm duyệt', route: ROUTES.ADMIN.MODERATION },
-      { id: 'admin-logs', label: 'Nhật ký hệ thống', route: ROUTES.ADMIN.SECURITY_LOGS },
-      { id: 'admin-data-backup', label: 'Sao lưu & Khôi phục', route: ROUTES.ADMIN.BACKUP },
+      { id: 'admin-packages', label: 'Gói Dịch Vụ', route: ROUTES.ADMIN.PACKAGES },
+      { id: 'admin-payments', label: 'Thanh Toán', route: ROUTES.ADMIN.PAYMENTS },
+      { id: 'admin-moderation', label: 'Kiểm Duyệt', route: ROUTES.ADMIN.MODERATION },
+      { id: 'admin-roles', label: 'Phân Quyền & Role', route: ROUTES.ADMIN.ROLES },
+      { id: 'admin-logs', label: 'Nhật Ký Hệ Thống', route: ROUTES.ADMIN.SECURITY_LOGS },
+      { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục', route: ROUTES.ADMIN.BACKUP },
     ],
   },
 ];

@@ -359,10 +359,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <div className="admin-operations-grid">
           <button
-            onClick={() => onNavigateTab('admin-roles')}
+            onClick={() => onNavigateTab('admin-permissions')}
             className="admin-operations-btn"
           >
-            Phân quyền & Role
+            Quản Lý Tài Khoản
+          </button>
+          <button
+            onClick={() => onNavigateTab('admin-approval')}
+            className="admin-operations-btn"
+          >
+            Phê duyệt đề xuất
           </button>
           <button
             onClick={() => onNavigateTab('admin-packages')}
@@ -383,45 +389,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Kiểm Duyệt
           </button>
           <button
-            onClick={() => onNavigateTab('admin-families-mgmt')}
+            onClick={() => onNavigateTab('admin-roles')}
             className="admin-operations-btn"
           >
-            Quản lý dòng họ
-          </button>
-          <button
-            onClick={() => onNavigateTab('admin-members-mgmt')}
-            className="admin-operations-btn"
-          >
-            Quản lý thành viên
-          </button>
-          <button
-            onClick={() => onNavigateTab('admin-family-links')}
-            className="admin-operations-btn"
-          >
-            Liên kết dòng họ
-          </button>
-          <button
-            onClick={() => onNavigateTab('admin-approval')}
-            className="admin-operations-btn"
-          >
-            Phê duyệt đề xuất
+            Phân Quyền & Role
           </button>
           <button
             onClick={() => onNavigateTab('admin-logs')}
             className="admin-operations-btn"
           >
-            Nhật ký hệ thống
+            Nhật Ký Hệ Thống
           </button>
           <button
             onClick={() => onNavigateTab('admin-data-backup')}
             className="admin-operations-btn"
           >
-            Sao lưu & Phục hồi
+            Sao Lưu & Khôi Phục
           </button>
-          <button onClick={() => onNavigateTab('admin-packages')} className="admin-operations-btn">Gói dịch vụ</button>
-          <button onClick={() => onNavigateTab('admin-payments')} className="admin-operations-btn">Quản lý thanh toán</button>
-          <button onClick={() => onNavigateTab('admin-moderation')} className="admin-operations-btn">Kiểm duyệt nội dung</button>
-          <button onClick={() => onNavigateTab('admin-roles')} className="admin-operations-btn">Vai trò & Phân quyền</button>
         </div>
       </div>
 
