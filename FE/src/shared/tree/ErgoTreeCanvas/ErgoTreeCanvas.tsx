@@ -107,6 +107,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
       return;
     }
     prevSignatureRef.current = currentSignature;
+    isInitialCenteredRef.current = false;
 
     let totalNodeCount = 0;
     const countRecursive = (n: ErgoTreeNode) => {
@@ -670,51 +671,60 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     }
   }, [clanLayout, zoomScale]);
 
-  // Tự động căn giữa & tự động co vừa vặn màn hình ở lần nạp cây đầu tiên
-  useEffect(() => {
+  // Tự động co vừa vặn toàn bộ cây gia phả trên khung màn hình (Auto-Fit to Viewport) dù dòng họ to hay nhỏ
+  useLayoutEffect(() => {
     if (!viewportRef.current) return;
+    if (nodes.length === 0 && (!isBilateralMode || !bilateralLayout)) return;
+    if (isInitialCenteredRef.current) return;
 
-    if (isInitialCenteredRef.current && !isBilateralMode) {
-      return;
-    }
+    const performAutoFit = () => {
+      const vp = viewportRef.current;
+      if (!vp) return;
 
-    const timer = setTimeout(() => {
-      const viewport = viewportRef.current;
-      if (!viewport) return;
+      const vW = vp.clientWidth;
+      const vH = vp.clientHeight;
+      if (vW < 120 || vH < 120) return;
 
-      const vW = viewport.clientWidth;
+      const width = isBilateralMode && bilateralLayout ? bilateralLayout.canvasWidth : clanLayout.totalWidth;
+      const height = isBilateralMode && bilateralLayout ? bilateralLayout.canvasHeight : clanLayout.totalHeight;
 
-      if (isBilateralMode && bilateralLayout) {
-        const targetX = bilateralLayout.CX;
-        const targetY = bilateralLayout.LEVEL_Y[0];
-        const vH = viewport.clientHeight;
-        viewport.scrollTo({
-          left: Math.max(0, targetX * zoomScale - vW / 2),
-          top: Math.max(0, (targetY - 120) * zoomScale - vH / 2),
-          behavior: 'smooth',
-        });
+      if (width > 0 && height > 0 && onZoomChange) {
+        // Khoảng đệm an toàn để toàn bộ cây nằm gọn trong khung nhìn, không chạm mép
+        const paddingX = 80; // 40px mỗi bên trái/phải
+        const paddingY = 60; // 30px trên/dưới
+        const availW = Math.max(100, vW - paddingX);
+        const availH = Math.max(100, vH - paddingY);
+
+        const scaleX = availW / width;
+        const scaleY = availH / height;
+
+        // Auto-Fit: Co toàn bộ cây phả hệ vừa trọn vẹn cả chiều ngang lẫn chiều dọc trên khung
+        // Cực đại 1.0 (100%) để không phóng đại các cây nhỏ; tối thiểu 0.04 để bao quát được toàn bộ đại tộc lớn
+        const fitScale = Math.min(1.0, Math.max(0.04, Math.min(scaleX, scaleY)));
+        const roundedFit = Math.round(fitScale * 100) / 100;
+
+        onZoomChange(roundedFit);
         isInitialCenteredRef.current = true;
-        return;
-      }
 
-      const focusCard = viewport.querySelector('.tree-person-card.is-focus-card') as HTMLElement;
-      if (focusCard) {
-        focusCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-      } else {
-        // Căn giữa mượt mà sơ đồ phả hệ trên màn hình ở kích thước 100%
-        const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-        if (maxScroll > 0) {
-          viewport.scrollTo({ left: maxScroll / 2, top: 0, behavior: 'smooth' });
-        } else {
-          viewport.scrollLeft = 0;
-        }
-        viewport.scrollTop = 0;
+        // Căn giữa mượt mà sơ đồ trong khung nhìn
+        requestAnimationFrame(() => {
+          if (viewportRef.current) {
+            const maxScrollX = viewportRef.current.scrollWidth - viewportRef.current.clientWidth;
+            const maxScrollY = viewportRef.current.scrollHeight - viewportRef.current.clientHeight;
+            viewportRef.current.scrollTo({
+              left: Math.max(0, maxScrollX / 2),
+              top: Math.max(0, maxScrollY / 2),
+              behavior: 'smooth',
+            });
+          }
+        });
       }
-      isInitialCenteredRef.current = true;
-    }, 60);
+    };
 
+    performAutoFit();
+    const timer = setTimeout(performAutoFit, 100);
     return () => clearTimeout(timer);
-  }, [nodes, isBilateralMode, direction, totalCanvasWidth]);
+  }, [nodes, isBilateralMode, direction, clanLayout.totalWidth, clanLayout.totalHeight, bilateralLayout, onZoomChange]);
 
   const handleNodeClick = (e: React.MouseEvent, node: ErgoTreeNode) => {
     onCardClick(e, node);
@@ -833,7 +843,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'flex-start',
-            padding: '40px 80px',
+            padding: '30px 40px',
             boxSizing: 'border-box',
             position: 'relative',
             backgroundColor: chartConfig?.backgroundColor || undefined,

@@ -866,17 +866,41 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             <button
               className="tree-control-btn reset"
               onClick={() => {
-                setZoomScale(1.0);
-                setFocusMemberId(undefined);
-                setSelectedBranch(undefined);
-                setSelectedGeneration(undefined);
                 const viewport = document.querySelector('.tree-canvas-viewport') as HTMLElement;
-                if (viewport) {
-                  const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-                  viewport.scrollTo({ left: Math.max(0, maxScroll / 2), top: 0, behavior: 'smooth' });
+                // Nếu đang ở gần 100% (>= 90%) -> Bấm để thu về vừa vặn toàn bộ khung màn hình (Auto-Fit)
+                // Nếu đang ở chế độ thu nhỏ toàn cảnh (< 90%) -> Bấm để phóng to 100% xem chi tiết
+                if (zoomScale >= 0.90 && viewport) {
+                  const vW = viewport.clientWidth;
+                  const vH = viewport.clientHeight;
+                  const outer = viewport.querySelector('.tree-canvas-scaled-box') as HTMLElement;
+                  const originalW = outer ? parseFloat(outer.style.width) / zoomScale : 2000;
+                  const originalH = outer ? parseFloat(outer.style.height) / zoomScale : 1500;
+                  const fit = Math.min(1.0, Math.max(0.04, Math.min((vW - 80) / originalW, (vH - 60) / originalH)));
+                  const rounded = Math.round(fit * 100) / 100;
+                  setZoomScale(rounded);
+                  setTimeout(() => {
+                    const maxScrollX = viewport.scrollWidth - viewport.clientWidth;
+                    const maxScrollY = viewport.scrollHeight - viewport.clientHeight;
+                    viewport.scrollTo({
+                      left: Math.max(0, maxScrollX / 2),
+                      top: Math.max(0, maxScrollY / 2),
+                      behavior: 'smooth',
+                    });
+                  }, 60);
+                } else {
+                  setZoomScale(1.0);
+                  setFocusMemberId(undefined);
+                  setSelectedBranch(undefined);
+                  setSelectedGeneration(undefined);
+                  if (viewport) {
+                    setTimeout(() => {
+                      const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+                      viewport.scrollTo({ left: Math.max(0, maxScroll / 2), top: 0, behavior: 'smooth' });
+                    }, 60);
+                  }
                 }
               }}
-              title="Đặt lại 100% góc nhìn & căn giữa mượt mà"
+              title={zoomScale >= 0.90 ? 'Bấm để thu vừa toàn bộ khung màn hình' : 'Bấm để phóng to 100% xem chi tiết'}
               style={{ fontWeight: 700, minWidth: '55px' }}
             >
               {Math.round(zoomScale * 100)}%
