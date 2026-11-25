@@ -79,6 +79,47 @@ export const memberNavigation: NavGroup[] = [
 ];
 
 
+// 2. CLAN ADMIN NAVIGATION (TRƯỞNG TỘC / BAN QUẢN TRỊ DÒNG HỌ)
+export const clanAdminNavigation: NavGroup[] = [
+  {
+    groupLabel: 'ĐIỀU HÀNH & PHÊ DUYỆT',
+    items: [
+      { id: 'dashboard', label: 'Bảng điều khiển dòng họ', route: ROUTES.USER.DASHBOARD },
+      { id: 'family-approvals', label: 'Phê duyệt đề xuất', route: ROUTES.USER.FAMILY_APPROVALS },
+      { id: 'family-accounts', label: 'Quản lý & Phân quyền', route: ROUTES.USER.FAMILY_ACCOUNTS },
+      { id: 'family-import-export', label: 'Nhập xuất Excel gia phả', route: ROUTES.USER.FAMILY_IMPORT_EXPORT },
+      { id: 'family-logs', label: 'Nhật ký hoạt động', route: ROUTES.USER.FAMILY_LOGS },
+    ],
+  },
+  {
+    groupLabel: 'GIA PHẢ & LIÊN HỌ',
+    items: [
+      { id: 'tree', label: 'Cây Gia Phả trực hệ', route: ROUTES.USER.TREE_HORIZONTAL },
+      { id: 'member-list', label: 'Danh sách nhân khẩu', route: ROUTES.USER.MEMBERS },
+      { id: 'family-links', label: 'Quản lý Liên họ (Thông gia)', route: ROUTES.USER.FAMILY_LINKS },
+      { id: 'relationship-finder', label: 'Tra cứu & Xưng hô', route: ROUTES.USER.RELATIONSHIP },
+    ],
+  },
+  {
+    groupLabel: 'TÂM LINH & ĐỜI SỐNG',
+    items: [
+      { id: 'ancestral-hall', label: 'Nhà thờ tổ số (3D)', route: ROUTES.USER.ANCESTRAL_HALL },
+      { id: 'events', label: 'Sự kiện & Ngày giỗ', route: ROUTES.USER.EVENTS },
+      { id: 'funds', label: 'Quỹ họ & Công đức', route: ROUTES.USER.FUNDS },
+      { id: 'clan-locations', label: 'Bản đồ lăng mộ & Địa điểm', route: ROUTES.USER.CLAN_LOCATIONS },
+    ],
+  },
+  {
+    groupLabel: 'TƯ LIỆU & HỒ SƠ GIA TỘC',
+    items: [
+      { id: 'clan-profile', label: 'Hồ sơ dòng tộc & Gia quy', route: ROUTES.USER.CLAN_PROFILE },
+      { id: 'documents', label: 'Tư liệu lịch sử & Sắc phong', route: ROUTES.USER.DOCUMENTS },
+      { id: 'family-ai-settings', label: 'Cấu hình AI & Dữ liệu', route: ROUTES.CLAN_ADMIN.AI_SETTINGS },
+      { id: 'my-profile', label: 'Hồ sơ cá nhân của tôi', route: ROUTES.USER.MY_PROFILE },
+    ],
+  },
+];
+
 // 3. ADMIN NAVIGATION (QUẢN TRỊ VIÊN HỆ THỐNG)
 export const adminNavigation: NavGroup[] = [
   {
@@ -98,9 +139,12 @@ export const adminNavigation: NavGroup[] = [
 ];
 
 export function getNavigationForRole(role: string): NavGroup[] {
-  const r = role.toLowerCase();
+  const r = (role || '').toLowerCase();
   if (r === 'admin') {
     return adminNavigation;
+  }
+  if (['trưởng tộc', 'chủ dòng họ', 'clan admin', 'clan_admin', 'family_head', 'family admin', 'family_admin', 'manager'].includes(r)) {
+    return clanAdminNavigation;
   }
 
   return memberNavigation;
