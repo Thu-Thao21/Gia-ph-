@@ -82,6 +82,11 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   const isTouchDevice = useIsTouchDevice();
   const touchGesturesEnabled = isMobile || isTouchDevice;
   const innerRef = useRef<HTMLDivElement>(null);
+  const innerCanvasRef = useRef<HTMLDivElement>(null);
+  const zoomScaleRef = useRef<number>(zoomScale);
+  const zoomDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevPropZoomRef = useRef<number>(zoomScale);
+
   const touch = useTreeTouchGestures({
     viewportRef,
     innerRef,
@@ -234,53 +239,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     }
   };
 
-  // Xử lý sự kiện lăn chuột thông minh trên Canvas:
-  // - Lăn chuột trực tiếp: Phóng to / Thu nhỏ cây phả hệ (Zoom in / Zoom out) mượt mà hướng theo con trỏ chuột
-  // - Giữ Shift + lăn chuột: Cuộn ngang
-  // - Kéo thả chuột trái: Di chuyển (pan) sơ đồ tự do ở 120 FPS
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Giữ phím Shift + lăn chuột: Cuộn ngang sơ đồ
-      if (e.shiftKey) {
-        viewport.scrollLeft += (e.deltaY || e.deltaX) * 1.2;
-        return;
-      }
-
-      if (!onZoomChange) return;
-
-      const rect = viewport.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      // Hệ số zoom mượt mà tự nhiên (smooth motion)
-      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-
-      onZoomChange((prev: number) => {
-        const next = Math.min(2.5, Math.max(0.15, Math.round(prev * zoomFactor * 100) / 100));
-        if (next === prev) return prev;
-
-        const scaleRatio = next / prev;
-        requestAnimationFrame(() => {
-          if (viewportRef.current) {
-            viewportRef.current.scrollLeft = (viewportRef.current.scrollLeft + mouseX) * scaleRatio - mouseX;
-            viewportRef.current.scrollTop = (viewportRef.current.scrollTop + mouseY) * scaleRatio - mouseY;
-          }
-        });
-        return next;
-      });
-    };
-
-    viewport.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      viewport.removeEventListener('wheel', handleWheel);
-    };
-  }, [onZoomChange]);
 
   // 1. STANDARD CLAN TREE LAYOUT (Bố cục toán học toàn dòng họ)
   const clanLayout = useMemo(() => {
@@ -636,6 +595,103 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
     ? bilateralLayout.canvasHeight
     : clanLayout.totalHeight;
 
+  // Giữ zoomScaleRef luôn đồng bộ với prop zoomScale từ cha
+  useEffect(() => {
+    zoomScaleRef.current = zoomScale;
+  }, [zoomScale]);
+
+  // Hiệu ứng slowmotion êm dịu khi zoom thay đổi từ bên ngoài (Click nút trên Toolbar / Auto-fit)
+  useEffect(() => {
+    if (Math.abs(zoomScale - prevPropZoomRef.current) > 0.001) {
+      prevPropZoomRef.current = zoomScale;
+      zoomScaleRef.current = zoomScale;
+
+      if (innerRef.current) {
+        innerRef.current.style.transition = 'width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+        innerRef.current.style.width = `${totalCanvasWidth * zoomScale}px`;
+        innerRef.current.style.height = `${totalCanvasHeight * zoomScale}px`;
+      }
+      if (innerCanvasRef.current) {
+        innerCanvasRef.current.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)';
+        innerCanvasRef.current.style.transform = `scale(${zoomScale})`;
+      }
+
+      const t = setTimeout(() => {
+        if (innerRef.current) innerRef.current.style.transition = 'none';
+        if (innerCanvasRef.current) innerCanvasRef.current.style.transition = 'none';
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [zoomScale, totalCanvasWidth, totalCanvasHeight]);
+
+  // Xử lý sự kiện lăn chuột siêu mượt mà (120 FPS Buttery Smooth GPU Wheel Zoom)
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Giữ phím Shift + lăn chuột: Cuộn ngang sơ đồ
+      if (e.shiftKey) {
+        viewport.scrollLeft += (e.deltaY || e.deltaX) * 1.2;
+        return;
+      }
+
+      if (!onZoomChange) return;
+
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Chuẩn hóa deltaY trên mọi loại chuột (chuột có khấc, Apple Magic Mouse, Trackpad)
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) delta *= 24; // DOM_DELTA_LINE
+      else if (e.deltaMode === 2) delta *= 240; // DOM_DELTA_PAGE
+
+      // Giới hạn biên độ gia số delta mỗi lần lăn để phóng to/thu nhỏ đều đặn, không giật nảy
+      delta = Math.max(-120, Math.min(120, delta));
+
+      // Dùng hàm mũ nhạy bén tự nhiên: lăn chậm zoom mịn, lăn nhanh zoom lướt
+      const zoomFactor = Math.exp(-delta * 0.0016);
+      const prev = zoomScaleRef.current;
+      const next = Math.min(2.5, Math.max(0.04, Math.round(prev * zoomFactor * 1000) / 1000));
+      if (Math.abs(next - prev) < 0.0005) return;
+
+      const scaleRatio = next / prev;
+      zoomScaleRef.current = next;
+
+      // 1. Cập nhật TRỰC TIẾP lên phần tử DOM ngay lập tức ở 120 FPS (Tắt transition để không bị trễ)
+      if (innerRef.current) {
+        innerRef.current.style.transition = 'none';
+        innerRef.current.style.width = `${totalCanvasWidth * next}px`;
+        innerRef.current.style.height = `${totalCanvasHeight * next}px`;
+      }
+      if (innerCanvasRef.current) {
+        innerCanvasRef.current.style.transition = 'none';
+        innerCanvasRef.current.style.transform = `scale(${next})`;
+      }
+
+      // 2. Đồng bộ vị trí cuộn: scrollWidth đã cập nhật tức thì nên không bao giờ bị browser clamp
+      viewport.scrollLeft = (viewport.scrollLeft + mouseX) * scaleRatio - mouseX;
+      viewport.scrollTop = (viewport.scrollTop + mouseY) * scaleRatio - mouseY;
+
+      // 3. Debounce thông báo cập nhật lên Toolbar bên ngoài sau khi ngừng lăn 50ms để không nghẽn render React
+      if (zoomDebounceTimerRef.current) {
+        clearTimeout(zoomDebounceTimerRef.current);
+      }
+      zoomDebounceTimerRef.current = setTimeout(() => {
+        onZoomChange(Math.round(next * 100) / 100);
+      }, 50);
+    };
+
+    viewport.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      viewport.removeEventListener('wheel', handleWheel);
+    };
+  }, [onZoomChange, totalCanvasWidth, totalCanvasHeight]);
+
   // Giữ nguyên vị trí thẻ vừa bấm sổ con (▲/▼) trên màn hình, không để cây bị nhảy giật
   React.useLayoutEffect(() => {
     if (!lastToggledNodeRef.current || !viewportRef.current) return;
@@ -857,10 +913,10 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
               height: `${totalCanvasHeight * zoomScale}px`,
               position: 'relative',
               flexShrink: 0,
-              transition: 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1), height 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
             <div
+              ref={innerCanvasRef}
               className={`tree-canvas-inner direction-${direction} ${isBilateralMode ? 'is-bilateral-mode' : ''}`}
               style={{
                 position: 'absolute',
@@ -870,7 +926,6 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
                 height: `${totalCanvasHeight}px`,
                 transform: `scale(${zoomScale})`,
                 transformOrigin: 'top left',
-                transition: 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               {/* ========================================================================= */}
