@@ -125,7 +125,7 @@
 }
 
 .sidebar-subitem-list {
-  margin: 4px 0 6px 34px;
+  margin: 4px 0 6px 16px;
   display: flex;
   flex-direction: column;
   gap: 2px;

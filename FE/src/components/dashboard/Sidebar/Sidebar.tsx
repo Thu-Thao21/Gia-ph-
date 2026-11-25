@@ -8,24 +8,6 @@ export interface SidebarProps {
   userRole?: string;
 }
 
-const AdminNavIcon = ({ name }: { name: string }) => {
-  const paths: Record<string, React.ReactNode> = {
-    dashboard: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
-    tree: <><path d="M12 3v5" /><path d="M5 13V9h14v4" /><rect x="2" y="13" width="6" height="7" rx="1.5" /><rect x="9" y="13" width="6" height="7" rx="1.5" /><rect x="16" y="13" width="6" height="7" rx="1.5" /></>,
-    people: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
-    relation: <><circle cx="6" cy="12" r="3" /><circle cx="18" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="m8.7 10.6 6.6-3.2" /><path d="m8.7 13.4 6.6 3.2" /></>,
-    branch: <><path d="M6 3v12" /><path d="M6 8h7a4 4 0 0 0 4-4" /><path d="M6 14h7a4 4 0 0 1 4 4v3" /><circle cx="6" cy="19" r="2" /></>,
-    approval: <><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>,
-    account: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /><path d="M19 8h3" /><path d="M20.5 6.5v3" /></>,
-    package: <><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></>,
-    payment: <><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></>,
-    moderation: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></>,
-    logs: <><path d="M4 4h16v16H4z" /><path d="M8 9h8M8 13h8M8 17h5" /></>,
-    backup: <><path d="M4 7v5h5" /><path d="M6.2 17a8 8 0 1 0 .2-10.2L4 9" /><path d="M12 8v5l3 2" /></>,
-  };
-  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
-};
-
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
@@ -57,127 +39,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isFamilyAdmin = ['family admin', 'family_admin', 'manager'].includes(roleLower);
   const canManageFamily = isClanAdmin || isFamilyAdmin;
 
-  // Menu dành cho System Administrator (SA UI) theo sơ đồ phân quyền hệ thống
+  // 1. Menu dành cho Quản trị viên hệ thống (Admin) - Hoàn toàn không chứa icon, chỉ hiển thị nhãn chức năng
   const adminMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'admin-permissions', label: 'Quản Lý Tài Khoản', icon: 'account' },
-    { id: 'admin-approval', label: 'Phê duyệt', icon: 'approval' },
-    { id: 'admin-packages', label: 'Gói Dịch Vụ', icon: 'package' },
-    { id: 'admin-payments', label: 'Thanh Toán', icon: 'payment' },
-    { id: 'admin-moderation', label: 'Kiểm Duyệt', icon: 'moderation' },
-    { id: 'admin-roles', label: 'Phân Quyền & Role', icon: 'account' },
-    { id: 'admin-logs', label: 'Nhật Ký Hệ Thống', icon: 'logs' },
-    { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục', icon: 'backup' },
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'admin-permissions', label: 'Quản Lý Tài Khoản' },
+    { id: 'admin-approval', label: 'Phê duyệt' },
+    { id: 'admin-packages', label: 'Gói Dịch Vụ' },
+    { id: 'admin-payments', label: 'Thanh Toán' },
+    { id: 'admin-moderation', label: 'Kiểm Duyệt' },
+    { id: 'admin-roles', label: 'Phân Quyền & Role' },
+    { id: 'admin-logs', label: 'Nhật Ký Hệ Thống' },
+    { id: 'admin-data-backup', label: 'Sao Lưu & Khôi Phục' },
   ];
 
-  // Cấu trúc Menu chuẩn hoá theo sơ đồ MVC (Image 2) và 5 nhóm Actor View (SA, BO, FA, ME, GU)
-  // Thành viên (ME) và Ban quản trị (FA/BO) dùng chung các trang cốt lõi, chỉ phân quyền nút bấm.
-  const commonGroups = [
-    {
-      id: 'overview',
-      label: 'TỔNG QUAN',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      ),
-      items: [
-        { id: 'dashboard', label: 'Trang chủ' },
-        { id: 'notifications', label: 'Thông báo & Nhắc nhở' },
-      ],
-    },
-    {
-      id: 'tree_rel',
-      label: 'GIA PHẢ & THÀNH VIÊN',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="7" />
-          <rect x="14" y="3" width="7" height="7" />
-          <rect x="14" y="14" width="7" height="7" />
-          <rect x="3" y="14" width="7" height="7" />
-        </svg>
-      ),
-      items: [
-        { id: 'tree', label: 'Cây Gia Phả' },
-        { id: 'member-list', label: 'Danh sách thành viên' },
-        { id: 'relationship-finder', label: 'Tra cứu & Xưng hô' },
-      ],
-    },
-    {
-      id: 'network',
-      label: 'MẠNG LƯỚI LIÊN HỌ',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="2" y1="12" x2="22" y2="12" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-      ),
-      items: [
-        { id: 'net-ngoai', label: 'Dòng họ liên kết' },
-        { id: 'net-dau-re', label: 'Dâu & Rể liên họ' },
-        { id: 'net-noi', label: 'Dòng họ Nội tộc' },
-      ],
-    },
-    {
-      id: 'worship_space',
-      label: 'THỜ CÚNG & ĐỊA ĐIỂM',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 21h18M4 18h16M5 14h14M9 10h6M12 3v7" />
-        </svg>
-      ),
-      items: [
-        { id: 'ancestral-hall', label: 'Phòng thờ số' },
-        { id: 'clan-locations', label: 'Bản đồ & Địa điểm dòng họ' },
-      ],
-    },
-    {
-      id: 'life',
-      label: 'ĐỜI SỐNG DÒNG HỌ',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      ),
-      items: [
-        { id: 'events', label: 'Sự kiện & Ngày giỗ' },
-        { id: 'funds', label: 'Quỹ & Đóng góp' },
-      ],
-    },
-    {
-      id: 'docs_ai',
-      label: 'TƯ LIỆU & AI',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-        </svg>
-      ),
-      items: [
-        { id: 'documents', label: 'Tư liệu lịch sử' },
-        { id: 'ai-consent', label: 'Quyền riêng tư & AI' },
-      ],
-    },
-  ];
-
-  // 4 Cụm nghiệp vụ chuẩn hóa dành riêng cho Trưởng tộc / Ban Quản trị Dòng họ
+  // 2. Cấu trúc Menu dành riêng cho Trưởng tộc / Ban Quản trị Dòng họ (4 cụm nghiệp vụ tối ưu)
   const clanAdminGroups = [
     {
       id: 'governance',
       label: 'ĐIỀU HÀNH & PHÊ DUYỆT',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-      ),
       items: [
         { id: 'dashboard', label: 'Bảng điều khiển dòng họ' },
         { id: 'family-approvals', label: 'Phê duyệt đề xuất' },
@@ -189,15 +68,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'tree_network',
       label: 'GIA PHẢ & LIÊN HỌ',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3v5" />
-          <path d="M5 13V9h14v4" />
-          <rect x="2" y="13" width="6" height="7" rx="1.5" />
-          <rect x="9" y="13" width="6" height="7" rx="1.5" />
-          <rect x="16" y="13" width="6" height="7" rx="1.5" />
-        </svg>
-      ),
       items: [
         { id: 'tree', label: 'Cây Gia Phả trực hệ' },
         { id: 'member-list', label: 'Danh sách nhân khẩu' },
@@ -208,11 +78,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'worship_life',
       label: 'TÂM LINH & ĐỜI SỐNG',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 21h18M4 18h16M5 14h14M9 10h6M12 3v7" />
-        </svg>
-      ),
       items: [
         { id: 'ancestral-hall', label: 'Nhà thờ tổ số (3D)' },
         { id: 'events', label: 'Sự kiện & Ngày giỗ' },
@@ -223,12 +88,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'heritage_settings',
       label: 'TƯ LIỆU & HỒ SƠ GIA TỘC',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-          <path d="M6 6h10M6 10h10" />
-        </svg>
-      ),
       items: [
         { id: 'clan-profile', label: 'Hồ sơ dòng tộc & Gia quy' },
         { id: 'documents', label: 'Tư liệu lịch sử & Sắc phong' },
@@ -237,6 +96,72 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
   ];
+
+  // 3. Cấu trúc Menu dành cho Thành viên thường
+  const commonGroups = [
+    {
+      id: 'overview',
+      label: 'TỔNG QUAN',
+      items: [
+        { id: 'dashboard', label: 'Trang chủ' },
+        { id: 'notifications', label: 'Thông báo & Nhắc nhở' },
+      ],
+    },
+    {
+      id: 'tree_rel',
+      label: 'GIA PHẢ & THÀNH VIÊN',
+      items: [
+        { id: 'tree', label: 'Cây Gia Phả' },
+        { id: 'member-list', label: 'Danh sách thành viên' },
+        { id: 'relationship-finder', label: 'Tra cứu & Xưng hô' },
+      ],
+    },
+    {
+      id: 'network',
+      label: 'MẠNG LƯỚI LIÊN HỌ',
+      items: [
+        { id: 'net-ngoai', label: 'Dòng họ liên kết' },
+        { id: 'net-dau-re', label: 'Dâu & Rể liên họ' },
+        { id: 'net-noi', label: 'Dòng họ Nội tộc' },
+      ],
+    },
+    {
+      id: 'worship_space',
+      label: 'THỜ CÚNG & ĐỊA ĐIỂM',
+      items: [
+        { id: 'ancestral-hall', label: 'Phòng thờ số' },
+        { id: 'clan-locations', label: 'Bản đồ & Địa điểm dòng họ' },
+      ],
+    },
+    {
+      id: 'life',
+      label: 'ĐỜI SỐNG DÒNG HỌ',
+      items: [
+        { id: 'events', label: 'Sự kiện & Ngày giỗ' },
+        { id: 'funds', label: 'Quỹ & Đóng góp' },
+      ],
+    },
+    {
+      id: 'docs_ai',
+      label: 'TƯ LIỆU & AI',
+      items: [
+        { id: 'documents', label: 'Tư liệu lịch sử' },
+        { id: 'ai-consent', label: 'Quyền riêng tư & AI' },
+      ],
+    },
+  ];
+
+  const profileSettingsGroup = {
+    id: 'profile_settings',
+    label: 'HỒ SƠ & CÀI ĐẶT',
+    items: [
+      { id: 'clan-profile', label: 'Hồ sơ gia tộc' },
+      { id: 'my-profile', label: 'Hồ sơ của tôi' },
+      { id: 'my-clans', label: 'Dòng tộc của tôi' },
+      { id: 'my-proposals', label: 'Đề xuất của tôi' },
+      { id: 'privacy-settings', label: 'Quyền riêng tư & Bảo mật' },
+    ],
+  };
 
   const visibleMemberGroups = [
     ...commonGroups,
@@ -254,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {isAdmin && (
-        <nav className="sidebar-admin-menu" aria-label="Điều hướng Family Admin">
+        <nav className="sidebar-admin-menu" aria-label="Điều hướng Quản trị hệ thống">
           {adminMenuItems.map((item) => (
             <button
               key={item.id}
@@ -263,7 +188,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`sidebar-admin-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => onSelectTab(item.id)}
             >
-              <span className="sidebar-admin-icon"><AdminNavIcon name={item.icon} /></span>
               {!isCollapsed && <span>{item.label}</span>}
             </button>
           ))}
@@ -286,7 +210,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={isCollapsed ? group.label : undefined}
             >
               <div className="sidebar-group-left">
-                <span className="sidebar-group-icon">{group.icon}</span>
                 {!isCollapsed && <span className="sidebar-group-label">{group.label}</span>}
               </div>
 
