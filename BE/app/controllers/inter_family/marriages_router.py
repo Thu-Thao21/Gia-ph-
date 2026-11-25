@@ -396,8 +396,23 @@ async def create_marriage_invitation(
         db.add(link_row)
         await db.flush()
 
-    # 5. Khởi tạo InterClanPersonMapping với trạng thái AWAITING_SPOUSE_CONFIRMATION
+    # 5. Khởi tạo InterClanPersonMapping
     now = datetime.now(timezone.utc)
+
+    # 6. Tìm User của người nhận để gửi Notification hoặc chuyển Trưởng tộc duyệt thay thế
+    stmt_target_user = select(PersonAccountLink).where(
+        PersonAccountLink.person_id == target_p.id,
+        PersonAccountLink.status == "ACTIVE",
+    )
+    target_link = (await db.execute(stmt_target_user)).scalar_one_or_none()
+    target_user_id = target_link.user_id if target_link else None
+
+    # Nếu người phối ngẫu chưa có tài khoản: Trạng thái là PENDING để Trưởng tộc xác minh thay thế
+    initial_status = "AWAITING_SPOUSE" if target_user_id else "PENDING"
+    system_notes = (data.notes or "") + (
+        "" if target_user_id else " [Xác minh thay thế: Người phối ngẫu chưa có tài khoản ứng dụng; chuyển Trưởng tộc 2 bên thẩm tra.]"
+    )
+
     mapping = InterClanPersonMapping(
         id=uuid.uuid4(),
         link_id=link_row.id,
@@ -406,10 +421,10 @@ async def create_marriage_invitation(
         clan_b_id=target_clan_id,
         person_b_id=target_p.id,
         relationship_type="SPOUSE",
-        status="AWAITING_SPOUSE",
+        status=initial_status,
         requested_by=caller.user_id,
         requested_clan_id=sender_clan_id,
-        notes=data.notes,
+        notes=system_notes.strip() or None,
         created_at=now,
     )
     db.add(mapping)
@@ -418,14 +433,6 @@ async def create_marriage_invitation(
     target_clan = (await db.execute(select(Clan).where(Clan.clan_id == target_clan_id))).scalar_one_or_none()
     sender_clan_name = sender_clan.name if sender_clan else "Dòng họ"
     target_clan_name = target_clan.name if target_clan else "Dòng họ đối tác"
-
-    # 6. Tìm User của người nhận để gửi Notification
-    stmt_target_user = select(PersonAccountLink).where(
-        PersonAccountLink.person_id == target_p.id,
-        PersonAccountLink.status == "ACTIVE",
-    )
-    target_link = (await db.execute(stmt_target_user)).scalar_one_or_none()
-    target_user_id = target_link.user_id if target_link else None
 
     if target_user_id:
         notif = Notification(
@@ -444,19 +451,49 @@ async def create_marriage_invitation(
             user_id=target_user_id,
             delivered_at=now,
         ))
+    else:
+        # Gửi thông báo đến Trưởng tộc 2 bên để kiểm tra và xác minh thay thế
+        admins_a = await get_clan_admin_user_ids(db, sender_clan_id)
+        admins_b = await get_clan_admin_user_ids(db, target_clan_id)
+        proxy_title = f"Yêu cầu xác minh hôn nhân liên họ: {sender_person.full_name} ⟷ {target_p.full_name}"
+        proxy_body = (
+            f"Thành viên {sender_person.full_name} ({sender_clan_name}) đề nghị liên kết hôn phối với {target_p.full_name} ({target_clan_name}). "
+            f"Do người phối ngẫu chưa có tài khoản, yêu cầu được chuyển đến Trưởng tộc hai bên để kiểm tra hồ sơ và xác minh thay thế."
+        )
+        for clan_id, admin_list in [(sender_clan_id, admins_a), (target_clan_id, admins_b)]:
+            if admin_list:
+                notif = Notification(
+                    notification_id=uuid.uuid4(),
+                    clan_id=clan_id,
+                    type="LINK",
+                    title=proxy_title,
+                    body=proxy_body,
+                    entity_type="PERSON_MAPPING",
+                    entity_id=mapping.id,
+                    created_at=now,
+                )
+                db.add(notif)
+                await db.flush()
+                for auid in admin_list:
+                    db.add(UserNotification(
+                        notification_id=notif.notification_id,
+                        user_id=auid,
+                        delivered_at=now,
+                    ))
 
     # 7. Ghi AuditLog
     db.add(AuditLog(
         log_id=uuid.uuid4(),
         clan_id=sender_clan_id,
         actor_id=caller.user_id,
-        action="marriage.invite",
+        action="marriage.invite" if target_user_id else "marriage.invite_proxy_admin",
         entity_type="INTER_CLAN_PERSON_MAPPING",
         entity_id=mapping.id,
         new_data={
             "sender_person_id": str(sender_person.id),
             "target_person_id": str(target_p.id),
-            "status": "AWAITING_SPOUSE",
+            "status": initial_status,
+            "has_spouse_account": bool(target_user_id),
             "notes": data.notes,
         },
     ))

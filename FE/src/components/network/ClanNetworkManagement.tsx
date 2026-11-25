@@ -38,6 +38,19 @@ import './ClanNetworkManagement.css';
 import { NetworkTopologyDiagram } from './NetworkTopologyDiagram';
 import { HybridTreeView } from './HybridTreeView';
 
+const FIELD_LABELS: Record<string, string> = {
+  full_name: 'Họ và tên',
+  gender: 'Giới tính',
+  generation: 'Thứ tự đời (Thế hệ)',
+  avatar_url: 'Ảnh đại diện',
+  branch_id: 'Chi phái / Phân nhánh',
+  birth_date: 'Ngày / Năm sinh',
+  death_date: 'Ngày / Năm mất',
+  burial_location: 'Vị trí mộ phần / Nơi an táng',
+  bio: 'Tiểu sử / Ghi chú lịch sử',
+  living_persons: 'Cho phép xem người còn sống',
+};
+
 interface ClanNetworkManagementProps {
   clanId?: string;
 }
@@ -94,6 +107,12 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
   const [connectionType, setConnectionType] = useState<'IN_LAW' | 'ANCESTRAL' | 'ALLIED'>('IN_LAW');
   const [sourcePersonId, setSourcePersonId] = useState('');
   const [targetPersonId, setTargetPersonId] = useState('');
+  const [marriageRole, setMarriageRole] = useState<'HUSBAND_LOCAL' | 'WIFE_LOCAL'>('HUSBAND_LOCAL');
+  const [spouseNotOnTree, setSpouseNotOnTree] = useState(false);
+  const [declaredSpouseName, setDeclaredSpouseName] = useState('');
+  const [declaredSpouseGender, setDeclaredSpouseGender] = useState<'male' | 'female'>('female');
+  const [declaredSpouseBirthYear, setDeclaredSpouseBirthYear] = useState('');
+  const [declaredSpouseParents, setDeclaredSpouseParents] = useState('');
   const [message, setMessage] = useState('');
   const [targetClanMembers, setTargetClanMembers] = useState<MemberItem[]>([]);
   const [loadingTargetMembers, setLoadingTargetMembers] = useState(false);
@@ -480,6 +499,12 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
     setConnectionType('IN_LAW');
     setSourcePersonId('');
     setTargetPersonId('');
+    setMarriageRole('HUSBAND_LOCAL');
+    setSpouseNotOnTree(false);
+    setDeclaredSpouseName('');
+    setDeclaredSpouseGender('female');
+    setDeclaredSpouseBirthYear('');
+    setDeclaredSpouseParents('');
     setMessage('');
     setIsCreateModalOpen(true);
   };
@@ -490,9 +515,19 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
       showToast('Vui lòng chọn dòng họ muốn kết nối.', 'error');
       return;
     }
-    if (connectionType === 'IN_LAW' && (!sourcePersonId || !targetPersonId)) {
-      showToast('Liên kết thông gia (IN_LAW) bắt buộc chọn cặp thành viên kết hôn.', 'error');
-      return;
+    if (connectionType === 'IN_LAW') {
+      if (!sourcePersonId) {
+        showToast('Vui lòng chọn thành viên thuộc dòng họ của bạn.', 'error');
+        return;
+      }
+      if (!spouseNotOnTree && !targetPersonId) {
+        showToast('Vui lòng chọn thành viên đối tác hoặc tích chọn khai báo người phối ngẫu chưa có hồ sơ.', 'error');
+        return;
+      }
+      if (spouseNotOnTree && !declaredSpouseName.trim()) {
+        showToast('Vui lòng nhập Họ và tên người phối ngẫu được khai báo.', 'error');
+        return;
+      }
     }
 
     try {
@@ -502,7 +537,17 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
         sourceFamilyId: effectiveClanId,
         connectionType,
         sourcePersonId: connectionType === 'IN_LAW' ? sourcePersonId : null,
-        targetPersonId: connectionType === 'IN_LAW' ? targetPersonId : null,
+        targetPersonId: connectionType === 'IN_LAW' && !spouseNotOnTree ? targetPersonId : null,
+        declaredSpouseInfo:
+          connectionType === 'IN_LAW' && spouseNotOnTree
+            ? {
+                fullName: declaredSpouseName.trim(),
+                gender: declaredSpouseGender,
+                birthYear: declaredSpouseBirthYear.trim() || undefined,
+                parentsInClan: declaredSpouseParents.trim() || undefined,
+                marriageRole,
+              }
+            : undefined,
         message: message.trim() || undefined,
       });
 
@@ -1549,16 +1594,74 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                 {connectionType === 'IN_LAW' && (
                   <div style={{
                     background: '#f8fafc',
-                    padding: '14px',
+                    padding: '16px',
                     borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px',
+                    gap: '14px',
                   }}>
                     <strong style={{ fontSize: '13px', color: '#1e293b' }}>
                       Xác định cặp Person thông gia kết nối hai dòng họ *
                     </strong>
+
+                    {/* Lựa chọn vai trò Chồng / Vợ */}
+                    <div className="cnm-form-group">
+                      <label style={{ fontWeight: 600, color: '#334155' }}>Vai trò hôn phối:</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            background: marriageRole === 'HUSBAND_LOCAL' ? '#eff6ff' : '#ffffff',
+                            border: `1.5px solid ${marriageRole === 'HUSBAND_LOCAL' ? '#2563eb' : '#cbd5e1'}`,
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12.5px',
+                            color: '#1e293b',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="marriageRole"
+                            checked={marriageRole === 'HUSBAND_LOCAL'}
+                            onChange={() => {
+                              setMarriageRole('HUSBAND_LOCAL');
+                              setDeclaredSpouseGender('female');
+                            }}
+                          />
+                          <span>Họ tôi là <strong>Chồng</strong> ⟷ Họ đối tác là <strong>Vợ</strong></span>
+                        </label>
+
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            background: marriageRole === 'WIFE_LOCAL' ? '#eff6ff' : '#ffffff',
+                            border: `1.5px solid ${marriageRole === 'WIFE_LOCAL' ? '#2563eb' : '#cbd5e1'}`,
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '12.5px',
+                            color: '#1e293b',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="marriageRole"
+                            checked={marriageRole === 'WIFE_LOCAL'}
+                            onChange={() => {
+                              setMarriageRole('WIFE_LOCAL');
+                              setDeclaredSpouseGender('male');
+                            }}
+                          />
+                          <span>Họ tôi là <strong>Vợ</strong> ⟷ Họ đối tác là <strong>Chồng</strong></span>
+                        </label>
+                      </div>
+                    </div>
 
                     <div className="cnm-form-group">
                       <label>1. Thành viên thuộc dòng họ của bạn ({activeClanName || 'Họ nguồn'}):</label>
@@ -1577,27 +1680,116 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                       </select>
                     </div>
 
-                    <div className="cnm-form-group">
-                      <label>2. Thành viên thuộc dòng họ đối tác:</label>
-                      {loadingTargetMembers ? (
-                        <div style={{ fontSize: '13px', color: '#64748b' }}>Đang tải danh sách thành viên đối tác...</div>
-                      ) : (
-                        <select
-                          className="cnm-select"
-                          value={targetPersonId}
-                          onChange={(e) => setTargetPersonId(e.target.value)}
-                          required
-                          disabled={!targetClanId}
-                        >
-                          <option value="">-- Chọn thành viên đối tác --</option>
-                          {targetClanMembers.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.fullName} ({m.gender === 'male' ? 'Nam' : 'Nữ'}, Đời {m.generation})
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                    {/* Toggle: Đã có hồ sơ trên cây hay khai báo mới */}
+                    <div style={{ marginTop: '2px' }}>
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          color: '#0f172a',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={spouseNotOnTree}
+                          onChange={(e) => setSpouseNotOnTree(e.target.checked)}
+                        />
+                        Người phối ngẫu chưa có hồ sơ Person trên cây phả hệ họ đối tác
+                      </label>
                     </div>
+
+                    {!spouseNotOnTree ? (
+                      <div className="cnm-form-group">
+                        <label>2. Thành viên thuộc dòng họ đối tác:</label>
+                        {loadingTargetMembers ? (
+                          <div style={{ fontSize: '13px', color: '#64748b' }}>Đang tải danh sách thành viên đối tác...</div>
+                        ) : (
+                          <select
+                            className="cnm-select"
+                            value={targetPersonId}
+                            onChange={(e) => setTargetPersonId(e.target.value)}
+                            required={!spouseNotOnTree}
+                            disabled={!targetClanId}
+                          >
+                            <option value="">-- Chọn thành viên đối tác --</option>
+                            {targetClanMembers.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.fullName} ({m.gender === 'male' ? 'Nam' : 'Nữ'}, Đời {m.generation})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          background: '#ffffff',
+                          border: '1px dashed #94a3b8',
+                          borderRadius: '8px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+                          ℹ️ Hệ thống sẽ chuyển thông tin khai báo này đến Trưởng tộc dòng họ đối tác để kiểm tra hồ sơ nghi trùng,
+                          xác minh cha mẹ và tạo Person chính danh trên phả đồ trước khi phê duyệt liên kết.
+                        </span>
+
+                        <div className="cnm-form-group">
+                          <label>Họ và tên người phối ngẫu *</label>
+                          <input
+                            type="text"
+                            className="cnm-input"
+                            value={declaredSpouseName}
+                            onChange={(e) => setDeclaredSpouseName(e.target.value)}
+                            placeholder="Ví dụ: Nguyễn Thị Hoa"
+                            required={spouseNotOnTree}
+                          />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                          <div className="cnm-form-group">
+                            <label>Giới tính</label>
+                            <select
+                              className="cnm-select"
+                              value={declaredSpouseGender}
+                              onChange={(e) => setDeclaredSpouseGender(e.target.value as any)}
+                            >
+                              <option value="female">Nữ (Vợ / Con gái họ đối tác)</option>
+                              <option value="male">Nam (Chồng / Con trai họ đối tác)</option>
+                            </select>
+                          </div>
+
+                          <div className="cnm-form-group">
+                            <label>Năm sinh / Ngày sinh (Tùy chọn)</label>
+                            <input
+                              type="text"
+                              className="cnm-input"
+                              value={declaredSpouseBirthYear}
+                              onChange={(e) => setDeclaredSpouseBirthYear(e.target.value)}
+                              placeholder="Ví dụ: 1995"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="cnm-form-group">
+                          <label>Tên Cha / Mẹ thuộc dòng họ đối tác (Để đối chiếu gia phả):</label>
+                          <input
+                            type="text"
+                            className="cnm-input"
+                            value={declaredSpouseParents}
+                            onChange={(e) => setDeclaredSpouseParents(e.target.value)}
+                            placeholder="Ví dụ: Con ông Nguyễn Văn An, Chi 2..."
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1796,12 +1988,12 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
           <div className="cnm-modal-card cnm-modal-large">
             <div className="cnm-modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', color: '#0f172a' }}>
-                  Chinh sach chia se du lieu lien toc
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
+                  Chính sách chia sẻ dữ liệu liên tộc
                 </h3>
                 <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                  Lien ket voi dong ho{' '}
-                  <strong>
+                  Liên kết với dòng họ{' '}
+                  <strong style={{ color: '#1e40af' }}>
                     {policyModalLink.clanAId.toLowerCase() === effectiveClanId.toLowerCase()
                       ? policyModalLink.clanBName
                       : policyModalLink.clanAName}
@@ -1809,7 +2001,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                 </div>
               </div>
               <button type="button" className="cnm-modal-close" onClick={() => setPolicyModalLink(null)}>
-                X
+                ✕
               </button>
             </div>
 
@@ -1821,14 +2013,14 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                   className={`cnm-policy-subtab ${policySubTab === 'mine' ? 'active' : ''}`}
                   onClick={() => setPolicySubTab('mine')}
                 >
-                  Chinh sach cua dong ho toi
+                  Chính sách của dòng họ tôi
                 </button>
                 <button
                   type="button"
                   className={`cnm-policy-subtab ${policySubTab === 'partner' ? 'active' : ''}`}
                   onClick={() => setPolicySubTab('partner')}
                 >
-                  Chinh sach doi tac chia se
+                  Chính sách đối tác chia sẻ
                 </button>
                 <button
                   type="button"
@@ -1838,13 +2030,13 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                     if (!previewTree) handleLoadSharedTreePreview();
                   }}
                 >
-                  Xem truoc cay chia se
+                  Xem trước cây chia sẻ
                 </button>
               </div>
 
               {loadingPolicies ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                  Dang tai chinh sach chia se...
+                  Đang tải chính sách chia sẻ...
                 </div>
               ) : (
                 <>
@@ -1853,7 +2045,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                     <form onSubmit={handleSavePolicySubmit}>
                       <div style={{ marginBottom: '16px' }}>
                         <label style={{ fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>
-                          Pham vi chia se du lieu (Data Scope)
+                          Phạm vi chia sẻ dữ liệu (Data Scope)
                         </label>
                         <div className="cnm-scope-grid">
                           <div
@@ -1861,11 +2053,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             onClick={() => handleSelectScope('BASIC')}
                           >
                             <div className="cnm-scope-header">
-                              <span className="cnm-scope-title">Co ban</span>
+                              <span className="cnm-scope-title">Cơ bản</span>
                               <span className="cnm-scope-badge">BASIC</span>
                             </div>
                             <span className="cnm-scope-desc">
-                              Chi chia se ho ten, gioi tinh va doi cua nguoi da mat. Mac dinh an toan bo nguoi con song.
+                              Chỉ chia sẻ họ tên, giới tính và đời của người đã mất. Mặc định ẩn toàn bộ người còn sống.
                             </span>
                           </div>
 
@@ -1874,11 +2066,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             onClick={() => handleSelectScope('EXTENDED')}
                           >
                             <div className="cnm-scope-header">
-                              <span className="cnm-scope-title">Mo rong</span>
+                              <span className="cnm-scope-title">Mở rộng</span>
                               <span className="cnm-scope-badge">EXTENDED</span>
                             </div>
                             <span className="cnm-scope-desc">
-                              Bo sung nam sinh, nam mat va chi nhanh cua nguoi da mat. Bao ve nguoi con song.
+                              Bổ sung năm sinh, năm mất và chi nhánh của người đã mất. Bảo vệ người còn sống.
                             </span>
                           </div>
 
@@ -1887,11 +2079,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             onClick={() => handleSelectScope('FULL')}
                           >
                             <div className="cnm-scope-header">
-                              <span className="cnm-scope-title">Toan phan</span>
+                              <span className="cnm-scope-title">Toàn phần</span>
                               <span className="cnm-scope-badge">FULL</span>
                             </div>
                             <span className="cnm-scope-desc">
-                              Bo sung tieu su, mo phan. Cho phep hien thi nguoi con song neu khong cai rieng tu ca nhan.
+                              Bổ sung tiểu sử, mộ phần. Cho phép hiển thị người còn sống nếu không cài riêng tư cá nhân.
                             </span>
                           </div>
                         </div>
@@ -1899,11 +2091,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
 
                       {/* Granular Field Toggles */}
                       <div className="cnm-fields-section">
-                        <div className="cnm-fields-title">Cau hinh chi tiet truong du lieu chia se</div>
+                        <div className="cnm-fields-title">Cấu hình chi tiết trường dữ liệu chia sẻ</div>
                         <div className="cnm-fields-grid">
                           <label className="cnm-field-toggle">
                             <input type="checkbox" checked={policyAllowedFields.full_name} disabled />
-                            <span>Ho va ten (Bat buoc de nhan dien)</span>
+                            <span>Họ và tên (Bắt buộc để nhận diện)</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1912,7 +2104,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.gender}
                               onChange={() => handleToggleField('gender')}
                             />
-                            <span>Gioi tinh</span>
+                            <span>Giới tính</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1921,7 +2113,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.generation}
                               onChange={() => handleToggleField('generation')}
                             />
-                            <span>Thu tu doi (The he)</span>
+                            <span>Thứ tự đời (Thế hệ)</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1930,7 +2122,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.avatar_url}
                               onChange={() => handleToggleField('avatar_url')}
                             />
-                            <span>Anh dai dien</span>
+                            <span>Ảnh đại diện</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1939,7 +2131,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.branch_id}
                               onChange={() => handleToggleField('branch_id')}
                             />
-                            <span>Chi phai / Phan nhanh</span>
+                            <span>Chi phái / Phân nhánh</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1948,7 +2140,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.birth_date}
                               onChange={() => handleToggleField('birth_date')}
                             />
-                            <span>Ngay / Nam sinh</span>
+                            <span>Ngày / Năm sinh</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1957,7 +2149,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.death_date}
                               onChange={() => handleToggleField('death_date')}
                             />
-                            <span>Ngay / Nam mat</span>
+                            <span>Ngày / Năm mất</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1966,7 +2158,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.burial_location}
                               onChange={() => handleToggleField('burial_location')}
                             />
-                            <span>Vi tri mo phan / Noi an tang</span>
+                            <span>Vị trí mộ phần / Nơi an táng</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1975,7 +2167,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               checked={policyAllowedFields.bio}
                               onChange={() => handleToggleField('bio')}
                             />
-                            <span>Tieu su / Ghi chu lich su</span>
+                            <span>Tiểu sử / Ghi chú lịch sử</span>
                           </label>
 
                           <label className="cnm-field-toggle">
@@ -1985,7 +2177,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               onChange={() => handleToggleField('living_persons')}
                             />
                             <strong style={{ color: policyAllowedFields.living_persons ? '#1e40af' : '#475569' }}>
-                              Cho phep xem nguoi con song
+                              Cho phép xem người còn sống
                             </strong>
                           </label>
                         </div>
@@ -1996,7 +2188,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                           </svg>
                           <div>
-                            <strong>Nguyen tac bao mat rieng tu ca nhan:</strong> Cai dat rieng tu cua tung Person ca nhan (CLAN_ONLY / PRIVATE) khong bao gio bi chinh sach chung cua dong ho ghi de. Thong tin cua nguoi con song co cai dat rieng tu se luon duoc he thong che giau (masked) bao mat tuyet doi.
+                            <strong>Nguyên tắc bảo mật riêng tư cá nhân:</strong> Cài đặt riêng tư của từng Person cá nhân (CLAN_ONLY / PRIVATE) không bao giờ bị chính sách chung của dòng họ ghi đè. Thông tin của người còn sống có cài đặt riêng tư sẽ luôn được hệ thống che giấu (masked) bảo mật tuyệt đối.
                           </div>
                         </div>
                       </div>
@@ -2009,16 +2201,16 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             checked={policyCanExport}
                             onChange={(e) => setPolicyCanExport(e.target.checked)}
                           />
-                          <span>Cho phep dong ho doi tac tai xuat file du lieu cay gia pha chia se</span>
+                          <span>Cho phép dòng họ đối tác tải xuất file dữ liệu cây gia phả chia sẻ</span>
                         </label>
                       </div>
 
                       <div className="cnm-modal-footer" style={{ padding: 0 }}>
                         <button type="button" className="cnm-btn-secondary" onClick={() => setPolicyModalLink(null)}>
-                          Dong
+                          Đóng
                         </button>
                         <button type="submit" className="cnm-btn-primary" disabled={savingPolicy}>
-                          {savingPolicy ? 'Dang luu...' : 'Luu chinh sach chia se'}
+                          {savingPolicy ? 'Đang lưu...' : 'Lưu chính sách chia sẻ'}
                         </button>
                       </div>
                     </form>
@@ -2031,21 +2223,23 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                         <div>
                           <div style={{ marginBottom: '16px', padding: '14px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
                             <div style={{ fontSize: '13.5px', color: '#1e40af' }}>
-                              Doi tac dang ap dung pham vi:{' '}
-                              <strong>{partnerPolicy.dataScope}</strong> | Cho phep xuat du lieu:{' '}
-                              <strong>{partnerPolicy.canExport ? 'Co' : 'Khong'}</strong>
+                              Đối tác đang áp dụng phạm vi:{' '}
+                              <strong>{partnerPolicy.dataScope === 'BASIC' ? 'Cơ bản (BASIC)' : partnerPolicy.dataScope === 'EXTENDED' ? 'Mở rộng (EXTENDED)' : 'Toàn phần (FULL)'}</strong> | Cho phép xuất dữ liệu:{' '}
+                              <strong>{partnerPolicy.canExport ? 'Có' : 'Không'}</strong>
                             </div>
                           </div>
 
                           <div className="cnm-fields-section">
-                            <div className="cnm-fields-title">Cac truong du lieu doi tac cho phep xem:</div>
+                            <div className="cnm-fields-title">Các trường dữ liệu đối tác cho phép xem:</div>
                             <div className="cnm-fields-grid">
                               {Object.entries(partnerPolicy.allowedFields || {}).map(([key, val]) => (
                                 <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                                   <span style={{ color: val ? '#16a34a' : '#94a3b8', fontWeight: 'bold' }}>
-                                    {val ? '[x]' : '[ ]'}
+                                    {val ? '✓' : '✗'}
                                   </span>
-                                  <span style={{ color: val ? '#0f172a' : '#94a3b8' }}>{key}</span>
+                                  <span style={{ color: val ? '#0f172a' : '#94a3b8' }}>
+                                    {FIELD_LABELS[key] || key}
+                                  </span>
                                 </div>
                               ))}
                             </div>
@@ -2053,7 +2247,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                         </div>
                       ) : (
                         <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
-                          Doi tac dang su dung chinh sach mac dinh (Co ban).
+                          Đối tác đang sử dụng chính sách mặc định (Cơ bản).
                         </div>
                       )}
                     </div>
@@ -2064,7 +2258,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                         <span style={{ fontSize: '13.5px', color: '#475569' }}>
-                          Ket qua tra cuu thuc te khi xem cay phao cua doi tac duoi chinh sach chia se:
+                          Kết quả tra cứu thực tế khi xem cây phả hệ của đối tác dưới chính sách chia sẻ:
                         </span>
                         <button
                           type="button"
@@ -2073,36 +2267,36 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                           onClick={handleLoadSharedTreePreview}
                           disabled={loadingPreview}
                         >
-                          {loadingPreview ? 'Dang tai...' : 'Lam moi'}
+                          {loadingPreview ? 'Đang tải...' : 'Làm mới'}
                         </button>
                       </div>
 
                       {loadingPreview ? (
                         <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
-                          Dang tai cay du lieu chia se...
+                          Đang tải cây dữ liệu chia sẻ...
                         </div>
                       ) : previewTree && previewTree.nodes ? (
                         <div className="cnm-preview-table-wrap">
                           <table className="cnm-table" style={{ fontSize: '12.5px' }}>
                             <thead>
                               <tr>
-                                <th>Ho va ten</th>
-                                <th>Doi</th>
-                                <th>Gioi tinh</th>
-                                <th>Trang thai</th>
-                                <th>Quyen rieng tu</th>
+                                <th>Họ và tên</th>
+                                <th>Đời</th>
+                                <th>Giới tính</th>
+                                <th>Trạng thái</th>
+                                <th>Quyền riêng tư</th>
                               </tr>
                             </thead>
                             <tbody>
                               {previewTree.nodes.length === 0 ? (
                                 <tr>
                                   <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
-                                    Khong co thanh vien nao trong pham vi chia se.
+                                    Không có thành viên nào trong phạm vi chia sẻ.
                                   </td>
                                 </tr>
                               ) : (
                                 previewTree.nodes.map((node) => {
-                                  const isMasked = node.privacyLevel === 'MASKED' || node.fullName.includes('(Bao mat)');
+                                  const isMasked = node.privacyLevel === 'MASKED' || node.fullName.includes('(Bảo mật)');
                                   return (
                                     <tr key={node.id}>
                                       <td>
@@ -2110,14 +2304,14 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                                           {node.fullName}
                                         </strong>
                                       </td>
-                                      <td>{node.generation > 0 ? 'Doi ' + node.generation : '—'}</td>
-                                      <td>{node.gender}</td>
-                                      <td>{node.isLiving ? 'Con song' : 'Da mat'}</td>
+                                      <td>{node.generation > 0 ? 'Đời ' + node.generation : '—'}</td>
+                                      <td>{node.gender === 'male' || node.gender === 'MALE' ? 'Nam' : node.gender === 'female' || node.gender === 'FEMALE' ? 'Nữ' : node.gender}</td>
+                                      <td>{node.isLiving ? 'Còn sống' : 'Đã mất'}</td>
                                       <td>
                                         {isMasked ? (
-                                          <span className="cnm-badge-masked">Da bao mat (Masked)</span>
+                                          <span className="cnm-badge-masked">Đã bảo mật (Masked)</span>
                                         ) : (
-                                          <span className="cnm-badge-shared">Duoc chia se (Shared)</span>
+                                          <span className="cnm-badge-shared">Được chia sẻ (Shared)</span>
                                         )}
                                       </td>
                                     </tr>
@@ -2129,7 +2323,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                         </div>
                       ) : (
                         <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
-                          Nhan Lam moi de tai du lieu xem truoc.
+                          Nhấn Làm mới để tải dữ liệu xem trước.
                         </div>
                       )}
                     </div>

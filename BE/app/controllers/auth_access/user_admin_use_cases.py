@@ -563,7 +563,7 @@ async def delete_user_account(
 
     user = await users.get_user_by_id(user_id)
     if user is None:
-        raise AppError(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng.")
+        return {"message": "Tài khoản không tồn tại hoặc đã được xóa trước đó."}
 
     is_root_admin = (
         (user.email and user.email.lower() == "thuthaor120608@gmail.com")

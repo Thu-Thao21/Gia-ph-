@@ -107,16 +107,25 @@ class AccessService:
 
         membership = await self.repo.get_active_membership(account.id, family_id)
         if not membership:
-            # Cho phép xem cây hoặc danh sách thành viên nếu thuộc dòng họ liên kết thông gia (ACTIVE)
+            # Bảo mật gia phả liên tộc: Chỉ cho phép tài khoản cá nhân đã được xác minh quan hệ hôn phối
+            # hoặc được cấp quyền truy cập chính thức (LineageAccessGrant) xem cây phả hệ dòng họ thông gia.
+            # Tuyệt đối KHÔNG mở rộng quyền xem cho toàn bộ thành viên của dòng họ liên kết.
             if permission in ("tree.view", "person.view"):
                 from sqlalchemy import text
                 stmt = text("""
-                    SELECT 1 FROM inter_clan_links l
-                    JOIN clan_memberships cm ON (cm.clan_id = l.clan_a_id OR cm.clan_id = l.clan_b_id)
-                    WHERE cm.user_id = :uid AND cm.status = 'ACTIVE' AND l.status = 'ACTIVE'
+                    SELECT 1 FROM lineage_access_grants lag
+                    WHERE lag.owner_clan_id = :fid
+                      AND lag.grantee_user_id = :uid
+                      AND lag.status = 'ACTIVE'
+                    UNION
+                    SELECT 1 FROM inter_clan_person_mappings m
+                    JOIN person_account_links pal ON (pal.person_id = m.person_a_id OR pal.person_id = m.person_b_id)
+                    WHERE pal.user_id = :uid
+                      AND pal.status = 'ACTIVE'
+                      AND m.status = 'VERIFIED'
                       AND (
-                          (l.clan_a_id = cm.clan_id AND l.clan_b_id = :fid)
-                          OR (l.clan_b_id = cm.clan_id AND l.clan_a_id = :fid)
+                          (m.clan_a_id = :fid AND m.clan_b_id != :fid)
+                          OR (m.clan_b_id = :fid AND m.clan_a_id != :fid)
                       )
                     LIMIT 1;
                 """)

@@ -148,7 +148,7 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
   const [treeDirection, setTreeDirection] = useState<'vertical' | 'horizontal'>(
     initialMode === 'horizontal' ? 'horizontal' : 'vertical'
   );
-  const [zoomScale, setZoomScale] = useState<number>(0.40);
+  const [zoomScale, setZoomScale] = useState<number>(1.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [dualLineagePersonId, setDualLineagePersonId] = useState<string | null>(null);
 
@@ -848,55 +848,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
           <div className="tree-zoom-btn-group">
             <button
-              className="tree-control-btn"
-              onClick={() => setZoomScale((z) => Math.min(2.0, Math.round((z + 0.15) * 100) / 100))}
-              title="Phóng to sơ đồ (+15%)"
-            >
-              +
-            </button>
-            <button
-              className="tree-control-btn"
-              onClick={() => setZoomScale((z) => Math.max(0.08, Math.round((z - 0.10) * 100) / 100))}
-              title="Thu nhỏ sâu (tối đa đến 8% - Xem được toàn bộ dòng họ lớn)"
-            >
-              -
-            </button>
-            <button
-              className="tree-control-btn fit-view"
-              onClick={() => {
-                setZoomScale(0.22);
-                setTimeout(() => {
-                  const viewport = document.querySelector('.tree-canvas-viewport') as HTMLElement;
-                  if (viewport) {
-                    const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-                    viewport.scrollTo({ left: Math.max(0, maxScroll / 2), top: 0, behavior: 'smooth' });
-                  }
-                }, 50);
-              }}
-              title="Xem toàn cảnh sơ đồ dòng họ (22%)"
-              style={{ fontSize: '11px', padding: '0 8px', minWidth: 'auto', fontWeight: 700 }}
-            >
-              Toàn cảnh
-            </button>
-            <button
-              className="tree-control-btn center-btn"
-              onClick={() => {
-                const viewport = document.querySelector('.tree-canvas-viewport') as HTMLElement;
-                if (viewport) {
-                  const maxScroll = viewport.scrollWidth - viewport.clientWidth;
-                  viewport.scrollTo({
-                    left: Math.max(0, maxScroll / 2),
-                    top: 0,
-                    behavior: 'smooth',
-                  });
-                }
-              }}
-              title="Đưa cây phả hệ về ngay chính giữa màn hình"
-              style={{ fontSize: '11px', padding: '0 8px', minWidth: 'auto', fontWeight: 700, color: '#2563eb' }}
-            >
-              🎯 Căn giữa
-            </button>
-            <button
               className="tree-control-btn expand-all-btn"
               onClick={() => setExpandTrigger({ action: 'expand_all', timestamp: Date.now() })}
               title="Mở rộng tất cả các đời và nhánh trong gia phả"
@@ -915,12 +866,18 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
             <button
               className="tree-control-btn reset"
               onClick={() => {
-                setZoomScale(1);
+                setZoomScale(1.0);
                 setFocusMemberId(undefined);
                 setSelectedBranch(undefined);
                 setSelectedGeneration(undefined);
+                const viewport = document.querySelector('.tree-canvas-viewport') as HTMLElement;
+                if (viewport) {
+                  const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+                  viewport.scrollTo({ left: Math.max(0, maxScroll / 2), top: 0, behavior: 'smooth' });
+                }
               }}
-              title="Đặt lại 100% góc nhìn"
+              title="Đặt lại 100% góc nhìn & căn giữa mượt mà"
+              style={{ fontWeight: 700, minWidth: '55px' }}
             >
               {Math.round(zoomScale * 100)}%
             </button>

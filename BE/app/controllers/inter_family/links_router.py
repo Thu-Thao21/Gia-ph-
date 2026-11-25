@@ -680,10 +680,10 @@ async def create_link_request(
     target_person_obj = None
 
     if conn_type == "IN_LAW":
-        if not data.source_person_id or not data.target_person_id:
+        if not data.source_person_id:
             raise HTTPException(
                 status_code=422,
-                detail="Liên kết thông gia (IN_LAW) bắt buộc phải chọn cặp thành viên (Person) đại diện từ cả hai dòng họ.",
+                detail="Liên kết thông gia (IN_LAW) bắt buộc phải chọn thành viên đại diện từ dòng họ gửi.",
             )
         source_person_obj = await repo.get_person(_uuid(data.source_person_id, "Source person"))
         if not source_person_obj or source_person_obj.family_id != source_id:
@@ -691,14 +691,24 @@ async def create_link_request(
                 status_code=422,
                 detail="Thành viên nguồn không tồn tại hoặc không thuộc dòng họ gửi yêu cầu.",
             )
-        target_person_obj = await repo.get_person(_uuid(data.target_person_id, "Target person"))
-        if not target_person_obj or target_person_obj.family_id != target_id:
+        person_ids["sourcePersonId"] = source_person_obj.id
+
+        if data.target_person_id:
+            target_person_obj = await repo.get_person(_uuid(data.target_person_id, "Target person"))
+            if not target_person_obj or target_person_obj.family_id != target_id:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Thành viên đích không tồn tại hoặc không thuộc dòng họ nhận yêu cầu.",
+                )
+            person_ids["targetPersonId"] = target_person_obj.id
+        elif data.declared_spouse_info or (data.message and "[Khai báo người phối ngẫu" in data.message):
+            # Người phối ngẫu chưa có hồ sơ Person trên cây phả hệ họ đối tác
+            person_ids["targetPersonId"] = None
+        else:
             raise HTTPException(
                 status_code=422,
-                detail="Thành viên đích không tồn tại hoặc không thuộc dòng họ nhận yêu cầu.",
+                detail="Liên kết thông gia (IN_LAW) bắt buộc chọn thành viên đối tác hoặc khai báo thông tin người phối ngẫu chưa có hồ sơ.",
             )
-        person_ids["sourcePersonId"] = source_person_obj.id
-        person_ids["targetPersonId"] = target_person_obj.id
     else:
         # ANCESTRAL or ALLIED: person pairs are optional
         if data.source_person_id:
@@ -712,6 +722,18 @@ async def create_link_request(
                 person_ids["targetPersonId"] = p.id
                 target_person_obj = p
 
+    req_msg = data.message or ""
+    if data.declared_spouse_info:
+        dsp = data.declared_spouse_info
+        role_label = "Chồng" if dsp.get("gender") == "male" else "Vợ"
+        dsp_text = f"[Khai báo hồ sơ hôn phối: {dsp.get('fullName', '')} ({role_label})"
+        if dsp.get("birthYear"):
+            dsp_text += f", Năm sinh: {dsp.get('birthYear')}"
+        if dsp.get("parentsInClan"):
+            dsp_text += f", Cha/Mẹ họ đối tác: {dsp.get('parentsInClan')}"
+        dsp_text += "]"
+        req_msg = f"{dsp_text} {req_msg}".strip()
+
     req = InterClanRequest(
         id=uuid.uuid4(),
         source_clan_id=source_id,
@@ -720,7 +742,7 @@ async def create_link_request(
         requester_id=caller.user_id,
         source_person_id=person_ids["sourcePersonId"],
         target_person_id=person_ids["targetPersonId"],
-        message=data.message,
+        message=req_msg or None,
         status="PENDING",
     )
     repo.add(req)

@@ -225,7 +225,8 @@
   padding: 20px;
 }
 
-.cnm-modal {
+.cnm-modal,
+.cnm-modal-card {
   background: #ffffff;
   border-radius: 16px;
   width: 100%;

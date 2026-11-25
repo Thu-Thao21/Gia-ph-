@@ -50,6 +50,8 @@ export interface Member {
   userId?: string;
 }
 
+export type MemberItem = Member;
+
 export interface MemberDetail extends Member {
   familyName?: string;
   userId?: string;

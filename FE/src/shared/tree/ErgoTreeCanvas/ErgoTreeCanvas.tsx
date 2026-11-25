@@ -76,7 +76,6 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const [showNavHint, setShowNavHint] = useState(true);
 
   // Cảm ứng (mobile / máy tính bảng): pan 1 ngón, pinch-zoom 2 ngón, nhấn giữ = menu ngữ cảnh
   const isMobile = useIsMobile();
@@ -235,65 +234,52 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
   };
 
   // Xử lý sự kiện lăn chuột thông minh trên Canvas:
-  // - Khi giữ phím Ctrl + lăn chuột: Phóng to / Thu nhỏ cây phả hệ (8% -> 200%), chặn trình duyệt phóng to trang web.
-  // - Khi giữ phím Shift + lăn chuột: Cuộn ngang sơ đồ.
-  // - Khi ở chế độ ngang (direction === 'horizontal'): Lăn chuột cuộn ngang trực tiếp.
-  // - Khi ở chế độ dọc: Lăn chuột cuộn dọc mượt mà.
+  // - Lăn chuột trực tiếp: Phóng to / Thu nhỏ cây phả hệ (Zoom in / Zoom out) mượt mà hướng theo con trỏ chuột
+  // - Giữ Shift + lăn chuột: Cuộn ngang
+  // - Kéo thả chuột trái: Di chuyển (pan) sơ đồ tự do ở 120 FPS
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // 1. Phóng to / Thu nhỏ khi giữ Ctrl + lăn chuột hoặc chụm 2 ngón trên trackpad
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (onZoomChange) {
-          const delta = e.deltaY < 0 ? 0.08 : -0.08;
-          onZoomChange((prev: number) => {
-            const next = Math.round((prev + delta) * 100) / 100;
-            return Math.min(2.0, Math.max(0.08, next));
-          });
-        }
-        return;
-      }
+      e.preventDefault();
+      e.stopPropagation();
 
-      // 2. Lăn chuột khi giữ Shift: Cuộn ngang sơ đồ
+      // Giữ phím Shift + lăn chuột: Cuộn ngang sơ đồ
       if (e.shiftKey) {
-        e.preventDefault();
         viewport.scrollLeft += (e.deltaY || e.deltaX) * 1.2;
         return;
       }
 
-      // 3. Trong chế độ hiển thị cây ngang (direction === 'horizontal'): Lăn chuột thường cuộn ngang luôn!
-      if (direction === 'horizontal') {
-        e.preventDefault();
-        viewport.scrollLeft += e.deltaY * 1.2;
-        if (e.deltaX) {
-          viewport.scrollLeft += e.deltaX * 1.2;
-        }
-        return;
-      }
+      if (!onZoomChange) return;
 
-      // 4. Trong chế độ cây dọc: Cuộn dọc mượt mà
-      const canScrollUp = e.deltaY < 0 && viewport.scrollTop > 0;
-      const canScrollDown = e.deltaY > 0 && viewport.scrollTop < (viewport.scrollHeight - viewport.clientHeight - 1);
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-      if (canScrollUp || canScrollDown) {
-        e.preventDefault();
-        viewport.scrollTop += e.deltaY;
-      }
-      if (e.deltaX) {
-        e.preventDefault();
-        viewport.scrollLeft += e.deltaX;
-      }
+      // Hệ số zoom mượt mà tự nhiên (smooth motion)
+      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+
+      onZoomChange((prev: number) => {
+        const next = Math.min(2.5, Math.max(0.15, Math.round(prev * zoomFactor * 100) / 100));
+        if (next === prev) return prev;
+
+        const scaleRatio = next / prev;
+        requestAnimationFrame(() => {
+          if (viewportRef.current) {
+            viewportRef.current.scrollLeft = (viewportRef.current.scrollLeft + mouseX) * scaleRatio - mouseX;
+            viewportRef.current.scrollTop = (viewportRef.current.scrollTop + mouseY) * scaleRatio - mouseY;
+          }
+        });
+        return next;
+      });
     };
 
     viewport.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
       viewport.removeEventListener('wheel', handleWheel);
     };
-  }, [onZoomChange, direction]);
+  }, [onZoomChange]);
 
   // 1. STANDARD CLAN TREE LAYOUT (Bố cục toán học toàn dòng họ)
   const clanLayout = useMemo(() => {
@@ -698,18 +684,6 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
 
       const vW = viewport.clientWidth;
 
-      // 1. Nếu cây ở chế độ toàn dòng họ và đang rộng hơn màn hình:
-      // Tự động co tỷ lệ zoom vừa khít 100% chiều ngang màn hình để không phải kéo thanh cuộn ngang
-      if (!isBilateralMode && vW > 300 && totalCanvasWidth > 0 && onZoomChange) {
-        if (totalCanvasWidth * zoomScale > vW - 40) {
-          const autoFitZoom = Math.min(
-            0.55,
-            Math.max(0.15, Math.round(((vW - 60) / totalCanvasWidth) * 100) / 100)
-          );
-          onZoomChange(autoFitZoom);
-        }
-      }
-
       if (isBilateralMode && bilateralLayout) {
         const targetX = bilateralLayout.CX;
         const targetY = bilateralLayout.LEVEL_Y[0];
@@ -727,10 +701,10 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
       if (focusCard) {
         focusCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       } else {
-        // Căn giữa chính xác 100% sơ đồ phả hệ trên màn hình
+        // Căn giữa mượt mà sơ đồ phả hệ trên màn hình ở kích thước 100%
         const maxScroll = viewport.scrollWidth - viewport.clientWidth;
         if (maxScroll > 0) {
-          viewport.scrollLeft = maxScroll / 2;
+          viewport.scrollTo({ left: maxScroll / 2, top: 0, behavior: 'smooth' });
         } else {
           viewport.scrollLeft = 0;
         }
@@ -873,6 +847,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
               height: `${totalCanvasHeight * zoomScale}px`,
               position: 'relative',
               flexShrink: 0,
+              transition: 'width 0.24s cubic-bezier(0.16, 1, 0.3, 1), height 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
             <div
@@ -885,7 +860,7 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
                 height: `${totalCanvasHeight}px`,
                 transform: `scale(${zoomScale})`,
                 transformOrigin: 'top left',
-                transition: 'transform 0.15s ease-out',
+                transition: 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               {/* ========================================================================= */}
@@ -1944,70 +1919,6 @@ export const ErgoTreeCanvas: React.FC<ErgoTreeCanvasProps> = ({
         </div>
       </div>
 
-      {/* Floating Navigation Controls & Drag Hints */}
-      <div className="tree-canvas-nav-overlay">
-        {showNavHint && (
-          <div className="tree-canvas-hint-pill">
-            <span>🖱️ Bấm giữ chuột trái để kéo sơ đồ | Lăn chuột để cuộn</span>
-            <span
-              className="close-hint"
-              onClick={() => setShowNavHint(false)}
-              title="Ẩn hướng dẫn"
-            >
-              ✕
-            </span>
-          </div>
-        )}
-
-        <div className="tree-canvas-nav-dpad" title="Điều khiển di chuyển sơ đồ">
-          <div />
-          <button
-            type="button"
-            className="tree-nav-btn up"
-            onClick={() => handlePanStep(0, -260)}
-            title="Cuộn lên trên"
-          >
-            ▲
-          </button>
-          <div />
-
-          <button
-            type="button"
-            className="tree-nav-btn left"
-            onClick={() => handlePanStep(-280, 0)}
-            title="Cuộn sang trái"
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            className="tree-nav-btn center"
-            onClick={handleCenterView}
-            title="🎯 Đưa sơ đồ về chính giữa"
-          >
-            🎯
-          </button>
-          <button
-            type="button"
-            className="tree-nav-btn right"
-            onClick={() => handlePanStep(280, 0)}
-            title="Cuộn sang phải"
-          >
-            ▶
-          </button>
-
-          <div />
-          <button
-            type="button"
-            className="tree-nav-btn down"
-            onClick={() => handlePanStep(0, 260)}
-            title="Cuộn xuống dưới"
-          >
-            ▼
-          </button>
-          <div />
-        </div>
-      </div>
     </div>
 
     {isMobile && (

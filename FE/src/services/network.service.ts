@@ -55,6 +55,13 @@ export interface CreateLinkRequestPayload {
   connectionType: 'IN_LAW' | 'ANCESTRAL' | 'ALLIED';
   sourcePersonId?: string | null;
   targetPersonId?: string | null;
+  declaredSpouseInfo?: {
+    fullName: string;
+    gender: string;
+    birthYear?: string;
+    parentsInClan?: string;
+    marriageRole?: string;
+  };
   message?: string;
 }
 
@@ -77,6 +84,7 @@ export async function sendLinkRequest(
     connectionType: payload.connectionType,
     sourcePersonId: payload.sourcePersonId || null,
     targetPersonId: payload.targetPersonId || null,
+    declaredSpouseInfo: payload.declaredSpouseInfo || null,
     message: payload.message,
   });
   return res.data;

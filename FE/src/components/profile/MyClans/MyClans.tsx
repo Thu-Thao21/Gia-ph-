@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useClanContext } from '../../../context/ClanContext';
 import {
@@ -18,6 +18,7 @@ const RELATION_OPTIONS = [
   { value: 'Con', label: 'Con (Hậu duệ trực hệ)' },
   { value: 'Cháu', label: 'Cháu (Nội/Ngoại)' },
   { value: 'Anh/chị/em', label: 'Anh / Chị / Em' },
+  { value: 'Vợ/chồng', label: 'Vợ / Chồng (Hôn phối, Dâu / Rể)' },
   { value: 'Khác', label: 'Quan hệ khác (Ghi rõ bên dưới)' },
 ];
 
@@ -45,7 +46,7 @@ export const MyClans: React.FC = () => {
   const [selectedClan, setSelectedClan] = useState<PublicClanItem | null>(null);
 
   // Step 2: Form Data
-  const [lineageType, setLineageType] = useState<'PATERNAL' | 'MATERNAL'>('PATERNAL');
+  const [lineageType, setLineageType] = useState<'PATERNAL' | 'MATERNAL' | 'SPOUSAL'>('PATERNAL');
   const [fullName, setFullName] = useState(account?.display_name || account?.username || '');
   const [birthDate, setBirthDate] = useState('');
   const [relativeName, setRelativeName] = useState('');
@@ -652,6 +653,22 @@ export const MyClans: React.FC = () => {
                         <div>
                           <strong>Bên ngoại</strong>
                           <div style={{ fontSize: '12px', color: '#64748b' }}>Họ theo bên Mẹ</div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`lineage-radio-card ${lineageType === 'SPOUSAL' ? 'selected' : ''}`}
+                        onClick={() => setLineageType('SPOUSAL')}
+                      >
+                        <input
+                          type="radio"
+                          name="lineageType"
+                          checked={lineageType === 'SPOUSAL'}
+                          onChange={() => setLineageType('SPOUSAL')}
+                        />
+                        <div>
+                          <strong>Bên vợ / Bên chồng</strong>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>Họ theo hôn phối (Dâu/Rể)</div>
                         </div>
                       </div>
                     </div>

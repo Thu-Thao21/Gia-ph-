@@ -200,6 +200,7 @@ class LinkRequestCreate(BaseModel):
     connection_type: str = Field("IN_LAW", alias="connectionType")
     source_person_id: Optional[str] = Field(None, alias="sourcePersonId")
     target_person_id: Optional[str] = Field(None, alias="targetPersonId")
+    declared_spouse_info: Optional[dict] = Field(None, alias="declaredSpouseInfo")
     message: Optional[str] = None
 
 

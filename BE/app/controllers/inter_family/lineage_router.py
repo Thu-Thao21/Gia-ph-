@@ -1030,6 +1030,26 @@ async def get_my_family_network(
 
         # 4. Phạm vi 4 thế hệ bên phối ngẫu (nếu được cấp quyền chia sẻ)
         if is_sharing_allowed:
+            pol_allowed = pol.allowed_fields if (pol and pol.allowed_fields) else dict(DEFAULT_ALLOWED_FIELDS)
+            can_show_living = pol_allowed.get("living_persons", False)
+            can_show_name = pol_allowed.get("full_name", True)
+            can_show_avatar = pol_allowed.get("avatar_url", True)
+            can_show_gender = pol_allowed.get("gender", True)
+
+            def apply_inlaw_policy(node: dict, is_living: Optional[bool]):
+                living = is_living is None or bool(is_living)
+                is_living_masked = False
+                if living and not can_show_living:
+                    is_living_masked = True
+
+                if is_living_masked or not can_show_name:
+                    node["fullName"] = MASKED_NAME
+                    node["privacyMasked"] = True
+                if is_living_masked or not can_show_avatar:
+                    node["avatarUrl"] = None
+                if is_living_masked or not can_show_gender:
+                    node["gender"] = "OTHER"
+
             # 4.1. Cha mẹ bên phối ngẫu (Level -1)
             stmt_inlaw_parents = text("""
                 SELECT p.person_id, p.full_name, p.gender, p.generation_no, p.is_living, p.avatar_storage_key, p.clan_id, c.name as clan_name
@@ -1067,6 +1087,7 @@ async def get_my_family_network(
                         "canExpand": False,
                         "privacyMasked": False,
                     }
+                    apply_inlaw_policy(nodes_dict[ipid], ip["is_living"])
                 add_edge(ipid, spouse_id, "BLOODLINE", "Cha - Con" if ipgender == "MALE" else "Mẹ - Con")
 
             # 4.1b. Phối ngẫu của cha/mẹ bên phối ngẫu (Mẹ hoặc Cha còn lại - Level -1)
@@ -1106,6 +1127,7 @@ async def get_my_family_network(
                             "canExpand": False,
                             "privacyMasked": False,
                         }
+                        apply_inlaw_policy(nodes_dict[ispid], isp_map["is_living"])
                     matched_par_id = str(isp_map["from_person_id"] if str(isp_map["to_person_id"]) == ispid else isp_map["to_person_id"])
                     add_edge(matched_par_id, ispid, "MARRIAGE", "Hôn nhân (Cha Mẹ bên chồng/vợ)")
                     add_edge(ispid, spouse_id, "BLOODLINE", "Mẹ - Con" if ispgender == "FEMALE" else "Cha - Con")
@@ -1147,6 +1169,7 @@ async def get_my_family_network(
                             "canExpand": False,
                             "privacyMasked": False,
                         }
+                        apply_inlaw_policy(nodes_dict[sid], s_dict["is_living"])
                     add_edge(str(s_dict["parent_id"]), sid, "BLOODLINE", "Cha/Mẹ - Con")
 
             # 4.2. Ông bà bên phối ngẫu (Level -2) - Giới hạn tuyệt đối của phạm vi 4 thế hệ
@@ -1188,6 +1211,7 @@ async def get_my_family_network(
                             "canExpand": False,
                             "privacyMasked": False,
                         }
+                        apply_inlaw_policy(nodes_dict[igpid], igp["is_living"])
                     add_edge(igpid, str(igp["child_id"]), "BLOODLINE", "Ông - Cha/Mẹ" if igpgender == "MALE" else "Bà - Cha/Mẹ")
 
                 # Tìm quan hệ hôn phối giữa các ông bà bên phối ngẫu
