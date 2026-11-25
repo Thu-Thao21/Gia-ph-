@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ErgoTreeNode } from '../../../types/tree';
 import type { MyFamilyNetworkResponse, MyFamilyNetworkNode } from '../../../types/network';
 import { TreeNodeCard } from '../TreeNodeCard';
