@@ -649,14 +649,14 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
               <span className="tree-stat-pill teal">{maleCount} Nam</span>
               <span className="tree-stat-pill pink">{femaleCount} Nữ</span>
               {isViewingInLaw && (
-                <span className="tree-stat-pill purple" style={{ fontWeight: 600 }}>
+                <span className="tree-stat-pill purple fw-600">
                   Nhánh 4 đời bên {spouseRelationLabel}
                 </span>
               )}
             </div>
           </div>
-          <div className="tree-toolbar-subtitle-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <p className="tree-toolbar-subtitle" style={{ margin: 0 }}>
+          <div className="tree-toolbar-subtitle-row tree-toolbar-subtitle-row-flex">
+            <p className="tree-toolbar-subtitle tree-toolbar-subtitle-no-margin">
               {expandedInLawPersonId && myNetworkData?.hasCrossClanLink
                 ? `Đang lấy bạn (${account?.display_name || 'Ego'}) làm trung tâm: Vẫn giữ nguyên toàn bộ nhánh nội tộc và mở rộng nhánh gia phả bên chồng (${myNetworkData.spouseClan?.name || 'Mai Thế Tộc'}) ngay tại node phối ngẫu trong cùng một canvas.`
                 : isViewingInLaw
@@ -848,23 +848,21 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
 
           <div className="tree-zoom-btn-group">
             <button
-              className="tree-control-btn expand-all-btn"
+              className="tree-control-btn expand-all-btn tree-btn-green-sm"
               onClick={() => setExpandTrigger({ action: 'expand_all', timestamp: Date.now() })}
               title="Mở rộng tất cả các đời và nhánh trong gia phả"
-              style={{ fontSize: '11px', padding: '0 8px', minWidth: 'auto', fontWeight: 700, color: '#16a34a' }}
             >
               🔽 Mở rộng hết
             </button>
             <button
-              className="tree-control-btn collapse-all-btn"
+              className="tree-control-btn collapse-all-btn tree-btn-gray-sm"
               onClick={() => setExpandTrigger({ action: 'collapse_all', timestamp: Date.now() })}
               title="Thu gọn các nhánh về các đời trên"
-              style={{ fontSize: '11px', padding: '0 8px', minWidth: 'auto', fontWeight: 700, color: '#64748b' }}
             >
               🔼 Thu gọn
             </button>
             <button
-              className="tree-control-btn reset"
+              className="tree-control-btn reset tree-zoom-btn-fixed"
               onClick={() => {
                 const viewport = document.querySelector('.tree-canvas-viewport') as HTMLElement;
                 // Nếu đang ở gần 100% (>= 90%) -> Bấm để thu về vừa vặn toàn bộ khung màn hình (Auto-Fit)
@@ -901,7 +899,6 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
                 }
               }}
               title={zoomScale >= 0.90 ? 'Bấm để thu vừa toàn bộ khung màn hình' : 'Bấm để phóng to 100% xem chi tiết'}
-              style={{ fontWeight: 700, minWidth: '55px' }}
             >
               {Math.round(zoomScale * 100)}%
             </button>
@@ -925,8 +922,8 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
         <div className="tree-canvas-prompt-empty">
           {allMembers.length === 0 ? (
             <div>
-              <p style={{ fontWeight: 600, color: '#475569' }}>Dòng họ này hiện chưa có thành viên nào trong cây gia phả (0 thành viên).</p>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: 6 }}>
+              <p className="tree-empty-clan-title">Dòng họ này hiện chưa có thành viên nào trong cây gia phả (0 thành viên).</p>
+              <p className="tree-empty-clan-sub">
                 Quý quản trị viên vui lòng chọn dòng họ có thành viên từ danh sách phía trên để xem sơ đồ gia phả.
               </p>
             </div>
@@ -1075,19 +1072,18 @@ export const TreeLayout: React.FC<TreeLayoutProps> = ({
                 </button>
               </div>
               <div className="tree-action-modal-body">
-                <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#64748b' }}>
-                  Thành viên: <strong style={{ color: '#0f172a' }}>{proposeModal.node.fullName}</strong>
+                <p className="tree-propose-member-desc">
+                  Thành viên: <strong className="tree-propose-member-name">{proposeModal.node.fullName}</strong>
                 </p>
                 <div className="tree-action-form-group">
                   <label className="tree-action-form-label">Nội dung đề xuất chỉnh sửa *</label>
                   <textarea
-                    className="tree-action-form-input"
+                    className="tree-action-form-input tree-textarea-resizable"
                     rows={4}
                     value={proposeModal.content}
                     onChange={(e) => setProposeModal((prev) => ({ ...prev, content: e.target.value }))}
                     placeholder="Mô tả các thông tin cần sửa đổi hoặc đính chính (ví dụ: ngày sinh, nơi an táng, mối quan hệ...)"
                     required
-                    style={{ resize: 'vertical' }}
                   />
                 </div>
               </div>

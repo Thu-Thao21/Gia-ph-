@@ -180,7 +180,7 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
   if (loading) {
     return (
       <div className="htv-modal-overlay">
-        <div className="htv-container" style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+        <div className="htv-container htv-status-panel">
           Đang tải cây gia phả liên họ kết hợp...
         </div>
       </div>
@@ -190,7 +190,7 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
   if (!data) {
     return (
       <div className="htv-modal-overlay">
-        <div className="htv-container" style={{ padding: '60px', textAlign: 'center', color: '#dc2626' }}>
+        <div className="htv-container htv-status-panel error">
           Không thể tải dữ liệu cây liên họ hoặc bạn không có quyền truy cập.
           <br /><br />
           <button type="button" className="cnm-btn-secondary" onClick={onClose}>Đóng</button>
@@ -208,7 +208,7 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
             <h3 className="htv-title">
               Cây Gia Phả Liên Họ Kết Hợp
               <span className="htv-clan-badge-primary">{data.primaryClan.name}</span>
-              <span style={{ color: '#94a3b8' }}>⟷</span>
+              <span className="htv-arrow-muted">⟷</span>
               <span className="htv-clan-badge-partner">{data.partnerClan.name}</span>
             </h3>
             <div className="htv-subtitle">
@@ -238,16 +238,14 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
               placeholder="Tìm thành viên..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="ntd-search-input"
-              style={{ width: '180px' }}
+              className="ntd-search-input htv-select-fixed"
             />
 
             {/* Policy adjustment shortcut */}
             {onOpenPolicyModal && (
               <button
                 type="button"
-                className="cnm-btn-secondary"
-                style={{ fontSize: '12.5px', padding: '6px 12px' }}
+                className="cnm-btn-secondary htv-btn-filter-compact"
                 onClick={() => onOpenPolicyModal(linkId)}
               >
                 Chính sách chia sẻ
@@ -263,15 +261,15 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
         {/* Banner with In-Law Marriage Bridges & Tenant Isolation Note */}
         <div className="htv-banner">
           <div className="htv-bridges-list">
-            <strong style={{ color: '#0f172a' }}>Cầu nối hôn nhân liên tộc:</strong>
+            <strong className="htv-label-title">Cầu nối hôn nhân liên tộc:</strong>
             {data.bridges.length === 0 ? (
-              <span style={{ color: '#64748b' }}>Chưa có cặp thông gia nào được Trưởng tộc hai bên xác minh.</span>
+              <span className="htv-text-muted-desc">Chưa có cặp thông gia nào được Trưởng tộc hai bên xác minh.</span>
             ) : (
               data.bridges.map((b) => (
                 <div key={b.id} className="htv-bridge-pill">
-                  <span style={{ color: '#1e40af', fontWeight: 600 }}>{b.primaryPersonName}</span>
-                  <span style={{ color: '#f59e0b', fontWeight: 700 }}>⟷</span>
-                  <span style={{ color: '#6b21a8', fontWeight: 600 }}>{b.partnerPersonName}</span>
+                  <span className="htv-bridge-name-primary">{b.primaryPersonName}</span>
+                  <span className="htv-bridge-arrow">⟷</span>
+                  <span className="htv-bridge-name-partner">{b.partnerPersonName}</span>
                 </div>
               ))
             )}
@@ -470,8 +468,8 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
             <div className="htv-side-drawer">
               <div className="htv-drawer-header">
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '15px', color: '#0f172a' }}>{selectedNode.fullName}</h4>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                  <h4 className="htv-drawer-header-title">{selectedNode.fullName}</h4>
+                  <div className="htv-drawer-header-meta">
                     {selectedNode.clanName} ({selectedNode.isPrimaryClan ? 'Dòng họ chính' : 'Dòng họ đối tác'})
                   </div>
                 </div>
@@ -508,7 +506,7 @@ export const HybridTreeView: React.FC<HybridTreeViewProps> = ({
 
                 <div className="htv-drawer-row">
                   <span className="htv-drawer-label">Bảo mật / Quyền riêng tư:</span>
-                  <span className="htv-drawer-val" style={{ color: selectedNode.privacyLevel === 'MASKED' ? '#b45309' : '#15803d' }}>
+                  <span className={`htv-drawer-val ${selectedNode.privacyLevel === 'MASKED' ? 'htv-val-masked' : 'htv-val-shared'}`}>
                     {selectedNode.privacyLevel === 'OWN_CLAN'
                       ? 'Nội bộ dòng tộc'
                       : selectedNode.privacyLevel === 'MASKED'

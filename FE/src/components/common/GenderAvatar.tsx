@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './GenderAvatar.css';
 
 export const MaleAvatarSvg: React.FC<{ size?: number; className?: string }> = ({
   size = 36,
@@ -10,9 +11,8 @@ export const MaleAvatarSvg: React.FC<{ size?: number; className?: string }> = ({
     viewBox="0 0 36 36"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className={className}
+    className={`gender-avatar-svg ${className}`.trim()}
     aria-label="Nam"
-    style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}
   >
     <rect width="36" height="36" rx="18" fill="#DBEAFE" />
     <path
@@ -36,9 +36,8 @@ export const FemaleAvatarSvg: React.FC<{ size?: number; className?: string }> = 
     viewBox="0 0 36 36"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className={className}
+    className={`gender-avatar-svg ${className}`.trim()}
     aria-label="Nữ"
-    style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}
   >
     <rect width="36" height="36" rx="18" fill="#FCE7F3" />
     <path
@@ -84,8 +83,9 @@ export const GenderAvatar: React.FC<GenderAvatarProps> = ({
       <img
         src={cleanUrl}
         alt={name}
-        className={imgClassName}
-        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }}
+        className={`gender-avatar-img ${imgClassName}`.trim()}
+        width={size}
+        height={size}
         onError={() => setLoadError(true)}
       />
     );

@@ -267,7 +267,7 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="ntd-header-right-controls">
           <div className="ntd-search-box">
             <svg
               className="ntd-search-icon"
@@ -318,7 +318,7 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
           </div>
           <div className="ntd-stat-pill">
             <span>Cặp thông gia xác minh:</span>
-            <strong style={{ color: '#16a34a' }}>{totalVerifiedPairs}</strong>
+            <strong className="ntd-stat-green">{totalVerifiedPairs}</strong>
           </div>
         </div>
 
@@ -623,7 +623,7 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
             <div className="ntd-side-header">
               <div>
                 <h4 className="ntd-side-title">{selectedNode.name}</h4>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                <div className="ntd-node-subtitle">
                   {selectedNode.code ? `Mã: ${selectedNode.code}` : 'Dòng tộc chính quy'}
                 </div>
               </div>
@@ -665,10 +665,10 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
               {/* Connected edges summary */}
               {selectedNodeEdges.length > 0 && (
                 <div style={{ marginTop: '8px' }}>
-                  <strong style={{ fontSize: '12.5px', color: '#1e293b' }}>
+                  <strong className="ntd-inlaw-title">
                     Các liên kết trực tiếp ({selectedNodeEdges.length}):
                   </strong>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                  <div className="ntd-inlaw-list">
                     {selectedNodeEdges.map((e) => {
                       const partnerName = e.source === selectedNode.id ? e.targetName : e.sourceName;
                       return (
@@ -682,8 +682,8 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
                             fontSize: '12px',
                           }}
                         >
-                          <div style={{ fontWeight: 600, color: '#0f172a' }}>{partnerName}</div>
-                          <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
+                          <div className="ntd-inlaw-name">{partnerName}</div>
+                          <div className="ntd-inlaw-meta">
                             {e.label} • {e.verifiedCount} cặp thông gia xác minh
                           </div>
                         </div>
@@ -700,8 +700,7 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
                 {selectedNodeEdges.length > 0 && onOpenHybridTree && (
                   <button
                     type="button"
-                    className="ntd-action-btn-primary"
-                    style={{ background: '#7c3aed', color: '#ffffff', marginBottom: '6px' }}
+                    className="ntd-action-btn-primary ntd-side-btn ntd-btn-hybrid-action"
                     onClick={() => {
                       const firstLink = selectedNodeEdges[0];
                       if (firstLink) onOpenHybridTree(firstLink.id);
@@ -745,7 +744,7 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
             <div className="ntd-side-header">
               <div>
                 <h4 className="ntd-side-title">Chi tiết liên kết dòng họ</h4>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                <div className="ntd-node-subtitle">
                   {selectedEdge.label}
                 </div>
               </div>
@@ -799,10 +798,10 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
 
               {selectedEdge.policies && (
                 <div style={{ marginTop: '6px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  <div className="ntd-fields-list-title">
                     Phạm vi chia sẻ áp dụng:
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11.5px', color: '#64748b' }}>
+                  <div className="ntd-fields-list-box">
                     <div>{selectedEdge.sourceName}: <strong>{selectedEdge.policies[selectedEdge.source] || 'BASIC'}</strong></div>
                     <div>{selectedEdge.targetName}: <strong>{selectedEdge.policies[selectedEdge.target] || 'BASIC'}</strong></div>
                   </div>
@@ -814,8 +813,7 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({
               {onOpenHybridTree && (
                 <button
                   type="button"
-                  className="ntd-action-btn-primary"
-                  style={{ background: '#7c3aed', color: '#ffffff', marginBottom: '6px' }}
+                  className="ntd-action-btn-primary ntd-side-btn ntd-btn-hybrid-action"
                   onClick={() => onOpenHybridTree(selectedEdge.id)}
                 >
                   Xem cay gia pha lien ho

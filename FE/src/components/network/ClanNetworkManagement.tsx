@@ -669,15 +669,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
   return (
     <div className="cnm-container">
       {toast && (
-        <div style={{
-          padding: '12px 20px',
-          background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
-          border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
-          color: toast.type === 'error' ? '#991b1b' : '#166534',
-          borderRadius: '10px',
-          fontSize: '14px',
-          fontWeight: 600,
-        }}>
+        <div className={`cnm-toast ${toast.type === "error" ? "cnm-toast-error" : "cnm-toast-success"}`}>
           {toast.message}
         </div>
       )}
@@ -769,13 +761,13 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                   <th>Loại liên kết</th>
                   <th>Ngày kích hoạt</th>
                   <th>Trạng thái</th>
-                  <th style={{ textAlign: 'right' }}>Hành động</th>
+                  <th className="cnm-text-right">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {links.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                    <td colSpan={5} className="cnm-empty-state-cell">
                       Chưa có liên kết liên họ nào đang hoạt động. Hãy bấm "Gửi yêu cầu liên họ mới" để kết nối với dòng tộc đối tác.
                     </td>
                   </tr>
@@ -792,29 +784,20 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                         <tr>
                           <td>
                             <strong>{partnerName}</strong>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>
+                            <div className="cnm-meta-text">
                               {isClanA ? `Mã: ${link.clanBId.substring(0, 8)}...` : `Mã: ${link.clanAId.substring(0, 8)}...`}
                             </div>
                           </td>
                           <td>{renderTypeTag(link.connectionType)}</td>
                           <td>{new Date(link.linkedAt).toLocaleDateString('vi-VN')}</td>
                           <td><span className="cnm-status-active">Đang hoạt động</span></td>
-                          <td style={{ textAlign: 'right' }}>
-                            <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <td className="cnm-text-right">
+                            <div className="cnm-action-group">
                               {link.connectionType === 'IN_LAW' && (
                                 <button
                                   type="button"
                                   onClick={() => handleToggleExpandLink(link.id)}
-                                  style={{
-                                    background: isExpanded ? '#dbeafe' : '#f1f5f9',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#1e40af',
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '12.5px',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                  }}
+                                  className={`cnm-btn-inlaw-toggle ${isExpanded ? 'expanded' : ''}`}
                                 >
                                   {isExpanded ? 'Đóng cặp thông gia' : 'Xem cặp thông gia'}
                                 </button>
@@ -822,19 +805,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               <button
                                 type="button"
                                 onClick={() => setViewingHybridLinkId(link.id)}
-                                style={{
-                                  background: '#f5f3ff',
-                                  border: '1px solid #ddd6fe',
-                                  color: '#6d28d9',
-                                  padding: '6px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '12.5px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                }}
+                                className="cnm-btn-tree-link"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <circle cx="12" cy="5" r="3" />
@@ -847,19 +818,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               <button
                                 type="button"
                                 onClick={() => handleOpenPolicyModal(link)}
-                                style={{
-                                  background: '#f0fdf4',
-                                  border: '1px solid #bbf7d0',
-                                  color: '#15803d',
-                                  padding: '6px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '12.5px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                }}
+                                className="cnm-btn-policy"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -870,16 +829,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               <button
                                 type="button"
                                 onClick={() => handleOpenTerminateModal(link)}
-                                style={{
-                                  background: '#fff1f2',
-                                  border: '1px solid #fecdd3',
-                                  color: '#e11d48',
-                                  padding: '6px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '12.5px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                }}
+                                className="cnm-btn-terminate"
                               >
                                 Hủy liên kết
                               </button>
@@ -890,17 +840,17 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                         {/* Giai đoạn 2: Expandable Person Mappings Panel */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={5} style={{ padding: 0, background: '#f8fafc' }}>
-                              <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <td colSpan={5} className="cnm-expanded-subtable-td">
+                              <div className="cnm-expanded-subtable-box">
+                                <div className="cnm-expanded-subtable-top">
+                                  <div className="cnm-expanded-subtable-title-wrap">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
                                       <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                                       <circle cx="8.5" cy="7" r="4" />
                                       <line x1="20" y1="8" x2="20" y2="14" />
                                       <line x1="23" y1="11" x2="17" y2="11" />
                                     </svg>
-                                    <strong style={{ fontSize: '14.5px', color: '#0f172a' }}>
+                                    <strong className="cnm-expanded-subtable-title">
                                       Cặp Person Thông gia Xác minh giữa hai dòng tộc ({mappings.length})
                                     </strong>
                                   </div>
@@ -927,23 +877,15 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                                 </div>
 
                                 {isLoadingMappings ? (
-                                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                                  <div className="cnm-empty-state-box">
                                     Đang tải danh sách cặp thông gia...
                                   </div>
                                 ) : mappings.length === 0 ? (
-                                  <div style={{
-                                    background: '#ffffff',
-                                    border: '1px dashed #cbd5e1',
-                                    borderRadius: '8px',
-                                    padding: '24px',
-                                    textAlign: 'center',
-                                    color: '#64748b',
-                                    fontSize: '13.5px',
-                                  }}>
+                                  <div className="cnm-pair-empty-dashed">
                                     Chưa có cặp Person thông gia nào được xác minh giữa hai dòng họ. Bấm "+ Thêm cặp thông gia xác minh" để liên kết hồ sơ cô dâu / chú rể.
                                   </div>
                                 ) : (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <div className="cnm-pair-list">
                                     {mappings.map((m) => {
                                       const isRequestedByMe = m.requestedClanId.toLowerCase() === effectiveClanId.toLowerCase();
                                       const pAName = m.personAName;
@@ -965,63 +907,33 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                                           }}
                                         >
                                           {/* Person Pair Display */}
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <div style={{
-                                              padding: '4px 10px',
-                                              background: m.personAGender === 'male' ? '#eff6ff' : '#fdf2f8',
-                                              color: m.personAGender === 'male' ? '#1d4ed8' : '#be185d',
-                                              borderRadius: '6px',
-                                              fontWeight: 600,
-                                              fontSize: '13px',
-                                            }}>
+                                          <div className="cnm-pair-persons-wrap">
+                                            <div className={m.personAGender === "male" ? "cnm-person-tag-male" : "cnm-person-tag-female"}>
                                               {pAName} ({m.clanAName})
                                             </div>
 
-                                            <span style={{ color: '#94a3b8', fontWeight: 700 }}>⟷ (Vợ/Chồng) ⟷</span>
+                                            <span className="cnm-pair-relation-divider">⟷ (Vợ/Chồng) ⟷</span>
 
-                                            <div style={{
-                                              padding: '4px 10px',
-                                              background: m.personBGender === 'male' ? '#eff6ff' : '#fdf2f8',
-                                              color: m.personBGender === 'male' ? '#1d4ed8' : '#be185d',
-                                              borderRadius: '6px',
-                                              fontWeight: 600,
-                                              fontSize: '13px',
-                                            }}>
+                                            <div className={m.personBGender === "male" ? "cnm-person-tag-male" : "cnm-person-tag-female"}>
                                               {pBName} ({m.clanBName})
                                             </div>
                                           </div>
 
                                           {/* Status & Review Actions */}
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                          <div className="cnm-pair-status-wrap">
                                             {m.status === 'VERIFIED' && (
-                                              <span style={{
-                                                background: '#f0fdf4',
-                                                border: '1px solid #bbf7d0',
-                                                color: '#166534',
-                                                padding: '3px 8px',
-                                                borderRadius: '6px',
-                                                fontSize: '12px',
-                                                fontWeight: 700,
-                                              }}>
+                                              <span className="cnm-pair-status-verified">
                                                 Đã xác minh chính danh
                                               </span>
                                             )}
 
                                             {m.status === 'PENDING' && (
                                               isRequestedByMe ? (
-                                                <span style={{
-                                                  background: '#fffbeb',
-                                                  border: '1px solid #fde68a',
-                                                  color: '#b45309',
-                                                  padding: '3px 8px',
-                                                  borderRadius: '6px',
-                                                  fontSize: '12px',
-                                                  fontWeight: 700,
-                                                }}>
+                                                <span className="cnm-pair-status-waiting">
                                                   Chờ Trưởng tộc họ bạn xác nhận
                                                 </span>
                                               ) : (
-                                                <div style={{ display: 'inline-flex', gap: '6px' }}>
+                                                <div className="cnm-action-group-sm">
                                                   <button
                                                     type="button"
                                                     onClick={() => handleReviewMapping(m, 'VERIFY')}
@@ -1154,13 +1066,13 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                   <th>Lời nhắn</th>
                   <th>Ngày gửi</th>
                   <th>Trạng thái</th>
-                  <th style={{ textAlign: 'right' }}>Thao tác</th>
+                  <th className="cnm-text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {incomingRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                    <td colSpan={7} className="cnm-empty-state-cell">
                       Không có yêu cầu liên họ nào gửi đến dòng tộc của bạn.
                     </td>
                   </tr>
@@ -1172,24 +1084,24 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                       <td>
                         {req.connectionType === 'IN_LAW' ? (
                           <div style={{ fontSize: '13px' }}>
-                            <span style={{ color: '#2563eb', fontWeight: 600 }}>{req.sourcePersonName || 'Thành viên nguồn'}</span>
-                            <span style={{ color: '#94a3b8', margin: '0 6px' }}>⟷</span>
-                            <span style={{ color: '#16a34a', fontWeight: 600 }}>{req.targetPersonName || 'Thành viên đích'}</span>
+                            <span className="cnm-highlight-blue">{req.sourcePersonName || 'Thành viên nguồn'}</span>
+                            <span className="cnm-arrow-divider">⟷</span>
+                            <span className="cnm-highlight-green">{req.targetPersonName || 'Thành viên đích'}</span>
                           </div>
                         ) : (
                           <span style={{ color: '#94a3b8' }}>Toàn tộc</span>
                         )}
                       </td>
-                      <td style={{ maxWidth: '200px' }}>{req.message || '—'}</td>
+                      <td className="cnm-col-message">{req.message || '—'}</td>
                       <td>{req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
                       <td>
                         {req.status === 'PENDING' && <span className="cnm-status-pending">Chờ bạn duyệt</span>}
                         {req.status === 'APPROVED' && <span className="cnm-status-active">Đã chấp thuận</span>}
                         {req.status === 'REJECTED' && <span className="cnm-status-rejected">Đã từ chối</span>}
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td className="cnm-text-right">
                         {req.status === 'PENDING' && (
-                          <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <div className="cnm-action-group">
                             <button
                               type="button"
                               disabled={reviewingId === req.id}
@@ -1254,7 +1166,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
               <tbody>
                 {outgoingRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                    <td colSpan={6} className="cnm-empty-state-cell">
                       Bạn chưa gửi yêu cầu liên họ nào.
                     </td>
                   </tr>
@@ -1266,15 +1178,15 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                       <td>
                         {req.connectionType === 'IN_LAW' ? (
                           <div style={{ fontSize: '13px' }}>
-                            <span style={{ color: '#2563eb', fontWeight: 600 }}>{req.sourcePersonName || 'Thành viên nguồn'}</span>
-                            <span style={{ color: '#94a3b8', margin: '0 6px' }}>⟷</span>
-                            <span style={{ color: '#16a34a', fontWeight: 600 }}>{req.targetPersonName || 'Thành viên đích'}</span>
+                            <span className="cnm-highlight-blue">{req.sourcePersonName || 'Thành viên nguồn'}</span>
+                            <span className="cnm-arrow-divider">⟷</span>
+                            <span className="cnm-highlight-green">{req.targetPersonName || 'Thành viên đích'}</span>
                           </div>
                         ) : (
                           <span style={{ color: '#94a3b8' }}>Toàn tộc</span>
                         )}
                       </td>
-                      <td style={{ maxWidth: '200px' }}>{req.message || '—'}</td>
+                      <td className="cnm-col-message">{req.message || '—'}</td>
                       <td>{req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
                       <td>
                         {req.status === 'PENDING' && <span className="cnm-status-pending">Chờ họ duyệt</span>}
@@ -1311,11 +1223,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           {/* Section 1: Incoming Lineage Access Requests */}
           <div className="cnm-content-card">
-            <div style={{ padding: '20px 24px 12px', borderBottom: '1px solid #f1f5f9' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+            <div className="cnm-section-subhead">
+              <h3 className="cnm-section-subtitle">
                 Yêu cầu xin cấp quyền xem gia phả liên họ (4 thế hệ)
               </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+              <p className="cnm-section-subdesc">
                 Xét duyệt yêu cầu từ người phối ngẫu (dâu/rể) thuộc dòng họ đối tác để mở rộng cây phả hệ 4 đời trên cùng một đồ thị
               </p>
             </div>
@@ -1329,13 +1241,13 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                     <th>Lý do xin cấp quyền</th>
                     <th>Ngày gửi</th>
                     <th>Trạng thái</th>
-                    <th style={{ textAlign: 'right' }}>Thao tác xét duyệt</th>
+                    <th className="cnm-text-right">Thao tác xét duyệt</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lineageRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                      <td colSpan={7} className="cnm-empty-state-cell">
                         Hiện chưa có yêu cầu xin cấp quyền xem gia phả nào gửi đến dòng tộc của bạn.
                       </td>
                     </tr>
@@ -1346,7 +1258,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                           <strong>{req.grantee_name || req.requester_name || 'Thành viên'}</strong>
                         </td>
                         <td>
-                          <span style={{ color: '#2563eb', fontWeight: 600 }}>
+                          <span className="cnm-highlight-blue">
                             {req.anchor_person_name || 'Người phối ngẫu'}
                           </span>
                         </td>
@@ -1364,7 +1276,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             4 thế hệ (Ông bà, Cha mẹ, Bản thân, Con cái)
                           </span>
                         </td>
-                        <td style={{ maxWidth: '220px' }}>{req.reason || '—'}</td>
+                        <td className="cnm-col-reason">{req.reason || '—'}</td>
                         <td>{req.created_at ? new Date(req.created_at).toLocaleDateString('vi-VN') : '—'}</td>
                         <td>
                           {req.status === 'PENDING' && (
@@ -1379,9 +1291,9 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             </span>
                           )}
                         </td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td className="cnm-text-right">
                           {req.status === 'PENDING' && (
-                            <div style={{ display: 'inline-flex', gap: '8px' }}>
+                            <div className="cnm-action-group">
                               <button
                                 type="button"
                                 disabled={actionInProgressId === req.id}
@@ -1426,12 +1338,12 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             </div>
                           )}
                           {req.status === 'REJECTED' && (
-                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                            <span className="cnm-meta-muted">
                               {req.rejection_reason ? `Lý do: ${req.rejection_reason}` : '—'}
                             </span>
                           )}
                           {req.status === 'APPROVED' && (
-                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                            <span className="cnm-meta-success">
                               ✓ Đã cấp quyền xem
                             </span>
                           )}
@@ -1446,11 +1358,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
 
           {/* Section 2: Active Lineage Grants */}
           <div className="cnm-content-card">
-            <div style={{ padding: '20px 24px 12px', borderBottom: '1px solid #f1f5f9' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+            <div className="cnm-section-subhead">
+              <h3 className="cnm-section-subtitle">
                 Danh sách quyền xem gia phả liên họ đã cấp (Lineage Grants)
               </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+              <p className="cnm-section-subdesc">
                 Các quyền truy cập 4 thế hệ đang kích hoạt hoặc đã thu hồi. Trưởng tộc có thể chủ động thu hồi quyền bất cứ lúc nào.
               </p>
             </div>
@@ -1463,13 +1375,13 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                     <th>Phạm vi & Quyền hạn</th>
                     <th>Ngày cấp</th>
                     <th>Trạng thái</th>
-                    <th style={{ textAlign: 'right' }}>Thao tác</th>
+                    <th className="cnm-text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lineageGrants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                      <td colSpan={6} className="cnm-empty-state-cell">
                         Chưa có quyền xem gia phả liên họ nào được cấp.
                       </td>
                     </tr>
@@ -1480,7 +1392,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                           <strong>{grant.grantee_name || 'Người dùng'}</strong>
                         </td>
                         <td>
-                          <span style={{ color: '#2563eb', fontWeight: 600 }}>
+                          <span className="cnm-highlight-blue">
                             {grant.anchor_person_name || 'Người phối ngẫu'}
                           </span>
                         </td>
@@ -1509,7 +1421,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                             </span>
                           )}
                         </td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td className="cnm-text-right">
                           {grant.status === 'ACTIVE' ? (
                             <button
                               type="button"
@@ -1536,7 +1448,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                               Thu hồi quyền
                             </button>
                           ) : (
-                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                            <span className="cnm-meta-muted">
                               {grant.revocation_reason ? `Lý do: ${grant.revocation_reason}` : 'Đã thu hồi'}
                             </span>
                           )}
@@ -1592,15 +1504,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                 </div>
 
                 {connectionType === 'IN_LAW' && (
-                  <div style={{
-                    background: '#f8fafc',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '14px',
-                  }}>
+                  <div className="cnm-form-card-box">
                     <strong style={{ fontSize: '13px', color: '#1e293b' }}>
                       Xác định cặp Person thông gia kết nối hai dòng họ *
                     </strong>
@@ -1608,7 +1512,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                     {/* Lựa chọn vai trò Chồng / Vợ */}
                     <div className="cnm-form-group">
                       <label style={{ fontWeight: 600, color: '#334155' }}>Vai trò hôn phối:</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div className="cnm-spouse-role-grid">
                         <label
                           style={{
                             display: 'flex',
@@ -1706,7 +1610,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                       <div className="cnm-form-group">
                         <label>2. Thành viên thuộc dòng họ đối tác:</label>
                         {loadingTargetMembers ? (
-                          <div style={{ fontSize: '13px', color: '#64748b' }}>Đang tải danh sách thành viên đối tác...</div>
+                          <div className="cnm-meta-text">Đang tải danh sách thành viên đối tác...</div>
                         ) : (
                           <select
                             className="cnm-select"
@@ -1753,7 +1657,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                           />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="cnm-two-col-grid">
                           <div className="cnm-form-group">
                             <label>Giới tính</label>
                             <select
@@ -1828,7 +1732,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
             </div>
             <form onSubmit={handleCreateMappingSubmit}>
               <div className="cnm-modal-body">
-                <p style={{ margin: 0, fontSize: '13.5px', color: '#475569' }}>
+                <p className="cnm-desc-muted">
                   Thiết lập ánh xạ chính danh giữa một thành viên thuộc dòng họ của bạn với một thành viên thuộc dòng họ đối tác.
                   Hồ sơ chỉ có hiệu lực sau khi Trưởng tộc đối tác xác nhận.
                 </p>
@@ -1853,7 +1757,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                 <div className="cnm-form-group">
                   <label>2. Thành viên thuộc dòng họ đối tác *</label>
                   {loadingPartnerMembers ? (
-                    <div style={{ fontSize: '13px', color: '#64748b' }}>Đang tải danh sách thành viên đối tác...</div>
+                    <div className="cnm-meta-text">Đang tải danh sách thành viên đối tác...</div>
                   ) : (
                     <select
                       className="cnm-select"
@@ -1901,7 +1805,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
         <div className="cnm-modal-backdrop">
           <div className="cnm-modal-card">
             <div className="cnm-modal-header">
-              <h3 style={{ color: '#dc2626' }}>Thu hồi liên kết cặp Person thông gia</h3>
+              <h3 className="cnm-text-danger">Thu hồi liên kết cặp Person thông gia</h3>
               <button type="button" className="cnm-modal-close" onClick={() => setRevokingMapping(null)}>✕</button>
             </div>
             <form onSubmit={handleRevokeMappingSubmit}>
@@ -1941,7 +1845,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
         <div className="cnm-modal-backdrop">
           <div className="cnm-modal-card">
             <div className="cnm-modal-header">
-              <h3 style={{ color: '#dc2626' }}>Xác nhận hủy liên kết dòng tộc</h3>
+              <h3 className="cnm-text-danger">Xác nhận hủy liên kết dòng tộc</h3>
               <button type="button" className="cnm-modal-close" onClick={() => setTerminatingLink(null)}>✕</button>
             </div>
             <form onSubmit={handleTerminateSubmit}>
@@ -1988,10 +1892,10 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
           <div className="cnm-modal-card cnm-modal-large">
             <div className="cnm-modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
+                <h3 className="cnm-modal-title-lg">
                   Chính sách chia sẻ dữ liệu liên tộc
                 </h3>
-                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                <div className="cnm-modal-subtitle-lg">
                   Liên kết với dòng họ{' '}
                   <strong style={{ color: '#1e40af' }}>
                     {policyModalLink.clanAId.toLowerCase() === effectiveClanId.toLowerCase()
@@ -2005,7 +1909,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
               </button>
             </div>
 
-            <div className="cnm-modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+            <div className="cnm-modal-body cnm-modal-scroll-body">
               {/* Subtabs: Mine vs Partner vs Preview */}
               <div className="cnm-policy-subtabs">
                 <button
@@ -2035,7 +1939,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
               </div>
 
               {loadingPolicies ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <div className="cnm-empty-state-box">
                   Đang tải chính sách chia sẻ...
                 </div>
               ) : (
@@ -2246,7 +2150,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                           </div>
                         </div>
                       ) : (
-                        <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                        <div className="cnm-empty-state-box">
                           Đối tác đang sử dụng chính sách mặc định (Cơ bản).
                         </div>
                       )}
@@ -2272,7 +2176,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                       </div>
 
                       {loadingPreview ? (
-                        <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                        <div className="cnm-empty-state-box">
                           Đang tải cây dữ liệu chia sẻ...
                         </div>
                       ) : previewTree && previewTree.nodes ? (
@@ -2322,7 +2226,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
                           </table>
                         </div>
                       ) : (
-                        <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                        <div className="cnm-empty-state-box">
                           Nhấn Làm mới để tải dữ liệu xem trước.
                         </div>
                       )}
@@ -2338,7 +2242,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
       {/* Lineage Reject Reason Modal */}
       {rejectModal.isOpen && (
         <div className="cnm-modal-backdrop">
-          <div className="cnm-modal-card" style={{ maxWidth: '480px' }}>
+          <div className="cnm-modal-card cnm-modal-sm">
             <div className="cnm-modal-header">
               <h3>Từ chối cấp quyền xem gia phả</h3>
               <button
@@ -2351,11 +2255,11 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
             </div>
             <form onSubmit={handleRejectLineageSubmit}>
               <div className="cnm-modal-body">
-                <p style={{ margin: 0, fontSize: '13.5px', color: '#475569' }}>
+                <p className="cnm-desc-muted">
                   Bạn đang từ chối yêu cầu xin cấp quyền xem gia phả của{' '}
                   <strong>{rejectModal.requesterName}</strong>.
                 </p>
-                <div className="cnm-form-group" style={{ marginTop: '12px' }}>
+                <div className="cnm-form-group cnm-mt-3">
                   <label>Lý do từ chối *</label>
                   <textarea
                     className="cnm-textarea"
@@ -2391,7 +2295,7 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
       {/* Lineage Revoke Reason Modal */}
       {revokeModal.isOpen && (
         <div className="cnm-modal-backdrop">
-          <div className="cnm-modal-card" style={{ maxWidth: '480px' }}>
+          <div className="cnm-modal-card cnm-modal-sm">
             <div className="cnm-modal-header">
               <h3>Thu hồi quyền xem gia phả liên họ</h3>
               <button
@@ -2404,12 +2308,12 @@ export const ClanNetworkManagement: React.FC<ClanNetworkManagementProps> = ({ cl
             </div>
             <form onSubmit={handleRevokeLineageSubmit}>
               <div className="cnm-modal-body">
-                <p style={{ margin: 0, fontSize: '13.5px', color: '#475569' }}>
+                <p className="cnm-desc-muted">
                   Bạn đang thu hồi quyền xem gia phả 4 đời của{' '}
                   <strong>{revokeModal.granteeName}</strong>. Ngay lập tức người này sẽ không thể xem
                   nhánh gia phả bên dòng họ của bạn nữa.
                 </p>
-                <div className="cnm-form-group" style={{ marginTop: '12px' }}>
+                <div className="cnm-form-group cnm-mt-3">
                   <label>Lý do thu hồi</label>
                   <textarea
                     className="cnm-textarea"

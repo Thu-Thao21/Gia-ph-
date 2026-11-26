@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { requestLineageAccess } from '../../services/network.service';
 import './LinkRequestModal/LinkRequestModal.css';
+import './LineageAccessRequestModal.css';
 
 export interface LineageAccessRequestModalProps {
   isOpen: boolean;
@@ -47,108 +48,65 @@ export const LineageAccessRequestModal: React.FC<LineageAccessRequestModalProps>
   return (
     <div className="link-modal-backdrop" onClick={onClose}>
       <div
-        className="link-modal-card"
-        style={{ width: '540px', maxWidth: '95vw' }}
+        className="link-modal-card lineage-access-card"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="link-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="link-modal-header lineage-access-header">
           <div>
-            <h2 className="link-modal-title" style={{ color: '#1e293b' }}>
+            <h2 className="link-modal-title lineage-access-title">
               Xin Cấp Quyền Xem Gia Phả Liên Họ
             </h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+            <p className="lineage-access-subtitle">
               Mạng lưới gia phả hai bên họ nội - ngoại (Phạm vi 4 thế hệ)
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#94a3b8',
-              fontSize: '20px',
-              fontWeight: 700,
-            }}
+            className="lineage-access-close-btn"
+            aria-label="Đóng"
           >
             ✕
           </button>
         </div>
 
-        <div className="link-modal-body" style={{ gap: '14px', padding: '16px 24px' }}>
+        <div className="link-modal-body lineage-access-body">
           {errorMessage && (
-            <div
-              style={{
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                fontSize: '13px',
-                color: '#dc2626',
-              }}
-            >
+            <div className="lineage-access-error">
               {errorMessage}
             </div>
           )}
 
-          <div
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              padding: '12px 14px',
-              fontSize: '13px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ color: '#64748b' }}>Dòng họ sở hữu:</span>
-              <strong style={{ color: '#0f172a' }}>{ownerClanName}</strong>
+          <div className="lineage-access-info-box">
+            <div className="lineage-access-info-row">
+              <span className="lineage-access-info-label">Dòng họ sở hữu:</span>
+              <strong className="lineage-access-info-val">{ownerClanName}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ color: '#64748b' }}>Người phối ngẫu làm trung tâm:</span>
-              <strong style={{ color: '#0f172a' }}>{anchorPersonName}</strong>
+            <div className="lineage-access-info-row">
+              <span className="lineage-access-info-label">Người phối ngẫu làm trung tâm:</span>
+              <strong className="lineage-access-info-val">{anchorPersonName}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ color: '#64748b' }}>Phạm vi chia sẻ:</span>
-              <span style={{ color: '#047857', fontWeight: 600 }}>Tối đa 4 thế hệ (Ông bà, cha mẹ, vợ/chồng, con cái)</span>
+            <div className="lineage-access-info-row">
+              <span className="lineage-access-info-label">Phạm vi chia sẻ:</span>
+              <span className="lineage-access-scope-val">Tối đa 4 thế hệ (Ông bà, cha mẹ, vợ/chồng, con cái)</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#64748b' }}>Quyền hạn:</span>
-              <span style={{ color: '#4338ca', fontWeight: 600 }}>Chỉ xem (Read-only, bảo vệ thông tin người còn sống)</span>
+            <div className="lineage-access-info-row">
+              <span className="lineage-access-info-label">Quyền hạn:</span>
+              <span className="lineage-access-perm-val">Chỉ xem (Read-only, bảo vệ thông tin người còn sống)</span>
             </div>
           </div>
 
-          <div
-            style={{
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
-              borderRadius: '8px',
-              padding: '10px 12px',
-              fontSize: '12px',
-              color: '#1e40af',
-              lineHeight: 1.5,
-            }}
-          >
+          <div className="lineage-access-notice">
             Yêu cầu sẽ được chuyển tới Trưởng tộc hoặc Family Admin có thẩm quyền của dòng tộc{' '}
             <strong>{ownerClanName}</strong> xét duyệt. Hai chiều chia sẻ hoàn toàn độc lập, tuân thủ phạm vi bảo mật 4 thế hệ và bảo vệ thông tin cá nhân.
           </div>
 
           <div>
-            <label className="link-modal-label" style={{ display: 'block', marginBottom: '6px' }}>
+            <label className="link-modal-label lineage-access-field-label">
               Lý do gửi Trưởng tộc phê duyệt chia sẻ:
             </label>
             <textarea
-              className="link-modal-textarea"
-              style={{
-                width: '100%',
-                minHeight: '80px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                padding: '8px 10px',
-                fontSize: '13px',
-                fontFamily: 'inherit',
-                boxSizing: 'border-box',
-              }}
+              className="link-modal-textarea lineage-access-textarea"
               placeholder={`Kính gửi Trưởng tộc, tôi xin đề xuất cấp quyền xem nhánh gia phả 4 thế hệ cho người phối ngẫu (${anchorPersonName}) để tìm hiểu cội nguồn và gắn kết tình thân giữa hai dòng họ...`}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -156,29 +114,10 @@ export const LineageAccessRequestModal: React.FC<LineageAccessRequestModalProps>
           </div>
         </div>
 
-        <div
-          className="link-modal-footer"
-          style={{
-            padding: '14px 24px 20px',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '10px',
-            borderTop: '1px solid #f1f5f9',
-          }}
-        >
+        <div className="link-modal-footer lineage-access-footer">
           <button
             type="button"
-            className="link-modal-btn link-modal-btn-cancel"
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#475569',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '13px',
-            }}
+            className="link-modal-btn link-modal-btn-cancel lineage-access-btn-cancel"
             onClick={onClose}
             disabled={submitting}
           >
@@ -186,18 +125,7 @@ export const LineageAccessRequestModal: React.FC<LineageAccessRequestModalProps>
           </button>
           <button
             type="button"
-            className="link-modal-btn link-modal-btn-submit"
-            style={{
-              padding: '8px 18px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#4f46e5',
-              color: '#ffffff',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              fontWeight: 600,
-              fontSize: '13px',
-              opacity: submitting ? 0.7 : 1,
-            }}
+            className="link-modal-btn link-modal-btn-submit lineage-access-btn-submit"
             onClick={handleSubmit}
             disabled={submitting}
           >
@@ -209,3 +137,4 @@ export const LineageAccessRequestModal: React.FC<LineageAccessRequestModalProps>
   );
 };
 
+export default LineageAccessRequestModal;

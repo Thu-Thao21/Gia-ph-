@@ -1,1 +1,188 @@
-/* InLawMarriagesTab styles */
+/* ==========================================================================
+   IN-LAW MARRIAGES TAB (DÂU & RỂ LIÊN HỌ)
+   ========================================================================== */
+
+.inlaw-feedback-banner {
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.inlaw-feedback-banner.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.inlaw-feedback-banner.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.inlaw-invitations-card {
+  margin-bottom: 20px;
+}
+
+.inlaw-invitations-title {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.inlaw-invitations-desc {
+  margin: 0 0 14px 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.inlaw-invitations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inlaw-invitation-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.inlaw-invitation-item.awaiting-me {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.inlaw-invitation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inlaw-invitation-names {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.inlaw-invitation-arrow {
+  margin: 0 8px;
+  color: #94a3b8;
+}
+
+.inlaw-invitation-notes {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.inlaw-invitation-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.inlaw-status-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.inlaw-status-pill.verified {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.inlaw-status-pill.pending {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.inlaw-status-pill.awaiting {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.inlaw-status-pill.rejected {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.inlaw-invitation-date {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.inlaw-invitation-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.inlaw-btn-accept {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.inlaw-btn-accept:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.inlaw-btn-accept:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.inlaw-btn-reject {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  background: #ffffff;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inlaw-btn-reject:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.inlaw-btn-reject:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.inlaw-btn-dual-lineage {
+  margin-top: 8px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inlaw-btn-dual-lineage:hover {
+  background: #ede9fe;
+}

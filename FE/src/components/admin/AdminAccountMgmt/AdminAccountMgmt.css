@@ -78,6 +78,20 @@
   border: 1px solid;
 }
 
+.admin-acc-alert-msg {
+  flex: 1;
+}
+
+.col-user { width: 22%; }
+.col-contact { width: 24%; }
+.col-role { width: 13%; }
+.col-status { width: 13%; }
+.col-date { width: 10%; }
+.col-actions { width: 18%; text-align: right; }
+.cell-actions { text-align: right; }
+.delete-modal-overlay-danger { z-index: 1100; }
+.delete-confirm-header-content { flex: 1; }
+
 .admin-acc-alert.alert-danger {
   background: #fef2f2;
   border-color: #fecaca;

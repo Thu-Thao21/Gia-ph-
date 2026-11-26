@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { FamilyNetwork, NetworkMemberItem } from '../../types/network';
+import './FamilyClanCard.css';
 
 interface FamilyClanCardProps {
   family: FamilyNetwork;
@@ -106,11 +107,11 @@ export const FamilyClanCard: React.FC<FamilyClanCardProps> = ({ family, defaultE
             <table className="network-members-table">
               <thead>
                 <tr>
-                  <th style={{ width: '30%' }}>Họ và tên</th>
-                  <th style={{ width: '15%' }}>Đời</th>
-                  <th style={{ width: '15%' }}>Giới tính</th>
-                  <th style={{ width: '20%' }}>Ngày sinh</th>
-                  <th style={{ width: '20%' }}>Trạng thái</th>
+                  <th className="network-col-name">Họ và tên</th>
+                  <th className="network-col-gen">Đời</th>
+                  <th className="network-col-gender">Giới tính</th>
+                  <th className="network-col-birth">Ngày sinh</th>
+                  <th className="network-col-status">Trạng thái</th>
                 </tr>
               </thead>
               <tbody>

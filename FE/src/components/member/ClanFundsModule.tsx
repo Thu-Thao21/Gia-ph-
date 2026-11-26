@@ -596,9 +596,9 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
           <strong>{formatVnd(summary?.total_target_amount || 0)}</strong>
           <small>Chỉ tiêu xây dựng & phát triển</small>
         </article>
-        <article style={{ borderColor: (summary?.awaiting_verification_count || 0) > 0 ? '#f59e0b' : '#e2e8f0' }}>
+        <article className={(summary?.awaiting_verification_count || 0) > 0 ? "fund-summary-card has-pending" : "fund-summary-card"}>
           <span>Chờ xác nhận</span>
-          <strong style={{ color: (summary?.awaiting_verification_count || 0) > 0 ? '#b45309' : '#0f172a' }}>
+          <strong>
             {summary?.awaiting_verification_count || 0} khoản
           </strong>
           <small>Thành viên đã gửi ảnh minh chứng</small>
@@ -771,7 +771,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                           onClick={() => setPreviewEvidenceUrl(resolveMediaUrl(d.evidence_items![0].image_path))}
                         />
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '11px' }}>Chưa có</span>
+                        <span className="fund-text-muted-11">Chưa có</span>
                       )}
                     </td>
                     <td>{new Date(d.created_at).toLocaleDateString('vi-VN')}</td>
@@ -868,7 +868,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                           onClick={() => setPreviewEvidenceUrl(resolveMediaUrl(d.evidence_items![0].image_path))}
                         />
                       ) : (
-                        <span style={{ color: '#ef4444', fontSize: '12px' }}>Chờ ảnh</span>
+                        <span className="fund-text-waiting-12">Chờ ảnh</span>
                       )}
                     </td>
                     <td>{d.submitted_at ? new Date(d.submitted_at).toLocaleString('vi-VN') : 'Mới tạo'}</td>
@@ -889,7 +889,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                             </button>
                             <button
                               type="button"
-                              style={{ color: '#dc2626', border: '1px solid #fecaca', background: '#fff' }}
+                              className="fund-btn-reject-outline"
                               onClick={() => {
                                 setRejectingTarget(d);
                                 setRejectReason('');
@@ -900,7 +900,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                             </button>
                           </>
                         ) : (
-                          <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                          <span className="fund-text-muted-11">
                             Chờ Tộc trưởng duyệt
                           </span>
                         )}
@@ -947,12 +947,12 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                 </div>
 
                 <div className="fund-item-stats">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+                  <div className="fund-progress-stats">
                     <span style={{ color: '#64748b' }}>Đã quyên góp:</span>
                     <strong style={{ color: '#15803d' }}>{formatVnd(current)}</strong>
                   </div>
                   {target > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                    <div className="fund-progress-target">
                       <span style={{ color: '#64748b' }}>Mục tiêu:</span>
                       <strong>{formatVnd(target)}</strong>
                     </div>
@@ -1013,7 +1013,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
             );
           })}
           {!funds.length && (
-            <div className="fund-empty-box" style={{ gridColumn: '1 / -1' }}>
+            <div className="fund-empty-box fund-empty-box-full">
               <p>Dòng họ chưa tạo quỹ nào.</p>
             </div>
           )}
@@ -1114,7 +1114,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               {bankQrPreview ? (
                 <img src={resolveMediaUrl(bankQrPreview)} alt="Mã QR ngân hàng" className="qr-image" />
               ) : (
-                <div style={{ padding: '40px 20px', color: '#94a3b8', textAlign: 'center' }}>
+                <div className="fund-empty-state-p40">
                   <FeatureIcon name="lock" size={32} />
                   <p>Chưa tải lên ảnh mã QR</p>
                 </div>
@@ -1162,7 +1162,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                   title="Nhấp để xem to / quét mã"
                 />
               ) : (
-                <div style={{ padding: '40px 20px', color: '#94a3b8', textAlign: 'center' }}>
+                <div className="fund-empty-state-p40">
                   <p>Dòng họ chưa tải ảnh QR ngân hàng.</p>
                   <small>Vui lòng chuyển khoản theo số tài khoản bên dưới.</small>
                 </div>
@@ -1180,7 +1180,7 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
               </div>
               <div className="bank-row">
                 <span className="bank-label">Số tài khoản:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="fund-flex-center-gap8">
                   <span className="bank-value highlight">{bankAccount?.account_number || '---'}</span>
                   {bankAccount?.account_number && (
                     <button
@@ -1194,9 +1194,9 @@ export const ClanFundsModule: React.FC<ClanFundsModuleProps> = ({
                 </div>
               </div>
               {donationDraft && (
-                <div className="bank-row" style={{ background: '#eff6ff', padding: '8px', borderRadius: '6px' }}>
+                <div className="bank-row bank-row-highlight">
                   <span className="bank-label">Nội dung chuyển:</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="fund-flex-center-gap8">
                     <strong style={{ color: '#1e40af' }}>{donationDraft.donationCode}</strong>
                     <button
                       type="button"

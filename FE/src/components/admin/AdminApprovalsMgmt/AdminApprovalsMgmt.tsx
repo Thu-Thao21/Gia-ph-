@@ -420,57 +420,30 @@ export const AdminApprovalsMgmt: React.FC = () => {
         }
       >
         {provisionResult && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{
-              padding: '12px 16px',
-              borderRadius: '8px',
-              backgroundColor: provisionResult.email_sent ? '#f0fdf4' : '#fffbeb',
-              border: `1px solid ${provisionResult.email_sent ? '#bbf7d0' : '#fde68a'}`,
-              color: provisionResult.email_sent ? '#166534' : '#92400e',
-              fontSize: '14px',
-              lineHeight: 1.5,
-            }}>
+          <div className="provision-result-wrap">
+            <div className={`provision-result-notice ${provisionResult.email_sent ? 'sent' : 'warn'}`}>
               <strong>{provisionResult.email_sent ? 'Đã gửi email thông tin tài khoản thành công!' : 'Thông báo email:'}</strong>
-              <div style={{ marginTop: '4px' }}>{provisionResult.message}</div>
+              <div className="provision-result-notice-msg">{provisionResult.message}</div>
             </div>
 
-            <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              fontSize: '14px',
-            }}>
+            <div className="provision-card-box">
               <div>
-                <span style={{ color: '#64748b' }}>Dòng họ: </span>
-                <strong style={{ color: '#0f172a' }}>{provisionResult.clan_name}</strong>
+                <span className="provision-label">Dòng họ: </span>
+                <strong className="provision-val">{provisionResult.clan_name}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b' }}>Trưởng tộc (Người đại diện): </span>
-                <strong style={{ color: '#0f172a' }}>{provisionResult.owner_display_name}</strong>
+                <span className="provision-label">Trưởng tộc (Người đại diện): </span>
+                <strong className="provision-val">{provisionResult.owner_display_name}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b' }}>Tài khoản Trưởng tộc (Hệ thống cấp): </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                  <code style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    fontSize: '15px',
-                    fontWeight: 600,
-                    color: '#0284c7',
-                  }}>
+                <span className="provision-label">Tài khoản Trưởng tộc (Hệ thống cấp): </span>
+                <div className="provision-copy-row">
+                  <code className="provision-email-code">
                     {provisionResult.owner_email}
                   </code>
                   <button
                     type="button"
-                    className="s6a-button secondary"
-                    style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
+                    className="s6a-button secondary provision-btn-copy"
                     onClick={() => {
                       navigator.clipboard.writeText(provisionResult.owner_email);
                       setCopiedEmail(true);
@@ -483,29 +456,17 @@ export const AdminApprovalsMgmt: React.FC = () => {
               </div>
 
               {provisionResult.temporary_password && (
-                <div style={{ marginTop: '8px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: '#64748b', marginBottom: '6px' }}>
+                <div className="provision-password-box">
+                  <label className="provision-password-label">
                     Mật khẩu tạm thời (chỉ hiển thị một lần):
                   </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <code style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      fontSize: '16px',
-                      fontFamily: 'Consolas, monospace',
-                      fontWeight: 'bold',
-                      color: '#dc2626',
-                      letterSpacing: '1px',
-                    }}>
+                  <div className="provision-copy-row">
+                    <code className="provision-password-code">
                       {provisionResult.temporary_password}
                     </code>
                     <button
                       type="button"
-                      className="s6a-button secondary"
-                      style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
+                      className="s6a-button secondary provision-btn-copy"
                       onClick={() => {
                         if (provisionResult.temporary_password) {
                           navigator.clipboard.writeText(provisionResult.temporary_password);
@@ -517,7 +478,7 @@ export const AdminApprovalsMgmt: React.FC = () => {
                       {copiedPassword ? '✓ Đã sao chép' : 'Sao chép'}
                     </button>
                   </div>
-                  <small style={{ display: 'block', marginTop: '6px', color: '#b45309', fontSize: '12px' }}>
+                  <small className="provision-password-warn">
                     * Mật khẩu có hiệu lực 72 giờ. Trưởng tộc sẽ được yêu cầu đổi mật khẩu mới ở lần đăng nhập đầu tiên.
                   </small>
                 </div>

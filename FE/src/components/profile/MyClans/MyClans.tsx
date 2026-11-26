@@ -309,24 +309,13 @@ export const MyClans: React.FC = () => {
   return (
     <div className="my-clans-container">
       {notice && (
-        <div
-          style={{
-            padding: '12px 16px',
-            marginBottom: '20px',
-            borderRadius: '8px',
-            background: notice.error ? '#fef2f2' : '#f0fdf4',
-            color: notice.error ? '#991b1b' : '#166534',
-            border: `1px solid ${notice.error ? '#fecaca' : '#bbf7d0'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+        <div className={`my-clans-notice ${notice.error ? 'error' : 'success'}`}>
           <span>{notice.text}</span>
           <button
             type="button"
             onClick={() => setNotice(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+            className="my-clans-notice-close"
+            aria-label="Đóng"
           >
             ×
           </button>

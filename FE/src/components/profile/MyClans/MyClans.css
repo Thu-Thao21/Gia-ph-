@@ -760,3 +760,34 @@
   margin: 0 0 10px 0;
   font-weight: 600;
 }
+
+/* Alert Notice */
+.my-clans-notice {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.my-clans-notice.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.my-clans-notice.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.my-clans-notice-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  color: inherit;
+  font-size: 16px;
+}

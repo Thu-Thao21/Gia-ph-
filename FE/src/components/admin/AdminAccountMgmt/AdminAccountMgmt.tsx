@@ -320,7 +320,7 @@ export const AdminAccountMgmt: React.FC = () => {
       {/* Alerts */}
       {errorMsg && (
         <div className="admin-acc-alert alert-danger" role="alert">
-          <span style={{ flex: 1 }}>{errorMsg}</span>
+          <span className="admin-acc-alert-msg">{errorMsg}</span>
           <button
             type="button"
             className="admin-acc-alert-close"
@@ -334,7 +334,7 @@ export const AdminAccountMgmt: React.FC = () => {
 
       {successMsg && (
         <div className="admin-acc-alert alert-ok" role="status">
-          <span style={{ flex: 1 }}>{successMsg}</span>
+          <span className="admin-acc-alert-msg">{successMsg}</span>
           <button
             type="button"
             className="admin-acc-alert-close"
@@ -357,12 +357,12 @@ export const AdminAccountMgmt: React.FC = () => {
             <table className="admin-acc-table">
               <thead>
                 <tr>
-                  <th style={{ width: '22%' }}>Tài khoản / Người dùng</th>
-                  <th style={{ width: '24%' }}>Email / Số điện thoại</th>
-                  <th style={{ width: '13%' }}>Vai trò</th>
-                  <th style={{ width: '13%' }}>Trạng thái</th>
-                  <th style={{ width: '10%' }}>Ngày tạo</th>
-                  <th style={{ width: '18%', textAlign: 'right' }}>Thao tác</th>
+                  <th className="col-user">Tài khoản / Người dùng</th>
+                  <th className="col-contact">Email / Số điện thoại</th>
+                  <th className="col-role">Vai trò</th>
+                  <th className="col-status">Trạng thái</th>
+                  <th className="col-date">Ngày tạo</th>
+                  <th className="col-actions">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -417,7 +417,7 @@ export const AdminAccountMgmt: React.FC = () => {
                       <td className="date-cell">
                         {acc.created_at || 'Mới đây'}
                       </td>
-                      <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                      <td className="cell-actions" onClick={(e) => e.stopPropagation()}>
                         <div className="row-actions">
                           <button
                             type="button"
@@ -786,9 +786,8 @@ export const AdminAccountMgmt: React.FC = () => {
       {/* Modal xác nhận xóa vĩnh viễn tài khoản (Custom Danger Dialog) */}
       {deleteTargetAcc && (
         <div
-          className="admin-acc-modal-overlay"
+          className="admin-acc-modal-overlay delete-modal-overlay-danger"
           onClick={() => !isDeleting && setDeleteTargetAcc(null)}
-          style={{ zIndex: 1100 }}
         >
           <div
             className="delete-confirm-modal"
@@ -814,7 +813,7 @@ export const AdminAccountMgmt: React.FC = () => {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="delete-confirm-header-content">
                 <h3 id="delete-modal-title" className="delete-confirm-title">
                   Xác nhận xóa vĩnh viễn tài khoản
                 </h3>

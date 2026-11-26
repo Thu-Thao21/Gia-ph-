@@ -501,3 +501,65 @@
     opacity: 0.7;
   }
 }
+
+/* Extracted from inline styles */
+.tree-stat-pill.fw-600 {
+  font-weight: 600;
+}
+
+.tree-toolbar-subtitle-row-flex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tree-toolbar-subtitle-no-margin {
+  margin: 0;
+}
+
+.tree-btn-green-sm {
+  font-size: 11px !important;
+  padding: 0 8px !important;
+  min-width: auto !important;
+  font-weight: 700 !important;
+  color: #16a34a !important;
+}
+
+.tree-btn-gray-sm {
+  font-size: 11px !important;
+  padding: 0 8px !important;
+  min-width: auto !important;
+  font-weight: 700 !important;
+  color: #64748b !important;
+}
+
+.tree-zoom-btn-fixed {
+  font-weight: 700 !important;
+  min-width: 55px !important;
+}
+
+.tree-empty-clan-title {
+  font-weight: 600;
+  color: #475569;
+}
+
+.tree-empty-clan-sub {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.tree-propose-member-desc {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.tree-propose-member-name {
+  color: #0f172a;
+}
+
+.tree-textarea-resizable {
+  resize: vertical;
+}

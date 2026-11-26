@@ -133,14 +133,13 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
           {onViewMyNetwork && (
             <button
-              className="tree-context-menu-item"
-              style={{ color: '#2563eb', fontWeight: 600 }}
+              className="tree-context-menu-item blue"
               onClick={() => {
                 onClose();
                 onViewMyNetwork();
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="2" y1="12" x2="22" y2="12" />
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
@@ -150,14 +149,13 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
           )}
 
           <button
-            className="tree-context-menu-item"
-            style={{ color: '#7c3aed', fontWeight: 600 }}
+            className="tree-context-menu-item purple"
             onClick={() => {
               onClose();
               if (onViewDualLineage) onViewDualLineage(node);
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -168,15 +166,14 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
           {(!node.isAlive || Boolean(node.deathDate)) && (
             <button
-              className="tree-context-menu-item"
-              style={{ color: '#16a34a', fontWeight: 600 }}
+              className="tree-context-menu-item green"
               onClick={() => {
                 onClose();
                 if (onViewBurial) onViewBurial(node);
                 else onViewBio(node);
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
                 <polygon points="3 11 22 2 13 21 11 13 3 11" />
               </svg>
               Xem mộ phần & Chỉ đường
@@ -252,8 +249,7 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
             <>
               {node.isUnconnected && (
                 <button
-                  className="tree-context-menu-item"
-                  style={{ color: '#d97706', fontWeight: 600 }}
+                  className="tree-context-menu-item amber"
                   onClick={() => {
                     onClose();
                     if (onRelocate) onRelocate(node);
@@ -299,15 +295,14 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
               {(!node.isAlive || Boolean(node.deathDate)) && (
                 <button
-                  className="tree-context-menu-item"
-                  style={{ color: '#16a34a', fontWeight: 600 }}
+                  className="tree-context-menu-item green"
                   onClick={() => {
                     onClose();
                     if (onViewBurial) onViewBurial(node);
                     else onViewBio(node);
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
                     <polygon points="3 11 22 2 13 21 11 13 3 11" />
                   </svg>
                   Xem mộ phần & Chỉ đường
@@ -329,15 +324,14 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
               {(!node.isAlive || Boolean(node.deathDate)) && (
                 <button
-                  className="tree-context-menu-item"
-                  style={{ color: '#16a34a', fontWeight: 600 }}
+                  className="tree-context-menu-item green"
                   onClick={() => {
                     onClose();
                     if (onViewBurial) onViewBurial(node);
                     else onViewBio(node);
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
                     <polygon points="3 11 22 2 13 21 11 13 3 11" />
                   </svg>
                   Xem mộ phần & Chỉ đường
@@ -362,14 +356,13 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
 
       {/* Xem 2-3 đời Bên Nội / Bên Ngoại (Huyết thống liên tộc) */}
       <button
-        className="tree-context-menu-item"
-        style={{ color: '#7c3aed', fontWeight: 600 }}
+        className="tree-context-menu-item purple"
         onClick={() => {
           onClose();
           if (onViewDualLineage) onViewDualLineage(node);
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
           <circle cx="9" cy="7" r="4" />
           <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -387,14 +380,13 @@ export const TreeContextMenu: React.FC<TreeContextMenuProps> = ({
         if (targetClanId) {
           return (
             <button
-              className="tree-context-menu-item"
-              style={{ color: '#2563eb', fontWeight: 600 }}
+              className="tree-context-menu-item blue"
               onClick={() => {
                 onClose();
                 if (onViewInLawTree) onViewInLawTree(targetClanId, targetPersonId);
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="tree-menu-item-icon">
                 <path d="M15 3h6v6" />
                 <path d="M10 14L21 3" />
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />

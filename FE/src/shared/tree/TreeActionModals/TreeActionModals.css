@@ -203,3 +203,31 @@
   color: #1e40af;
   line-height: 1.4;
 }
+
+/* Extracted from inline styles */
+.tree-modal-error-banner {
+  color: #dc2626;
+  font-size: 13px;
+  background: #fef2f2;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.tree-modal-field-error {
+  color: #dc2626;
+  font-size: 12.5px;
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+.tree-modal-confirm-text {
+  font-size: 15px;
+  color: #1e293b;
+  margin: 0;
+}
+
+.tree-action-helper-box.danger {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}

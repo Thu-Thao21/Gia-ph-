@@ -296,7 +296,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
-              {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
+              {error && <div className="tree-modal-error-banner">{error}</div>}
 
               <div className="tree-action-helper-box">
                 <span>
@@ -315,7 +315,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
                   required
                 />
                 {isDuplicateName && (
-                  <div style={{ color: '#dc2626', fontSize: '12.5px', marginTop: '5px', fontWeight: 600 }}>
+                  <div className="tree-modal-field-error">
                     Thành viên mang họ tên này đã tồn tại trong dòng họ. Vui lòng kiểm tra lại để tránh trùng tên.
                   </div>
                 )}
@@ -404,7 +404,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
-              {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
+              {error && <div className="tree-modal-error-banner">{error}</div>}
               
               <div className="tree-action-form-group">
                 <label className="tree-action-form-label">Họ và tên *</label>
@@ -417,7 +417,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
                   required
                 />
                 {isDuplicateName && (
-                  <div style={{ color: '#dc2626', fontSize: '12.5px', marginTop: '5px', fontWeight: 600 }}>
+                  <div className="tree-modal-field-error">
                     Thành viên mang họ tên này đã tồn tại trong dòng họ. Vui lòng kiểm tra lại để tránh trùng tên.
                   </div>
                 )}
@@ -503,11 +503,11 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
-              {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
-              <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>
+              {error && <div className="tree-modal-error-banner">{error}</div>}
+              <p className="tree-modal-confirm-text">
                 Bạn có chắc chắn muốn xóa nhân vật <strong>{node.fullName}</strong> (Đời thứ {node.generation || 1}) khỏi sơ đồ cây gia phả <strong>{familyName || 'dòng tộc'}</strong> không?
               </p>
-              <div className="tree-action-helper-box" style={{ background: '#fef2f2', borderColor: '#fca5a5', color: '#991b1b' }}>
+              <div className="tree-action-helper-box danger">
                 <strong>Lưu ý:</strong> Thao tác này chỉ xóa hồ sơ nhân vật và giải phóng các liên kết cha-con, vợ-chồng trên cây gia phả. Tài khoản người dùng liên kết (nếu có) vẫn được bảo lưu trong dòng tộc ở trạng thái chưa nối phả hệ. Để khai trừ tài khoản ra khỏi tộc, vui lòng thực hiện tại mục <em>Quản lý dòng họ &gt; Phân quyền &amp; Tài khoản</em>.
               </div>
             </div>
@@ -528,7 +528,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
-              {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
+              {error && <div className="tree-modal-error-banner">{error}</div>}
               
               <div className="tree-action-helper-box">
                 Thiết lập người con trực hệ cho <strong>{node.fullName}</strong>. Người con sẽ tự động được xếp vào <strong>Đời thứ {(node.generation || 1) + 1}</strong>.
@@ -545,7 +545,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
                   required
                 />
                 {isDuplicateName && (
-                  <div style={{ color: '#dc2626', fontSize: '12.5px', marginTop: '5px', fontWeight: 600 }}>
+                  <div className="tree-modal-field-error">
                     Thành viên mang họ tên này đã tồn tại trong dòng họ. Vui lòng kiểm tra lại để tránh trùng tên.
                   </div>
                 )}
@@ -593,7 +593,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
-              {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
+              {error && <div className="tree-modal-error-banner">{error}</div>}
               
               <div className="tree-action-helper-box">
                 Thiết lập hôn phối cho <strong>{node.fullName}</strong> ({node.gender === 'female' ? 'Nữ' : 'Nam'}, Đời thứ {node.generation || 1}).
@@ -610,7 +610,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
                   required
                 />
                 {isDuplicateName && (
-                  <div style={{ color: '#dc2626', fontSize: '12.5px', marginTop: '5px', fontWeight: 600 }}>
+                  <div className="tree-modal-field-error">
                     Thành viên mang họ tên này đã tồn tại trong dòng họ. Vui lòng kiểm tra lại để tránh trùng tên.
                   </div>
                 )}
@@ -660,7 +660,7 @@ export const TreeActionModals: React.FC<TreeActionModalsProps> = ({
               <button type="button" className="tree-action-modal-close-btn" onClick={onClose}>✕</button>
             </div>
             <div className="tree-action-modal-body">
-              {error && <div style={{ color: '#dc2626', fontSize: '13px', background: '#fef2f2', padding: '8px 12px', borderRadius: '6px' }}>{error}</div>}
+              {error && <div className="tree-modal-error-banner">{error}</div>}
               
               <div className="tree-action-helper-box">
                 {node.isUnconnected ? (

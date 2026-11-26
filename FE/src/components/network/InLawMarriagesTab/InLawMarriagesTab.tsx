@@ -9,6 +9,7 @@ import { EmptyState } from '../../../shared/Feedback/EmptyState';
 import { LoadingState } from '../../../shared/Feedback/LoadingState';
 import '../Network.css';
 import { DualLineageModal } from '../DualLineageModal';
+import './InLawMarriagesTab.css';
 
 export const InLawMarriagesTab: React.FC = () => {
   const [marriages, setMarriages] = useState<InLawMarriage[]>([]);
@@ -58,6 +59,18 @@ export const InLawMarriagesTab: React.FC = () => {
     }
   };
 
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case 'VERIFIED':
+        return 'verified';
+      case 'PENDING':
+        return 'pending';
+      case 'AWAITING_SPOUSE':
+        return 'awaiting';
+      default:
+        return 'rejected';
+    }
+  };
 
   if (loading) {
     return (
@@ -75,127 +88,78 @@ export const InLawMarriagesTab: React.FC = () => {
   return (
     <div className="network-layout">
       {feedbackMsg && (
-        <div
-          style={{
-            padding: '10px 14px',
-            marginBottom: '16px',
-            borderRadius: '8px',
-            background: feedbackMsg.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${feedbackMsg.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-            color: feedbackMsg.type === 'success' ? '#166534' : '#991b1b',
-            fontSize: '13px',
-            fontWeight: 500,
-          }}
-        >
+        <div className={`inlaw-feedback-banner ${feedbackMsg.type}`}>
           {feedbackMsg.text}
         </div>
       )}
 
       {/* Invitations Section */}
       {invitations.length > 0 && (
-        <div className="network-card" style={{ marginBottom: '20px' }}>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
+        <div className="network-card inlaw-invitations-card">
+          <h4 className="inlaw-invitations-title">
             Lời Mời Kết Nối Hôn Phối Liên Họ
           </h4>
-          <p style={{ margin: '0 0 14px 0', fontSize: '12.5px', color: '#64748b' }}>
+          <p className="inlaw-invitations-desc">
             Quy trình kết nối: Người gửi lời mời &rarr; Đối phương xác nhận &rarr; Quản trị viên 2 dòng tộc thẩm định &rarr; Chính thức kết nối thông gia.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {invitations.map((inv) => (
-              <div
-                key={inv.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
-                  background: inv.status === 'AWAITING_SPOUSE' && inv.can_respond ? '#eff6ff' : '#ffffff',
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a' }}>
-                    {inv.sender_name || 'Thành viên'} ({inv.sender_clan_name || 'Dòng họ'})
-                    <span style={{ margin: '0 8px', color: '#94a3b8' }}>&harr;</span>
-                    {inv.target_name || 'Thành viên'} ({inv.target_clan_name || 'Dòng họ'})
+          <div className="inlaw-invitations-list">
+            {invitations.map((inv) => {
+              const isAwaitingMe = inv.status === 'AWAITING_SPOUSE' && inv.can_respond;
+              return (
+                <div
+                  key={inv.id}
+                  className={`inlaw-invitation-item ${isAwaitingMe ? 'awaiting-me' : ''}`}
+                >
+                  <div className="inlaw-invitation-info">
+                    <div className="inlaw-invitation-names">
+                      {inv.sender_name || 'Thành viên'} ({inv.sender_clan_name || 'Dòng họ'})
+                      <span className="inlaw-invitation-arrow">&harr;</span>
+                      {inv.target_name || 'Thành viên'} ({inv.target_clan_name || 'Dòng họ'})
+                    </div>
+                    {inv.notes && (
+                      <div className="inlaw-invitation-notes">
+                        &ldquo;{inv.notes}&rdquo;
+                      </div>
+                    )}
+                    <div className="inlaw-invitation-meta">
+                      <span className={`inlaw-status-pill ${getStatusClass(inv.status)}`}>
+                        {inv.status === 'AWAITING_SPOUSE'
+                          ? (inv.can_respond ? 'Chờ bạn xác nhận' : 'Đang chờ đối phương xác nhận')
+                          : inv.status === 'PENDING'
+                          ? 'Chờ Trưởng tộc 2 họ xác minh'
+                          : inv.status === 'VERIFIED'
+                          ? 'Đã xác minh chính thức'
+                          : 'Bị từ chối'}
+                      </span>
+                      <span className="inlaw-invitation-date">
+                        {new Date(inv.created_at).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
                   </div>
-                  {inv.notes && (
-                    <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
-                      &ldquo;{inv.notes}&rdquo;
+
+                  {inv.can_respond && inv.status === 'AWAITING_SPOUSE' && (
+                    <div className="inlaw-invitation-actions">
+                      <button
+                        type="button"
+                        disabled={actionId === inv.id}
+                        onClick={() => handleRespond(inv.id, 'ACCEPT')}
+                        className="inlaw-btn-accept"
+                      >
+                        {actionId === inv.id ? 'Đang xử lý...' : 'Chấp nhận'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionId === inv.id}
+                        onClick={() => handleRespond(inv.id, 'REJECT')}
+                        className="inlaw-btn-reject"
+                      >
+                        Từ chối
+                      </button>
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontWeight: 600,
-                        background:
-                          inv.status === 'VERIFIED' ? '#f0fdf4' :
-                          inv.status === 'PENDING' ? '#eff6ff' :
-                          inv.status === 'AWAITING_SPOUSE' ? '#fef3c7' : '#fef2f2',
-                        color:
-                          inv.status === 'VERIFIED' ? '#166534' :
-                          inv.status === 'PENDING' ? '#1d4ed8' :
-                          inv.status === 'AWAITING_SPOUSE' ? '#b45309' : '#991b1b',
-                      }}
-                    >
-                      {inv.status === 'AWAITING_SPOUSE'
-                        ? (inv.can_respond ? 'Chờ bạn xác nhận' : 'Đang chờ đối phương xác nhận')
-                        : inv.status === 'PENDING'
-                        ? 'Chờ Trưởng tộc 2 họ xác minh'
-                        : inv.status === 'VERIFIED'
-                        ? 'Đã xác minh chính thức'
-                        : 'Bị từ chối'}
-                    </span>
-                    <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                      {new Date(inv.created_at).toLocaleDateString('vi-VN')}
-                    </span>
-                  </div>
                 </div>
-
-                {inv.can_respond && inv.status === 'AWAITING_SPOUSE' && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      type="button"
-                      disabled={actionId === inv.id}
-                      onClick={() => handleRespond(inv.id, 'ACCEPT')}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        background: '#16a34a',
-                        color: '#ffffff',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: actionId === inv.id ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {actionId === inv.id ? 'Đang xử lý...' : 'Chấp nhận'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actionId === inv.id}
-                      onClick={() => handleRespond(inv.id, 'REJECT')}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        border: '1px solid #fecaca',
-                        background: '#ffffff',
-                        color: '#dc2626',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: actionId === inv.id ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      Từ chối
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -231,17 +195,7 @@ export const InLawMarriagesTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSelectedLineagePersonId(m.husbandPersonId || m.wifePersonId || m.id)}
-                    style={{
-                      marginTop: '8px',
-                      background: '#f5f3ff',
-                      border: '1px solid #ddd6fe',
-                      color: '#6d28d9',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
+                    className="inlaw-btn-dual-lineage"
                   >
                     Xem 2-3 đời Bên Nội / Bên Ngoại
                   </button>

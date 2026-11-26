@@ -212,3 +212,29 @@
   color: #64748b;
   border: 1px dashed #cbd5e1;
 }
+
+/* Extracted from inline styles */
+.tree-menu-item-icon {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.tree-menu-item.blue {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.tree-menu-item.purple {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.tree-menu-item.green {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.tree-menu-item.amber {
+  color: #d97706;
+  font-weight: 600;
+}

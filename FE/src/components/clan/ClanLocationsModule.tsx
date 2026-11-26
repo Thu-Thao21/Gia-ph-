@@ -149,15 +149,7 @@ export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId
   return (
     <div className="clan-locations-page">
       {toastMsg && (
-        <div style={{
-          padding: '12px 20px',
-          background: '#f0fdf4',
-          border: '1px solid #bbf7d0',
-          color: '#166534',
-          borderRadius: '10px',
-          fontSize: '14px',
-          fontWeight: 600,
-        }}>
+        <div className="clan-locations-toast">
           {toastMsg}
         </div>
       )}
@@ -171,54 +163,24 @@ export const ClanLocationsModule: React.FC<ClanLocationsModuleProps> = ({ clanId
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="clan-locations-header-right">
           {/* Tab selector */}
-          <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
+          <div className="clan-locations-tab-group">
             <button
               type="button"
               onClick={() => setActiveTab('map')}
-              style={{
-                border: 'none',
-                background: activeTab === 'map' ? '#ffffff' : 'transparent',
-                color: activeTab === 'map' ? '#0f172a' : '#64748b',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: activeTab === 'map' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}
+              className={`clan-locations-tab-pill ${activeTab === 'map' ? 'active' : ''}`}
             >
               Bản đồ ({locations.length})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('proposals')}
-              style={{
-                border: 'none',
-                background: activeTab === 'proposals' ? '#ffffff' : 'transparent',
-                color: activeTab === 'proposals' ? '#0f172a' : '#64748b',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: activeTab === 'proposals' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className={`clan-locations-tab-pill ${activeTab === 'proposals' ? 'active' : ''}`}
             >
               Đề xuất từ thành viên
               {pendingProposalsCount > 0 && (
-                <span style={{
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  fontSize: '11px',
-                  padding: '1px 6px',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                }}>
+                <span className="clan-locations-badge-danger">
                   {pendingProposalsCount}
                 </span>
               )}

@@ -929,3 +929,71 @@
 .qr-upload-box input {
   display: none;
 }
+
+/* Added extracted classes from inline styles */
+.fund-summary-card.has-pending {
+  border-color: #f59e0b;
+}
+
+.fund-summary-card.has-pending strong {
+  color: #b45309;
+}
+
+.fund-empty-box-full {
+  grid-column: 1 / -1;
+}
+
+.fund-empty-state-p40 {
+  padding: 40px 20px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.bank-row-highlight {
+  background: #eff6ff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.fund-text-muted-11 {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.fund-text-waiting-12 {
+  color: #ef4444;
+  font-size: 12px;
+}
+
+.fund-btn-reject-outline {
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  background: #ffffff;
+}
+
+.fund-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.fund-progress-target {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.fund-text-green-bold {
+  color: #15803d;
+}
+
+.fund-text-muted {
+  color: #64748b;
+}
+
+.fund-flex-center-gap8 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
